@@ -11,6 +11,12 @@ import type {
   DEFAULT_SETTINGS,
 } from "../types";
 
+export interface Toast {
+  id: string;
+  type: "success" | "error" | "info";
+  message: string;
+}
+
 // ══════════════════════════════════════════════
 // App Store — центральное хранилище состояния
 // ══════════════════════════════════════════════
@@ -64,6 +70,11 @@ interface AppState {
   setTreePanelWidth: (width: number) => void;
   setWikiPanelWidth: (width: number) => void;
 
+  // ── Toast ──
+  toasts: Toast[];
+  showToast: (type: Toast["type"], message: string) => void;
+  removeToast: (id: string) => void;
+
   // ── Helpers ──
   getFlatTree: () => TreeNode[];
 }
@@ -79,6 +90,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   showWikiPanel: true,
   treePanelWidth: 250,
   wikiPanelWidth: 350,
+  toasts: [],
 
   // ── Дерево ──
   setWorkspaces: (workspaces) => set({ workspaces }),
@@ -212,6 +224,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({ showWikiPanel: !state.showWikiPanel })),
   setTreePanelWidth: (width) => set({ treePanelWidth: width }),
   setWikiPanelWidth: (width) => set({ wikiPanelWidth: width }),
+
+  // ── Toast ──
+  showToast: (type, message) =>
+    set((state) => ({
+      toasts: [...state.toasts, { id: `toast-${Date.now()}`, type, message }],
+    })),
+  removeToast: (id) =>
+    set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
 
   // ── Flat tree для рендера ──
   getFlatTree: () => {

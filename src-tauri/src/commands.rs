@@ -143,6 +143,12 @@ pub fn create_project(
     Ok(project)
 }
 
+/// Обновить проект
+#[tauri::command]
+pub fn update_project(id: String, name: String, icon: String, color: String, path: String, default_shell: String) -> Result<(), String> {
+    crate::db::update_project_fields(&id, &name, &icon, &color, &path, &default_shell)
+}
+
 /// Удалить проект
 #[tauri::command]
 pub fn delete_project(id: String) -> Result<(), String> {
@@ -170,6 +176,12 @@ pub fn create_console(
 
     crate::db::save_console(&console)?;
     Ok(console)
+}
+
+/// Обновить консоль
+#[tauri::command]
+pub fn update_console(id: String, name: String) -> Result<(), String> {
+    crate::db::update_console_name(&id, &name)
 }
 
 /// Удалить консоль

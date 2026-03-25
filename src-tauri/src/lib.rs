@@ -11,6 +11,7 @@ use commands::*;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             db::init()?;
             pty_manager::init(app.handle().clone());
@@ -23,8 +24,10 @@ pub fn run() {
             update_workspace,
             delete_workspace,
             create_project,
+            update_project,
             delete_project,
             create_console,
+            update_console,
             delete_console,
             spawn_pty,
             write_to_pty,

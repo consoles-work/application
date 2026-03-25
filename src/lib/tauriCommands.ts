@@ -53,6 +53,17 @@ export async function createProject(
   });
 }
 
+export async function updateProject(
+  id: string,
+  name: string,
+  icon: string,
+  color: string,
+  path: string,
+  defaultShell: string
+): Promise<void> {
+  return invoke("update_project", { id, name, icon, color, path, defaultShell });
+}
+
 export async function deleteProject(id: string): Promise<void> {
   return invoke("delete_project", { id });
 }
@@ -67,6 +78,10 @@ export async function createConsole(
     name,
     startupCmd,
   });
+}
+
+export async function updateConsole(id: string, name: string): Promise<void> {
+  return invoke("update_console", { id, name });
 }
 
 export async function deleteConsole(id: string): Promise<void> {

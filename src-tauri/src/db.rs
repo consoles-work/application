@@ -264,6 +264,15 @@ pub fn save_project(proj: &Project) -> Result<(), String> {
     Ok(())
 }
 
+pub fn update_project_fields(id: &str, name: &str, icon: &str, color: &str, path: &str, default_shell: &str) -> Result<(), String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    db.execute(
+        "UPDATE projects SET name = ?2, icon = ?3, color = ?4, path = ?5, default_shell = ?6 WHERE id = ?1",
+        params![id, name, icon, color, path, default_shell],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 pub fn delete_project_cascade(id: &str) -> Result<(), String> {
     let db = get_db().lock().map_err(|e| e.to_string())?;
     db.execute("DELETE FROM projects WHERE id = ?1", params![id])
@@ -282,6 +291,15 @@ pub fn save_console(con: &ConsoleConfig) -> Result<(), String> {
     db.execute(
         "INSERT OR REPLACE INTO consoles (id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         params![con.id, con.project_id, con.name, con.shell_override, con.cwd_override, con.startup_cmd, env_json, con.sort_order],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn update_console_name(id: &str, name: &str) -> Result<(), String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    db.execute(
+        "UPDATE consoles SET name = ?2 WHERE id = ?1",
+        params![id, name],
     ).map_err(|e| e.to_string())?;
     Ok(())
 }

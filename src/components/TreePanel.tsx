@@ -1,26 +1,101 @@
+import { useState, useRef, useEffect } from "react";
 import { useAppStore } from "../stores/appStore";
+import { updateWorkspace, updateProject, updateConsole } from "../lib/tauriCommands";
+import { ContextMenu, type ContextMenuState } from "./ContextMenu";
+import { CreateWorkspaceDialog } from "./dialogs/CreateWorkspaceDialog";
+import { CreateProjectDialog } from "./dialogs/CreateProjectDialog";
+import { CreateConsoleDialog } from "./dialogs/CreateConsoleDialog";
 import type { TreeNode } from "../types";
 
 // ══════════════════════════════════════
 // TreePanel — дерево проектов
-// Workspace → Project → Console
 // ══════════════════════════════════════
 
 export function TreePanel() {
-  const { selectedNode, selectNode, toggleNodeExpanded, getFlatTree } =
-    useAppStore();
+  const {
+    selectedNode,
+    selectNode,
+    toggleNodeExpanded,
+    getFlatTree,
+    updateWorkspace: storeUpdateWorkspace,
+    updateProject: storeUpdateProject,
+    updateConsole: storeUpdateConsole,
+    openSession,
+    sessions,
+    setActiveSession,
+    showToast,
+  } = useAppStore();
 
   const nodes = getFlatTree();
 
+  // ── Контекстное меню ──
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+
+  // ── Диалоги создания ──
+  const [createWorkspace, setCreateWorkspace] = useState(false);
+  const [createProjectFor, setCreateProjectFor] = useState<string | null>(null);   // workspaceId
+  const [createConsoleFor, setCreateConsoleFor] = useState<string | null>(null);   // projectId
+
+  // ── Inline rename ──
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
+  // Фокус при начале переименования
+  useEffect(() => {
+    if (renamingId) renameInputRef.current?.select();
+  }, [renamingId]);
+
+  // Глобальный F2 для переименования выбранного узла
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "F2" && selectedNode && !renamingId) {
+        const node = nodes.find(
+          (n) => n.id === selectedNode.id && n.type === selectedNode.type
+        );
+        if (node) startRename(node);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [selectedNode, renamingId, nodes]);
+
+  const startRename = (node: TreeNode) => {
+    setRenamingId(node.id);
+    setRenameValue(node.name);
+  };
+
+  const commitRename = async (node: TreeNode) => {
+    const newName = renameValue.trim();
+    setRenamingId(null);
+    if (!newName || newName === node.name) return;
+    try {
+      if (node.type === "workspace") {
+        const ws = node.data as { icon: string; color: string };
+        await updateWorkspace(node.id, newName, ws.icon, ws.color);
+        storeUpdateWorkspace(node.id, { name: newName });
+      } else if (node.type === "project") {
+        const proj = node.data as { icon: string; color: string; path: string; default_shell: string };
+        await updateProject(node.id, newName, proj.icon, proj.color, proj.path, proj.default_shell);
+        storeUpdateProject(node.id, { name: newName });
+      } else {
+        await updateConsole(node.id, newName);
+        storeUpdateConsole(node.id, { name: newName });
+      }
+      showToast("success", `Переименовано в «${newName}»`);
+    } catch (e) {
+      showToast("error", `Ошибка переименования: ${e}`);
+    }
+  };
+
   const handleClick = (node: TreeNode) => {
+    if (renamingId) return;
     selectNode({ type: node.type, id: node.id });
 
-    // Для консоли — также открываем терминальную сессию
     if (node.type === "console") {
-      const { sessions, openSession } = useAppStore.getState();
       const existing = sessions.find((s) => s.console_id === node.id);
       if (existing) {
-        useAppStore.getState().setActiveSession(existing.id);
+        setActiveSession(existing.id);
       } else {
         openSession({
           id: `session-${Date.now()}`,
@@ -32,89 +107,134 @@ export function TreePanel() {
     }
   };
 
+  const handleDoubleClick = (node: TreeNode) => {
+    startRename(node);
+  };
+
   const handleToggle = (e: React.MouseEvent, node: TreeNode) => {
     e.stopPropagation();
-    if (node.has_children) {
+    if (node.has_children || node.type !== "console") {
       toggleNodeExpanded(node.type, node.id);
     }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, node: TreeNode) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, node });
   };
 
   const getTypeIcon = (node: TreeNode) => {
     if (node.type === "console") return "›";
     if (node.is_expanded) return "▾";
     if (node.has_children) return "▸";
-    return " ";
+    return "▸";
   };
 
   return (
-    <div className="h-full flex flex-col bg-surface-1">
-      {/* Header */}
-      <div className="h-9 flex items-center justify-between px-3 border-b border-border shrink-0">
-        <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-          Projects
-        </span>
-        <button
-          className="text-text-muted hover:text-text-primary text-lg leading-none"
-          title="Add Workspace"
-          onClick={() => {
-            // TODO: модальное окно создания workspace
-            const { addWorkspace } = useAppStore.getState();
-            addWorkspace({
-              id: `ws-${Date.now()}`,
-              name: "New Workspace",
-              icon: "📁",
-              color: "#58a6ff",
-              sort_order: 99,
-              is_expanded: true,
-              projects: [],
-            });
-          }}
-        >
-          +
-        </button>
-      </div>
-
-      {/* Tree */}
-      <div className="flex-1 overflow-y-auto py-1">
-        {nodes.map((node) => (
-          <div
-            key={`${node.type}-${node.id}`}
-            className={`tree-item ${
-              selectedNode?.id === node.id && selectedNode?.type === node.type
-                ? "active"
-                : ""
-            }`}
-            style={{ paddingLeft: `${12 + node.depth * 16}px` }}
-            onClick={() => handleClick(node)}
+    <>
+      <div className="h-full flex flex-col bg-surface-1">
+        {/* Header */}
+        <div className="h-9 flex items-center justify-between px-3 border-b border-border shrink-0">
+          <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
+            Projects
+          </span>
+          <button
+            className="text-text-muted hover:text-text-primary text-lg leading-none"
+            title="Создать Workspace"
+            onClick={() => setCreateWorkspace(true)}
           >
-            {/* Expand/collapse arrow */}
-            <span
-              className="indent w-4 text-center text-text-muted text-xs cursor-pointer"
-              onClick={(e) => handleToggle(e, node)}
+            +
+          </button>
+        </div>
+
+        {/* Tree */}
+        <div className="flex-1 overflow-y-auto py-1">
+          {nodes.map((node) => (
+            <div
+              key={`${node.type}-${node.id}`}
+              className={`tree-item ${
+                selectedNode?.id === node.id && selectedNode?.type === node.type
+                  ? "active"
+                  : ""
+              }`}
+              style={{ paddingLeft: `${12 + node.depth * 16}px` }}
+              onClick={() => handleClick(node)}
+              onDoubleClick={() => handleDoubleClick(node)}
+              onContextMenu={(e) => handleContextMenu(e, node)}
             >
-              {getTypeIcon(node)}
-            </span>
+              {/* Expand/collapse */}
+              <span
+                className="indent w-4 text-center text-text-muted text-xs cursor-pointer"
+                onClick={(e) => handleToggle(e, node)}
+              >
+                {getTypeIcon(node)}
+              </span>
 
-            {/* Icon */}
-            <span className="text-sm">{node.icon}</span>
+              {/* Icon */}
+              <span className="text-sm">{node.icon}</span>
 
-            {/* Name */}
-            <span className="truncate flex-1 text-xs">{node.name}</span>
+              {/* Name — или input при переименовании */}
+              {renamingId === node.id ? (
+                <input
+                  ref={renameInputRef}
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  className="flex-1 bg-surface-0 border border-accent rounded px-1 text-xs text-text-primary outline-none"
+                  onBlur={() => commitRename(node)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitRename(node);
+                    if (e.key === "Escape") setRenamingId(null);
+                    e.stopPropagation();
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <span className="truncate flex-1 text-xs">{node.name}</span>
+              )}
 
-            {/* Color dot */}
-            <span
-              className="w-2 h-2 rounded-full shrink-0"
-              style={{ backgroundColor: node.color }}
-            />
-          </div>
-        ))}
+              {/* Color dot */}
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: node.color }}
+              />
+            </div>
+          ))}
 
-        {nodes.length === 0 && (
-          <div className="px-4 py-8 text-center text-text-muted text-xs">
-            Нажмите + чтобы создать workspace
-          </div>
-        )}
+          {nodes.length === 0 && (
+            <div className="px-4 py-8 text-center text-text-muted text-xs">
+              Нажмите + чтобы создать workspace
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* Контекстное меню */}
+      {contextMenu && (
+        <ContextMenu
+          menu={contextMenu}
+          onClose={() => setContextMenu(null)}
+          onCreateProject={(wsId) => setCreateProjectFor(wsId)}
+          onCreateConsole={(projId) => setCreateConsoleFor(projId)}
+          onRename={(node) => startRename(node)}
+        />
+      )}
+
+      {/* Диалоги создания */}
+      {createWorkspace && (
+        <CreateWorkspaceDialog onClose={() => setCreateWorkspace(false)} />
+      )}
+      {createProjectFor && (
+        <CreateProjectDialog
+          workspaceId={createProjectFor}
+          onClose={() => setCreateProjectFor(null)}
+        />
+      )}
+      {createConsoleFor && (
+        <CreateConsoleDialog
+          projectId={createConsoleFor}
+          onClose={() => setCreateConsoleFor(null)}
+        />
+      )}
+    </>
   );
 }
