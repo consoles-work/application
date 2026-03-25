@@ -1,0 +1,39 @@
+[package]
+name = "devconsole-hub"
+version = "0.1.0"
+description = "Multi-project terminal manager with integrated knowledge base"
+authors = ["DevConsole Hub"]
+edition = "2021"
+
+[lib]
+name = "devconsole_hub_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# ── Tauri core ──
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# ── Database ──
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+# ── PTY (терминальные сессии) ──
+# portable-pty работает на Windows, macOS, Linux
+portable-pty = "0.8"
+
+# ── Утилиты ──
+uuid = { version = "1", features = ["v4"] }
+dirs = "5"                    # пути к домашней директории
+chrono = { version = "0.4", features = ["serde"] }
+
+[profile.release]
+# Оптимизация размера бинарника
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"

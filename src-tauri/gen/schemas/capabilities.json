@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Default permissions for DevConsole Hub","local":true,"windows":["main"],"permissions":["core:default","core:event:allow-listen","core:event:allow-unlisten","core:event:allow-emit","shell:allow-open"]}}

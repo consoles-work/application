@@ -1,0 +1,156 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Базовые стили ── */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ── Скроллбары в стиле IDE ── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #484f58;
+}
+
+/* ── Сплиттер между панелями ── */
+.panel-resizer {
+  width: 4px;
+  cursor: col-resize;
+  background: #30363d;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.panel-resizer:hover,
+.panel-resizer.dragging {
+  background: #58a6ff;
+}
+
+/* ── Дерево проектов ── */
+.tree-item {
+  @apply flex items-center gap-2 px-3 py-1.5 cursor-pointer rounded-md text-sm;
+  @apply text-text-secondary hover:bg-surface-3 hover:text-text-primary;
+  transition: all 0.1s;
+}
+
+.tree-item.active {
+  @apply bg-accent-subtle text-accent;
+}
+
+.tree-item .indent {
+  flex-shrink: 0;
+}
+
+/* ── Вкладки терминала ── */
+.terminal-tab {
+  @apply flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer;
+  @apply text-text-secondary border-b-2 border-transparent;
+  @apply hover:text-text-primary hover:bg-surface-2;
+  transition: all 0.1s;
+}
+
+.terminal-tab.active {
+  @apply text-accent border-accent bg-surface-1;
+}
+
+/* ── xterm.js терминал ── */
+.xterm {
+  height: 100%;
+  padding: 4px;
+}
+
+.xterm-viewport {
+  /* Скрываем стандартный скроллбар xterm — используем встроенный */
+  overflow-y: hidden !important;
+}
+
+.xterm-screen {
+  width: 100% !important;
+}
+
+/* ── Wiki редактор ── */
+.wiki-editor .ProseMirror {
+  @apply p-4 outline-none min-h-full text-sm leading-relaxed;
+  @apply text-text-primary;
+}
+
+.wiki-editor .ProseMirror h1 {
+  @apply text-xl font-bold mb-3 text-text-primary;
+}
+
+.wiki-editor .ProseMirror h2 {
+  @apply text-lg font-semibold mb-2 text-text-primary;
+}
+
+.wiki-editor .ProseMirror h3 {
+  @apply text-base font-semibold mb-2 text-text-primary;
+}
+
+.wiki-editor .ProseMirror p {
+  @apply mb-2;
+}
+
+.wiki-editor .ProseMirror code {
+  @apply bg-surface-3 px-1.5 py-0.5 rounded text-xs font-mono text-accent;
+}
+
+.wiki-editor .ProseMirror pre {
+  @apply bg-surface-0 rounded-lg p-4 mb-3 overflow-x-auto;
+}
+
+.wiki-editor .ProseMirror pre code {
+  @apply bg-transparent p-0 text-text-primary;
+}
+
+.wiki-editor .ProseMirror ul {
+  @apply list-disc pl-6 mb-2;
+}
+
+.wiki-editor .ProseMirror ol {
+  @apply list-decimal pl-6 mb-2;
+}
+
+.wiki-editor .ProseMirror blockquote {
+  @apply border-l-4 border-accent pl-4 italic text-text-secondary mb-2;
+}
+
+.wiki-editor .ProseMirror .is-empty::before {
+  @apply text-text-muted;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* ── Утилиты ── */
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.drag-region {
+  -webkit-app-region: drag;
+}
