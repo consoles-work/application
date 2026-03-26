@@ -6,9 +6,7 @@ import type {
   TerminalSession,
   WikiPage,
   SelectedNode,
-  AppSettings,
   TreeNode,
-  DEFAULT_SETTINGS,
 } from "../types";
 
 export interface Toast {
@@ -32,6 +30,7 @@ interface AppState {
 
   // ── Wiki ──
   currentWikiPages: WikiPage[];
+  activeWikiPageId: string | null;
 
   // ── UI State ──
   showTreePanel: boolean;
@@ -63,6 +62,10 @@ interface AppState {
 
   // ── Actions: wiki ──
   setWikiPages: (pages: WikiPage[]) => void;
+  setActiveWikiPage: (id: string | null) => void;
+  addWikiPage: (page: WikiPage) => void;
+  updateWikiPage: (id: string, updates: Partial<WikiPage>) => void;
+  removeWikiPage: (id: string) => void;
 
   // ── Actions: UI ──
   toggleTreePanel: () => void;
@@ -86,6 +89,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   sessions: [],
   activeSessionId: null,
   currentWikiPages: [],
+  activeWikiPageId: null,
   showTreePanel: true,
   showWikiPanel: true,
   treePanelWidth: 250,
@@ -215,7 +219,30 @@ export const useAppStore = create<AppState>((set, get) => ({
   setActiveSession: (sessionId) => set({ activeSessionId: sessionId }),
 
   // ── Wiki ──
-  setWikiPages: (pages) => set({ currentWikiPages: pages }),
+  setWikiPages: (pages) => set({ currentWikiPages: pages, activeWikiPageId: pages[0]?.id ?? null }),
+  setActiveWikiPage: (id) => set({ activeWikiPageId: id }),
+  addWikiPage: (page) =>
+    set((state) => ({
+      currentWikiPages: [page, ...state.currentWikiPages],
+      activeWikiPageId: page.id,
+    })),
+  updateWikiPage: (id, updates) =>
+    set((state) => ({
+      currentWikiPages: state.currentWikiPages.map((p) =>
+        p.id === id ? { ...p, ...updates } : p
+      ),
+    })),
+  removeWikiPage: (id) =>
+    set((state) => {
+      const remaining = state.currentWikiPages.filter((p) => p.id !== id);
+      return {
+        currentWikiPages: remaining,
+        activeWikiPageId:
+          state.activeWikiPageId === id
+            ? (remaining[0]?.id ?? null)
+            : state.activeWikiPageId,
+      };
+    }),
 
   // ── UI ──
   toggleTreePanel: () =>

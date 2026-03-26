@@ -44,6 +44,8 @@ pub struct Project {
     pub env_vars: HashMap<String, String>,
     pub sort_order: i32,
     pub is_expanded: bool,
+    pub is_danger: bool,
+    pub danger_label: String,
     pub consoles: Vec<ConsoleConfig>,
 }
 
@@ -58,6 +60,8 @@ pub struct ConsoleConfig {
     pub startup_cmd: Option<String>,
     pub env_vars: Option<HashMap<String, String>>,
     pub sort_order: i32,
+    pub is_danger: bool,
+    pub danger_label: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -136,6 +140,8 @@ pub fn create_project(
         env_vars: HashMap::new(),
         sort_order: 0,
         is_expanded: true,
+        is_danger: false,
+        danger_label: "PRODUCTION".to_string(),
         consoles: Vec::new(),
     };
 
@@ -172,6 +178,8 @@ pub fn create_console(
         startup_cmd,
         env_vars: None,
         sort_order: 0,
+        is_danger: false,
+        danger_label: "PRODUCTION".to_string(),
     };
 
     crate::db::save_console(&console)?;
@@ -249,4 +257,10 @@ pub fn delete_wiki_page(id: String) -> Result<(), String> {
 #[tauri::command]
 pub fn search_wiki(query: String) -> Result<Vec<WikiPage>, String> {
     crate::db::search_wiki_fts(&query)
+}
+
+/// Установить/снять пометку "опасно" для проекта или консоли
+#[tauri::command]
+pub fn set_node_danger(id: String, node_type: String, is_danger: bool, danger_label: String) -> Result<(), String> {
+    crate::db::update_node_danger(&id, &node_type, is_danger, &danger_label)
 }

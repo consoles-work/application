@@ -82,7 +82,9 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
             default_shell TEXT NOT NULL DEFAULT 'bash',
             env_vars      TEXT NOT NULL DEFAULT '{}',
             sort_order    INTEGER NOT NULL DEFAULT 0,
-            is_expanded   INTEGER NOT NULL DEFAULT 1
+            is_expanded   INTEGER NOT NULL DEFAULT 1,
+            is_danger     INTEGER NOT NULL DEFAULT 0,
+            danger_label  TEXT NOT NULL DEFAULT 'PRODUCTION'
         );
 
         -- Consoles (внутри project)
@@ -94,7 +96,9 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
             cwd_override   TEXT,
             startup_cmd    TEXT,
             env_vars       TEXT,
-            sort_order     INTEGER NOT NULL DEFAULT 0
+            sort_order     INTEGER NOT NULL DEFAULT 0,
+            is_danger      INTEGER NOT NULL DEFAULT 0,
+            danger_label   TEXT NOT NULL DEFAULT 'PRODUCTION'
         );
 
         -- Wiki pages (привязаны к любому узлу)
@@ -122,6 +126,12 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
         CREATE INDEX IF NOT EXISTS idx_consoles_project ON consoles(project_id);
         CREATE INDEX IF NOT EXISTS idx_wiki_parent ON wiki_pages(parent_type, parent_id);
     ")?;
+
+    // Миграция для существующих БД — добавляем столбцы если их ещё нет
+    let _ = conn.execute("ALTER TABLE projects ADD COLUMN is_danger INTEGER NOT NULL DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE projects ADD COLUMN danger_label TEXT NOT NULL DEFAULT 'PRODUCTION'", []);
+    let _ = conn.execute("ALTER TABLE consoles ADD COLUMN is_danger INTEGER NOT NULL DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE consoles ADD COLUMN danger_label TEXT NOT NULL DEFAULT 'PRODUCTION'", []);
 
     // Сохраняем подключение в глобальную переменную
     DB.set(Mutex::new(conn))
@@ -167,7 +177,7 @@ pub fn load_all_workspaces() -> Result<Vec<Workspace>, String> {
 
 fn load_projects_for_workspace(db: &Connection, workspace_id: &str) -> Result<Vec<Project>, String> {
     let mut stmt = db.prepare(
-        "SELECT id, workspace_id, name, icon, color, path, default_shell, env_vars, sort_order, is_expanded FROM projects WHERE workspace_id = ?1 ORDER BY sort_order"
+        "SELECT id, workspace_id, name, icon, color, path, default_shell, env_vars, sort_order, is_expanded, is_danger, danger_label FROM projects WHERE workspace_id = ?1 ORDER BY sort_order"
     ).map_err(|e| e.to_string())?;
 
     let projects: Vec<Project> = stmt.query_map(params![workspace_id], |row| {
@@ -184,6 +194,8 @@ fn load_projects_for_workspace(db: &Connection, workspace_id: &str) -> Result<Ve
             env_vars,
             sort_order: row.get(8)?,
             is_expanded: row.get::<_, i32>(9)? != 0,
+            is_danger: row.get::<_, i32>(10)? != 0,
+            danger_label: row.get(11)?,
             consoles: Vec::new(),
         })
     }).map_err(|e| e.to_string())?
@@ -200,7 +212,7 @@ fn load_projects_for_workspace(db: &Connection, workspace_id: &str) -> Result<Ve
 
 fn load_consoles_for_project(db: &Connection, project_id: &str) -> Result<Vec<ConsoleConfig>, String> {
     let mut stmt = db.prepare(
-        "SELECT id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order FROM consoles WHERE project_id = ?1 ORDER BY sort_order"
+        "SELECT id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label FROM consoles WHERE project_id = ?1 ORDER BY sort_order"
     ).map_err(|e| e.to_string())?;
 
     let consoles = stmt.query_map(params![project_id], |row| {
@@ -216,6 +228,8 @@ fn load_consoles_for_project(db: &Connection, project_id: &str) -> Result<Vec<Co
             startup_cmd: row.get(5)?,
             env_vars,
             sort_order: row.get(7)?,
+            is_danger: row.get::<_, i32>(8)? != 0,
+            danger_label: row.get(9)?,
         })
     }).map_err(|e| e.to_string())?
     .filter_map(|r| r.ok())
@@ -258,8 +272,8 @@ pub fn save_project(proj: &Project) -> Result<(), String> {
     let db = get_db().lock().map_err(|e| e.to_string())?;
     let env_json = serde_json::to_string(&proj.env_vars).unwrap_or_default();
     db.execute(
-        "INSERT OR REPLACE INTO projects (id, workspace_id, name, icon, color, path, default_shell, env_vars, sort_order, is_expanded) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-        params![proj.id, proj.workspace_id, proj.name, proj.icon, proj.color, proj.path, proj.default_shell, env_json, proj.sort_order, proj.is_expanded as i32],
+        "INSERT OR REPLACE INTO projects (id, workspace_id, name, icon, color, path, default_shell, env_vars, sort_order, is_expanded, is_danger, danger_label) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+        params![proj.id, proj.workspace_id, proj.name, proj.icon, proj.color, proj.path, proj.default_shell, env_json, proj.sort_order, proj.is_expanded as i32, proj.is_danger as i32, proj.danger_label],
     ).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -289,8 +303,8 @@ pub fn save_console(con: &ConsoleConfig) -> Result<(), String> {
     let env_json = con.env_vars.as_ref()
         .map(|e| serde_json::to_string(e).unwrap_or_default());
     db.execute(
-        "INSERT OR REPLACE INTO consoles (id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        params![con.id, con.project_id, con.name, con.shell_override, con.cwd_override, con.startup_cmd, env_json, con.sort_order],
+        "INSERT OR REPLACE INTO consoles (id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![con.id, con.project_id, con.name, con.shell_override, con.cwd_override, con.startup_cmd, env_json, con.sort_order, con.is_danger as i32, con.danger_label],
     ).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -363,6 +377,22 @@ pub fn delete_wiki_page_by_id(id: &str) -> Result<(), String> {
     let db = get_db().lock().map_err(|e| e.to_string())?;
     db.execute("DELETE FROM wiki_pages WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn update_node_danger(id: &str, node_type: &str, is_danger: bool, danger_label: &str) -> Result<(), String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    match node_type {
+        "project" => db.execute(
+            "UPDATE projects SET is_danger = ?2, danger_label = ?3 WHERE id = ?1",
+            params![id, is_danger as i32, danger_label],
+        ),
+        "console" => db.execute(
+            "UPDATE consoles SET is_danger = ?2, danger_label = ?3 WHERE id = ?1",
+            params![id, is_danger as i32, danger_label],
+        ),
+        _ => return Err("Unknown node type".to_string()),
+    }.map_err(|e| e.to_string())?;
     Ok(())
 }
 

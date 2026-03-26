@@ -1,6 +1,6 @@
 # DevConsole Hub — План разработки
 
-> Последнее обновление: 2026-03-26
+> Последнее обновление: 2026-03-26 (актуально)
 
 ---
 
@@ -44,62 +44,54 @@
 ### 2.6 Новые Rust-команды — ВЫПОЛНЕНО
 - update_project, update_console в commands.rs + db.rs
 - tauri-plugin-dialog подключён в Rust и capabilities
+### 2.7 UX-улучшения дерева — ВЫПОЛНЕНО
+- Иконки раскрытия: ChevronRight/ChevronDown вместо ▸/▾
+- Пустое место для консолей (нет иконки раскрытия)
+### 2.8 Пометка "Опасный узел" — ВЫПОЛНЕНО
+- Поля is_danger + danger_label в projects и consoles (SQLite + Rust)
+- Красный badge ⚠ PRODUCTION в дереве
+- Контекстное меню: "Пометить как опасный..." / "Снять пометку"
+- window.prompt для ввода метки
 
 ### Остаток Этапа 2
-- Drag-and-drop (перетаскивание) — отложено
+- Drag-and-drop (перетаскивание) — ОТМЕНЕНО, не нужно
 
 ---
 
-## Этап 3: Wiki — TipTap редактор
+## Этап 3: Wiki — TipTap редактор — ВЫПОЛНЕН
 
-### 3.1 Подключить TipTap в WikiPanel.tsx
-Заменить textarea на TipTap (все пакеты уже установлены):
-
-```typescript
-const editor = useEditor({
-  extensions: [
-    StarterKit,
-    CodeBlockLowlight.configure({ lowlight: createLowlight(common) }),
-    Placeholder.configure({ placeholder: 'Начните писать...' }),
-    TaskList,
-    TaskItem.configure({ nested: true }),
-  ],
-  content: currentPage?.content ? JSON.parse(currentPage.content) : '',
-  onUpdate: ({ editor }) => debouncedSave(editor.getJSON()),
-});
-```
-
-### 3.2 WikiToolbar.tsx
-- Новый компонент: H1/H2/H3, Bold/Italic/Code, BulletList/OrderedList/TaskList, CodeBlock, Undo/Redo
-- Иконки из lucide-react, высота 32px
-
-### 3.3 Контекстная привязка к дереву
-- При выборе узла: `loadWikiPages(node.type, node.id)` → store
-- Список страниц + переключение
-- Кнопка "Новая страница"
-
-### 3.4 Автосохранение
-- debounce 1000ms → `saveWikiPage(page)` → Rust upsert
-
-### 3.5 Теги
-- Поле тегов под заголовком: ввод через запятую/Enter, пилюли
-- Клик на тег → фильтр списка
-
-### 3.6 Блоки кода — кнопки действий
-- Кнопка "Копировать" (clipboard API)
-- Кнопка "Вставить в терминал" → `writeToPty(activeSession.ptyId, code + "\n")`
+### 3.1 Подключить TipTap в WikiPanel.tsx — ВЫПОЛНЕНО
+- TipTap с StarterKit, CodeBlockLowlight, Placeholder, TaskList, TaskItem
+- Контент сохраняется как TipTap JSON
+### 3.2 WikiToolbar.tsx — ВЫПОЛНЕНО
+- H1/H2/H3, Bold/Italic/Code, BulletList/OrderedList/TaskList, CodeBlock, HR, Undo/Redo
+- Иконки из lucide-react
+### 3.3 Контекстная привязка к дереву — ВЫПОЛНЕНО
+- selectedNode=null → global wiki (parentType="global", parentId="global")
+- selectedNode=workspace/project/console → привязка к узлу
+- Список страниц (выпадающий), переключение, кнопка "Новая страница"
+### 3.4 Автосохранение — ВЫПОЛНЕНО
+- debounce 1000ms → saveWikiPage() → Rust upsert
+- Сохранение при размонтировании компонента
+- Исправлен баг camelCase/snake_case: WikiPage поля теперь parentType/parentId/createdAt/updatedAt
+- Исправлен stale closure в TipTap onUpdate (activePageRef)
+### 3.5 Теги — ВЫПОЛНЕНО
+- Ввод через Enter/запятую, пилюли с удалением
+- Сохраняются в WikiPage.tags
+### 3.6 Блоки кода — кнопки действий — ОТЛОЖЕНО
+- Требует TipTap NodeView (отложено на следующую итерацию)
 
 ---
 
-## Этап 4: Поиск и навигация
+## Этап 4: Поиск и навигация — ЧАСТИЧНО ВЫПОЛНЕН
 
-### 4.1 CommandPalette.tsx (Cmd+P)
-- Модал по центру, как VS Code
-- Fuzzy-поиск по именам узлов + заголовкам wiki + тегам + startup_cmd
-- Результаты сгруппированы: Workspaces / Projects / Consoles / Wiki Pages
+### 4.1 CommandPalette.tsx (Cmd+P) — ВЫПОЛНЕНО
+- Модал по центру, fuzzy-поиск (подстрока) по именам узлов
+- Результаты с типом (WS/PRJ/CON), иконкой, danger-badge
 - Клавиши: Escape закрыть, стрелки навигация, Enter перейти
+- Открытие сессии при выборе консоли
 
-### 4.2 GlobalSearch.tsx (Cmd+Shift+K)
+### 4.2 GlobalSearch.tsx (Cmd+Shift+K) — TODO
 - FTS5 поиск через `searchWiki(query)`
 - Preview контента с подсветкой совпадений
 
@@ -107,27 +99,29 @@ const editor = useEditor({
 
 ## Этап 5: Настройки и UX-polish
 
-### 5.1 Горячие клавиши (дополнить App.tsx)
-Добавить к уже работающим (Cmd+B, Cmd+\\, F2):
-- Cmd+P → CommandPalette
+### 5.1 Горячие клавиши — ЧАСТИЧНО ВЫПОЛНЕНО
+Работают: Cmd+B, Cmd+\, F2, Cmd+P
+Осталось добавить в App.tsx:
 - Cmd+Shift+K → GlobalSearch
 - Cmd+T → новая вкладка (openSession для выбранной консоли)
-- Cmd+W → закрыть активную вкладку
+- Cmd+W → закрыть активную вкладку (с ask())
 - Cmd+Tab / Cmd+Shift+Tab → переключение вкладок
 - Cmd+1..9 → вкладка N
 - Cmd+, → Settings
 - Delete → удалить выбранный узел (с подтверждением)
 
-### 5.2 Settings.tsx (Cmd+,)
+### 5.2 Settings.tsx (Cmd+,) — TODO
 - Терминал: шрифт, размер, scrollback, курсор
 - Wiki: шрифт, размер
 - Тема: тёмная/светлая
 - Сохранение в `~/.devconsole/config.json`
 
-### 5.3 Drag-and-drop в дереве
-- Перетаскивание консолей между проектами
-- Перетаскивание проектов между workspace
-- Обновление sort_order + сохранение в БД
+### 5.3 Drag-and-drop — ОТМЕНЕНО
+
+### 5.4 UX-улучшения — ЧАСТИЧНО ВЫПОЛНЕНО
+- Подтверждение закрытия вкладки через нативный ask() — ВЫПОЛНЕНО
+- Danger-пометка: баннер + красный градиент в терминале, индикатор в табе — ВЫПОЛНЕНО
+- Danger-пометка при создании проекта/консоли (чекбокс в диалоге) — ВЫПОЛНЕНО
 
 ---
 
@@ -139,25 +133,14 @@ const editor = useEditor({
 - Snippets / быстрые команды с параметрами
 - Экспорт/импорт workspace (zip + Markdown)
 - Интеграции: Git (текущая ветка), Docker (статус), VS Code (открыть)
+- Wiki: блоки кода с кнопками "Копировать" и "Вставить в терминал" (TipTap NodeView)
 
 ---
 
-## Рекомендуемый следующий порядок
+## Следующий порядок работы
 
 ```
-Этап 3: Wiki (TipTap)
-  3.1 WikiPanel.tsx: TipTap + editor
-  3.2 WikiToolbar.tsx
-  3.3 Привязка к дереву + загрузка/сохранение
-  3.4 Автосохранение + теги
-  3.5 Блоки кода с кнопками
-
-Этап 4: Поиск
-  4.1 CommandPalette
-  4.2 GlobalSearch
-
-Этап 5: Polish
-  5.1 Горячие клавиши
-  5.2 Settings
-  5.3 Drag-and-drop
+4.2 GlobalSearch (Cmd+Shift+K)
+5.1 Горячие клавиши: Cmd+T/W/Tab/1-9/Delete
+5.2 Settings (Cmd+,)
 ```

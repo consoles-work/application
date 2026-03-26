@@ -1,5 +1,6 @@
 // lib.rs — нужен для Tauri 2.0 (библиотечная точка входа)
 // Просто реэкспортирует run() из main.rs
+// v2 — добавлена команда set_node_danger
 
 mod commands;
 mod db;
@@ -37,6 +38,7 @@ pub fn run() {
             save_wiki_page,
             delete_wiki_page,
             search_wiki,
+            set_node_danger,
         ])
         .run(tauri::generate_context!())
         .expect("error while running DevConsole Hub");

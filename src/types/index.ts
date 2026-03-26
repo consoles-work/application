@@ -25,6 +25,8 @@ export interface Project {
   env_vars: Record<string, string>; // переменные окружения
   sort_order: number;
   is_expanded: boolean;
+  isDanger: boolean;
+  dangerLabel: string;
   consoles: ConsoleConfig[];
 }
 
@@ -37,20 +39,22 @@ export interface ConsoleConfig {
   startup_cmd?: string; // команда при запуске (npm run dev, etc.)
   env_vars?: Record<string, string>; // доп. переменные
   sort_order: number;
+  isDanger: boolean;
+  dangerLabel: string;
 }
 
 // ── Wiki ──
 
 export interface WikiPage {
   id: string;
-  parent_type: "workspace" | "project" | "console";
-  parent_id: string;
+  parentType: "global" | "workspace" | "project" | "console";
+  parentId: string;
   title: string;
   content: string; // JSON от TipTap / или Markdown
   tags: string[];
   pinned: boolean;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ── Терминальная сессия (runtime, не сохраняется в БД) ──

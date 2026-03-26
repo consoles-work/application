@@ -146,6 +146,38 @@ body,
   pointer-events: none;
 }
 
+/* ── Wiki: task list ── */
+.wiki-editor .ProseMirror ul[data-type="taskList"] {
+  @apply list-none pl-2 mb-2;
+}
+
+.wiki-editor .ProseMirror ul[data-type="taskList"] li {
+  @apply flex items-start gap-2;
+}
+
+.wiki-editor .ProseMirror ul[data-type="taskList"] li > label {
+  @apply flex items-center mt-0.5;
+}
+
+.wiki-editor .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"] {
+  @apply w-3.5 h-3.5 accent-[#58a6ff] cursor-pointer;
+}
+
+.wiki-editor .ProseMirror ul[data-type="taskList"] li > div {
+  @apply flex-1;
+}
+
+.wiki-editor .ProseMirror hr {
+  @apply border-border my-3;
+}
+
+/* Разрешить выделение текста в редакторе */
+.wiki-editor,
+.wiki-editor * {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 /* ── Утилиты ── */
 .no-drag {
   -webkit-app-region: no-drag;

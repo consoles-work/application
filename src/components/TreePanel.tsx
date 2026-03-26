@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
+import { ChevronRight, ChevronDown } from "lucide-react";
 import { useAppStore } from "../stores/appStore";
-import { updateWorkspace, updateProject, updateConsole } from "../lib/tauriCommands";
+import { updateWorkspace, updateProject, updateConsole, setNodeDanger } from "../lib/tauriCommands";
 import { ContextMenu, type ContextMenuState } from "./ContextMenu";
 import { CreateWorkspaceDialog } from "./dialogs/CreateWorkspaceDialog";
 import { CreateProjectDialog } from "./dialogs/CreateProjectDialog";
@@ -123,11 +124,28 @@ export function TreePanel() {
     setContextMenu({ x: e.clientX, y: e.clientY, node });
   };
 
-  const getTypeIcon = (node: TreeNode) => {
-    if (node.type === "console") return "›";
-    if (node.is_expanded) return "▾";
-    if (node.has_children) return "▸";
-    return "▸";
+  const handleToggleDanger = async (node: TreeNode) => {
+    const data = node.data as { isDanger?: boolean; dangerLabel?: string };
+    if (!data.isDanger) {
+      const label = window.prompt("Метка предупреждения:", data.dangerLabel || "PRODUCTION");
+      if (label === null) return; // отмена
+      const finalLabel = label.trim() || "PRODUCTION";
+      try {
+        await setNodeDanger(node.id, node.type, true, finalLabel);
+        if (node.type === "project") storeUpdateProject(node.id, { isDanger: true, dangerLabel: finalLabel } as any);
+        else if (node.type === "console") storeUpdateConsole(node.id, { isDanger: true, dangerLabel: finalLabel } as any);
+      } catch (e) {
+        showToast("error", `Ошибка: ${e}`);
+      }
+    } else {
+      try {
+        await setNodeDanger(node.id, node.type, false, data.dangerLabel || "PRODUCTION");
+        if (node.type === "project") storeUpdateProject(node.id, { isDanger: false } as any);
+        else if (node.type === "console") storeUpdateConsole(node.id, { isDanger: false } as any);
+      } catch (e) {
+        showToast("error", `Ошибка: ${e}`);
+      }
+    }
   };
 
   return (
@@ -164,10 +182,16 @@ export function TreePanel() {
             >
               {/* Expand/collapse */}
               <span
-                className="indent w-4 text-center text-text-muted text-xs cursor-pointer"
+                className="indent w-4 flex items-center justify-center text-text-muted cursor-pointer"
                 onClick={(e) => handleToggle(e, node)}
               >
-                {getTypeIcon(node)}
+                {node.type === "console" ? (
+                  <span className="w-4" />
+                ) : node.is_expanded ? (
+                  <ChevronDown size={12} />
+                ) : (
+                  <ChevronRight size={12} />
+                )}
               </span>
 
               {/* Icon */}
@@ -192,11 +216,12 @@ export function TreePanel() {
                 <span className="truncate flex-1 text-xs">{node.name}</span>
               )}
 
-              {/* Color dot */}
-              <span
-                className="w-2 h-2 rounded-full shrink-0"
-                style={{ backgroundColor: node.color }}
-              />
+              {/* Danger badge */}
+              {(node.data as { isDanger?: boolean; dangerLabel?: string }).isDanger && (
+                <span className="shrink-0 text-2xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30 font-medium">
+                  ⚠ {(node.data as { dangerLabel?: string }).dangerLabel || "DANGER"}
+                </span>
+              )}
             </div>
           ))}
 
@@ -216,6 +241,7 @@ export function TreePanel() {
           onCreateProject={(wsId) => setCreateProjectFor(wsId)}
           onCreateConsole={(projId) => setCreateConsoleFor(projId)}
           onRename={(node) => startRename(node)}
+          onToggleDanger={(node) => handleToggleDanger(node)}
         />
       )}
 

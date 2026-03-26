@@ -138,3 +138,12 @@ export async function deleteWikiPage(id: string): Promise<void> {
 export async function searchWiki(query: string): Promise<WikiPage[]> {
   return invoke<WikiPage[]>("search_wiki", { query });
 }
+
+export async function setNodeDanger(
+  id: string,
+  nodeType: string,
+  isDanger: boolean,
+  dangerLabel: string
+): Promise<void> {
+  return invoke("set_node_danger", { id, nodeType, isDanger, dangerLabel });
+}

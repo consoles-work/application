@@ -74,6 +74,9 @@ pub fn run() {
             save_wiki_page,
             delete_wiki_page,
             search_wiki,
+
+            // Утилиты
+            set_node_danger,
         ])
 
         // Запускаем приложение

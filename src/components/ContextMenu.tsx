@@ -7,6 +7,7 @@ import {
   deleteProject,
   deleteConsole,
 } from "../lib/tauriCommands";
+import { setNodeDanger } from "../lib/tauriCommands";
 import type { TreeNode } from "../types";
 
 export interface ContextMenuState {
@@ -21,6 +22,7 @@ interface ContextMenuProps {
   onCreateProject: (workspaceId: string) => void;
   onCreateConsole: (projectId: string) => void;
   onRename: (node: TreeNode) => void;
+  onToggleDanger: (node: TreeNode) => void;
 }
 
 export function ContextMenu({
@@ -29,6 +31,7 @@ export function ContextMenu({
   onCreateProject,
   onCreateConsole,
   onRename,
+  onToggleDanger,
 }: ContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const {
@@ -131,6 +134,19 @@ export function ContextMenu({
     }
   };
 
+  const handleToggleDanger = async () => {
+    onClose();
+    const data = menu.node.data as { isDanger?: boolean; dangerLabel?: string };
+    const isDanger = !data.isDanger;
+    const dangerLabel = data.dangerLabel || "PRODUCTION";
+    try {
+      await setNodeDanger(menu.node.id, menu.node.type, isDanger, dangerLabel);
+      onToggleDanger(menu.node);
+    } catch (e) {
+      showToast("error", `Ошибка: ${e}`);
+    }
+  };
+
   const items = getMenuItems({
     node: menu.node,
     onCreateProject: () => { onClose(); onCreateProject(menu.node.id); },
@@ -142,6 +158,7 @@ export function ContextMenu({
     onOpenVSCode: handleOpenInVSCode,
     onOpenFinder: handleOpenInFinder,
     onRunConsole: handleRunConsole,
+    onToggleDanger: handleToggleDanger,
   });
 
   return createPortal(
@@ -186,8 +203,10 @@ function getMenuItems(handlers: {
   onOpenVSCode: () => void;
   onOpenFinder: () => void;
   onRunConsole: () => void;
+  onToggleDanger: () => void;
 }): MenuItem[] {
   const { node } = handlers;
+  const data = node.data as { isDanger?: boolean };
 
   if (node.type === "workspace") {
     return [
@@ -206,6 +225,10 @@ function getMenuItems(handlers: {
       { label: "Открыть в VS Code", icon: "⎋", action: handlers.onOpenVSCode },
       { label: "Открыть в Finder", icon: "⌂", action: handlers.onOpenFinder },
       "separator",
+      data.isDanger
+        ? { label: "Снять пометку опасности", icon: "✓", action: handlers.onToggleDanger }
+        : { label: "⚠ Пометить как опасный...", icon: "⚠", action: handlers.onToggleDanger },
+      "separator",
       { label: "Переименовать", icon: "✎", action: handlers.onRename },
       "separator",
       { label: "Удалить проект", icon: "✕", action: handlers.onDeleteProject, danger: true },
@@ -215,6 +238,10 @@ function getMenuItems(handlers: {
   // console
   return [
     { label: "Запустить", icon: "▶", action: handlers.onRunConsole },
+    "separator",
+    data.isDanger
+      ? { label: "Снять пометку опасности", icon: "✓", action: handlers.onToggleDanger }
+      : { label: "⚠ Пометить как опасный...", icon: "⚠", action: handlers.onToggleDanger },
     "separator",
     { label: "Переименовать", icon: "✎", action: handlers.onRename },
     "separator",

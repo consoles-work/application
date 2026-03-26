@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useAppStore } from "../../stores/appStore";
-import { createConsole } from "../../lib/tauriCommands";
+import { createConsole, setNodeDanger } from "../../lib/tauriCommands";
 
 interface Props {
   projectId: string;
@@ -11,6 +11,8 @@ interface Props {
 export function CreateConsoleDialog({ projectId, onClose }: Props) {
   const [name, setName] = useState("");
   const [startupCmd, setStartupCmd] = useState("");
+  const [isDanger, setIsDanger] = useState(false);
+  const [dangerLabel, setDangerLabel] = useState("PRODUCTION");
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { addConsole, showToast } = useAppStore();
@@ -23,7 +25,11 @@ export function CreateConsoleDialog({ projectId, onClose }: Props) {
     setLoading(true);
     try {
       const con = await createConsole(projectId, name.trim(), startupCmd.trim() || undefined);
-      addConsole(projectId, con);
+      const finalLabel = dangerLabel.trim() || "PRODUCTION";
+      if (isDanger) {
+        await setNodeDanger(con.id, "console", true, finalLabel);
+      }
+      addConsole(projectId, { ...con, isDanger, dangerLabel: finalLabel });
       showToast("success", `Консоль «${con.name}» создана`);
       onClose();
     } catch (err) {
@@ -53,6 +59,27 @@ export function CreateConsoleDialog({ projectId, onClose }: Props) {
               placeholder="npm run dev"
               className="w-full px-3 py-2 rounded-lg bg-surface-0 border border-border text-sm text-text-primary outline-none focus:border-accent font-mono"
             />
+          </div>
+
+          {/* Danger flag */}
+          <div className="rounded-lg border border-border bg-surface-0 p-3 flex flex-col gap-2">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isDanger}
+                onChange={(e) => setIsDanger(e.target.checked)}
+                className="accent-red-500 w-3.5 h-3.5"
+              />
+              <span className="text-xs text-text-primary">⚠ Пометить как опасный</span>
+            </label>
+            {isDanger && (
+              <input
+                value={dangerLabel}
+                onChange={(e) => setDangerLabel(e.target.value)}
+                placeholder="Метка (PRODUCTION, STAGING...)"
+                className="px-2 py-1.5 rounded-md bg-surface-2 border border-red-500/40 text-xs text-red-400 outline-none focus:border-red-500 font-mono"
+              />
+            )}
           </div>
 
           <div className="flex gap-2 justify-end mt-1">

@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Layout } from "./components/Layout";
 import { ToastContainer } from "./components/Toast";
+import { CommandPalette } from "./components/CommandPalette";
 import { useAppStore } from "./stores/appStore";
 import { loadAllWorkspaces } from "./lib/tauriCommands";
 
@@ -10,6 +11,7 @@ import { loadAllWorkspaces } from "./lib/tauriCommands";
 
 function App() {
   const { setWorkspaces, toggleTreePanel, toggleWikiPanel, showToast } = useAppStore();
+  const [showPalette, setShowPalette] = useState(false);
 
   // Загрузка данных из SQLite при старте
   useEffect(() => {
@@ -31,6 +33,10 @@ function App() {
         e.preventDefault();
         toggleWikiPanel();
       }
+      if (mod && e.key === "p") {
+        e.preventDefault();
+        setShowPalette(true);
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -41,6 +47,7 @@ function App() {
     <>
       <Layout />
       <ToastContainer />
+      {showPalette && <CommandPalette onClose={() => setShowPalette(false)} />}
     </>
   );
 }

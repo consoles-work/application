@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../../stores/appStore";
-import { createProject } from "../../lib/tauriCommands";
+import { createProject, setNodeDanger } from "../../lib/tauriCommands";
 import type { ShellType } from "../../types";
 
 const EMOJI_OPTIONS = ["📁", "🔧", "🎨", "🌐", "🔬", "📱", "⚙️", "🗄️", "🤖", "📊", "🔐", "🧪"];
@@ -20,6 +20,8 @@ export function CreateProjectDialog({ workspaceId, onClose }: Props) {
   const [shell, setShell] = useState<ShellType>("zsh");
   const [icon, setIcon] = useState("📁");
   const [color, setColor] = useState("#58a6ff");
+  const [isDanger, setIsDanger] = useState(false);
+  const [dangerLabel, setDangerLabel] = useState("PRODUCTION");
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { addProject, showToast } = useAppStore();
@@ -41,8 +43,11 @@ export function CreateProjectDialog({ workspaceId, onClose }: Props) {
     setLoading(true);
     try {
       const proj = await createProject(workspaceId, name.trim(), path, shell);
-      // Перезаписываем иконку и цвет если отличаются от дефолта
-      addProject(workspaceId, { ...proj, icon, color });
+      const finalLabel = dangerLabel.trim() || "PRODUCTION";
+      if (isDanger) {
+        await setNodeDanger(proj.id, "project", true, finalLabel);
+      }
+      addProject(workspaceId, { ...proj, icon, color, isDanger, dangerLabel: finalLabel });
       showToast("success", `Проект «${proj.name}» создан`);
       onClose();
     } catch (err) {
@@ -116,6 +121,27 @@ export function CreateProjectDialog({ workspaceId, onClose }: Props) {
                   style={{ backgroundColor: c }} />
               ))}
             </div>
+          </div>
+
+          {/* Danger flag */}
+          <div className="rounded-lg border border-border bg-surface-0 p-3 flex flex-col gap-2">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isDanger}
+                onChange={(e) => setIsDanger(e.target.checked)}
+                className="accent-red-500 w-3.5 h-3.5"
+              />
+              <span className="text-xs text-text-primary">⚠ Пометить как опасный</span>
+            </label>
+            {isDanger && (
+              <input
+                value={dangerLabel}
+                onChange={(e) => setDangerLabel(e.target.value)}
+                placeholder="Метка (PRODUCTION, STAGING...)"
+                className="px-2 py-1.5 rounded-md bg-surface-2 border border-red-500/40 text-xs text-red-400 outline-none focus:border-red-500 font-mono"
+              />
+            )}
           </div>
 
           {/* Buttons */}

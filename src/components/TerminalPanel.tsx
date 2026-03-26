@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { listen } from "@tauri-apps/api/event";
+import { ask } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../stores/appStore";
 import { spawnPty, writeToPty, resizePty, killPty } from "../lib/tauriCommands";
 import type { TerminalSession, ConsoleConfig, Project } from "../types";
@@ -39,31 +40,52 @@ export function TerminalPanel() {
   const { sessions, activeSessionId, setActiveSession, closeSession } =
     useAppStore();
 
+  const handleCloseTab = async (e: React.MouseEvent, session: TerminalSession) => {
+    e.stopPropagation();
+    const confirmed = await ask(`Закрыть вкладку «${session.title}»?`, {
+      title: "Закрыть вкладку",
+      kind: "warning",
+    });
+    if (confirmed) closeSession(session.id);
+  };
+
   return (
     <div className="h-full flex flex-col bg-surface-0">
       {/* ── Вкладки ── */}
       <div className="h-9 flex items-center bg-surface-1 border-b border-border shrink-0 overflow-x-auto">
-        {sessions.map((session) => (
-          <div
-            key={session.id}
-            className={`terminal-tab ${
-              session.id === activeSessionId ? "active" : ""
-            }`}
-            onClick={() => setActiveSession(session.id)}
-          >
-            <span className="truncate max-w-[120px]">{session.title}</span>
-            <button
-              className="ml-1 text-text-muted hover:text-danger text-xs"
-              style={{ opacity: session.id === activeSessionId ? 0.6 : 0 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                closeSession(session.id);
-              }}
+        {sessions.map((session) => {
+          const con = findConsoleById(session.console_id);
+          const isDanger = con?.isDanger ?? false;
+          const dangerLabel = con?.dangerLabel ?? "DANGER";
+          const isActive = session.id === activeSessionId;
+
+          return (
+            <div
+              key={session.id}
+              className={`terminal-tab ${isActive ? "active" : ""} ${
+                isDanger ? "border-b-red-500/60" : ""
+              }`}
+              onClick={() => setActiveSession(session.id)}
             >
-              ×
-            </button>
-          </div>
-        ))}
+              {isDanger && (
+                <span className="text-red-400 text-xs mr-1">⚠</span>
+              )}
+              <span className="truncate max-w-[120px]">{session.title}</span>
+              {isDanger && (
+                <span className="ml-1 text-2xs px-1 rounded bg-red-500/20 text-red-400 font-mono shrink-0">
+                  {dangerLabel}
+                </span>
+              )}
+              <button
+                className="ml-1.5 text-text-muted hover:text-danger text-xs shrink-0"
+                style={{ opacity: isActive ? 0.6 : 0 }}
+                onClick={(e) => handleCloseTab(e, session)}
+              >
+                ×
+              </button>
+            </div>
+          );
+        })}
 
         {sessions.length === 0 && (
           <span className="px-3 text-xs text-text-muted">
@@ -74,13 +96,18 @@ export function TerminalPanel() {
 
       {/* ── Терминальные инстансы (все рендерятся, только активный виден) ── */}
       <div className="flex-1 overflow-hidden relative">
-        {sessions.map((session) => (
-          <TerminalView
-            key={session.id}
-            session={session}
-            isActive={session.id === activeSessionId}
-          />
-        ))}
+        {sessions.map((session) => {
+          const con = findConsoleById(session.console_id);
+          return (
+            <TerminalView
+              key={session.id}
+              session={session}
+              isActive={session.id === activeSessionId}
+              isDanger={con?.isDanger ?? false}
+              dangerLabel={con?.dangerLabel ?? "DANGER"}
+            />
+          );
+        })}
         {sessions.length === 0 && <EmptyState />}
       </div>
     </div>
@@ -94,9 +121,13 @@ export function TerminalPanel() {
 function TerminalView({
   session,
   isActive,
+  isDanger,
+  dangerLabel,
 }: {
   session: TerminalSession;
   isActive: boolean;
+  isDanger: boolean;
+  dangerLabel: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -230,10 +261,27 @@ function TerminalView({
 
   return (
     <div
-      className="absolute inset-0 p-1"
-      style={{ display: isActive ? "block" : "none" }}
+      className="absolute inset-0 flex flex-col"
+      style={{ display: isActive ? "flex" : "none" }}
     >
-      <div ref={containerRef} className="h-full w-full" />
+      {/* Danger banner */}
+      {isDanger && (
+        <div className="shrink-0 flex items-center gap-3 px-4 py-1.5 bg-red-950/60 border-b border-red-500/40">
+          <span className="text-red-400 font-bold text-xs">⚠ {dangerLabel}</span>
+          <span className="text-red-400/60 text-2xs">
+            Осторожно — это продакшн-окружение. Проверяйте команды перед запуском.
+          </span>
+        </div>
+      )}
+      {/* Terminal container с красной рамкой для опасных */}
+      <div
+        className={`flex-1 overflow-hidden p-1 ${
+          isDanger ? "ring-1 ring-red-500/20" : ""
+        }`}
+        style={isDanger ? { background: "linear-gradient(180deg, rgba(220,38,38,0.04) 0%, transparent 120px)" } : undefined}
+      >
+        <div ref={containerRef} className="h-full w-full" />
+      </div>
     </div>
   );
 }
