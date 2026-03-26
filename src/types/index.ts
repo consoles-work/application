@@ -36,11 +36,18 @@ export interface ConsoleConfig {
   name: string;
   shell_override?: ShellType; // если отличается от проекта
   cwd_override?: string; // если отличается от project.path
-  startup_cmd?: string; // команда при запуске (npm run dev, etc.)
+  startup_cmd?: string; // команды при запуске (многострочные, каждая строка — отдельная команда)
   env_vars?: Record<string, string>; // доп. переменные
   sort_order: number;
   isDanger: boolean;
   dangerLabel: string;
+  // Параметры подключения
+  connectionType: string; // "local" | "ssh"
+  sshHost: string;
+  sshPort: number;
+  sshUser: string;
+  sshKeyPath: string;
+  sshExtraArgs: string;
 }
 
 // ── Wiki ──

@@ -71,17 +71,53 @@ export async function deleteProject(id: string): Promise<void> {
 export async function createConsole(
   projectId: string,
   name: string,
-  startupCmd?: string
+  startupCmd?: string,
+  connectionType?: string,
+  sshHost?: string,
+  sshPort?: number,
+  sshUser?: string,
+  sshKeyPath?: string,
+  sshExtraArgs?: string
 ): Promise<ConsoleConfig> {
   return invoke<ConsoleConfig>("create_console", {
     projectId,
     name,
     startupCmd,
+    connectionType,
+    sshHost,
+    sshPort,
+    sshUser,
+    sshKeyPath,
+    sshExtraArgs,
   });
 }
 
 export async function updateConsole(id: string, name: string): Promise<void> {
   return invoke("update_console", { id, name });
+}
+
+export async function updateConsoleConfig(
+  id: string,
+  name: string,
+  startupCmd: string | undefined,
+  connectionType: string,
+  sshHost: string,
+  sshPort: number,
+  sshUser: string,
+  sshKeyPath: string,
+  sshExtraArgs: string
+): Promise<void> {
+  return invoke("update_console_config", {
+    id,
+    name,
+    startupCmd: startupCmd || undefined,
+    connectionType,
+    sshHost,
+    sshPort,
+    sshUser,
+    sshKeyPath,
+    sshExtraArgs,
+  });
 }
 
 export async function deleteConsole(id: string): Promise<void> {

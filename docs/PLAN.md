@@ -12,6 +12,7 @@
 - portable-pty: spawn/write/resize/kill
 - фоновый поток с emit "pty-output"
 - автоопределение шелла по ОС
+- исправлен запуск команд с пробелами (ssh и т.д.) через `sh -c`
 ### 1.4 TerminalPanel.tsx: xterm.js — ВЫПОЛНЕНО
 - Terminal + FitAddon, ResizeObserver
 - подписка на pty-output, ввод через writeToPty
@@ -33,20 +34,21 @@
 - ContextMenu.tsx: портал в body, позиция по клику, Escape/клик вне
 - Workspace: добавить проект, переименовать, удалить
 - Project: добавить консоль, открыть в VS Code/Finder, переименовать, удалить
-- Console: запустить, переименовать, удалить
+- Console: запустить, настройки подключения, переименовать, удалить
 ### 2.4 Диалоги создания — ВЫПОЛНЕНО
 - CreateWorkspaceDialog: имя, emoji, цвет
 - CreateProjectDialog: имя, Browse (plugin-dialog), shell, emoji, цвет
-- CreateConsoleDialog: имя, startup_cmd
+- CreateConsoleDialog: имя, тип подключения, SSH-поля, startup команды
 ### 2.5 Inline rename — ВЫПОЛНЕНО
 - F2 или двойной клик → input в строке дерева
 - Enter = сохранить через Rust + store, Escape = отмена
 ### 2.6 Новые Rust-команды — ВЫПОЛНЕНО
-- update_project, update_console в commands.rs + db.rs
+- update_project, update_console, update_console_config в commands.rs + db.rs
 - tauri-plugin-dialog подключён в Rust и capabilities
 ### 2.7 UX-улучшения дерева — ВЫПОЛНЕНО
 - Иконки раскрытия: ChevronRight/ChevronDown вместо ▸/▾
 - Пустое место для консолей (нет иконки раскрытия)
+- SSH badge (синий) для SSH-консолей
 ### 2.8 Пометка "Опасный узел" — ВЫПОЛНЕНО
 - Поля is_danger + danger_label в projects и consoles (SQLite + Rust)
 - Красный badge ⚠ PRODUCTION в дереве
@@ -79,7 +81,7 @@
 - Ввод через Enter/запятую, пилюли с удалением
 - Сохраняются в WikiPage.tags
 ### 3.6 Блоки кода — кнопки действий — ОТЛОЖЕНО
-- Требует TipTap NodeView (отложено на следующую итерацию)
+- Требует TipTap NodeView (отложено на этап 7)
 
 ---
 
@@ -97,7 +99,7 @@
 
 ---
 
-## Этап 5: Настройки и UX-polish
+## Этап 5: Настройки и UX-polish — ЧАСТИЧНО ВЫПОЛНЕН
 
 ### 5.1 Горячие клавиши — ЧАСТИЧНО ВЫПОЛНЕНО
 Работают: Cmd+B, Cmd+\, F2, Cmd+P
@@ -118,18 +120,45 @@
 
 ### 5.3 Drag-and-drop — ОТМЕНЕНО
 
-### 5.4 UX-улучшения — ЧАСТИЧНО ВЫПОЛНЕНО
-- Подтверждение закрытия вкладки через нативный ask() — ВЫПОЛНЕНО
-- Danger-пометка: баннер + красный градиент в терминале, индикатор в табе — ВЫПОЛНЕНО
-- Danger-пометка при создании проекта/консоли (чекбокс в диалоге) — ВЫПОЛНЕНО
+### 5.4 UX-улучшения — ВЫПОЛНЕНО
+- Подтверждение закрытия вкладки через нативный ask()
+- Danger-пометка: баннер + красный градиент в терминале, индикатор в табе
+- Danger-пометка при создании проекта/консоли (чекбокс в диалоге)
 
 ---
 
-## Этап 6: Post-MVP
+## Этап 6: Конфигурация подключения консоли — ВЫПОЛНЕН
 
-- SSH-профили (хранение конфигов, автогенерация startup_cmd)
+### 6.1 Типы подключения — ВЫПОЛНЕНО
+- `connection_type`: `"local"` (шелл) или `"ssh"` (удалённый сервер)
+- Поля: `ssh_host`, `ssh_port` (default 22), `ssh_user`, `ssh_key_path`, `ssh_extra_args`
+- При открытии SSH-консоли PTY автоматически запускает: `ssh [-p port] [-i key] [extra] user@host`
+- Команды с пробелами запускаются через `sh -c` в pty_manager.rs
+
+### 6.2 Startup-команды — ВЫПОЛНЕНО
+- Поле `startup_cmd` теперь многострочное (textarea)
+- Каждая строка = отдельная команда, выполняется последовательно с задержкой 400ms
+- Работает и для local, и для SSH (после установки соединения)
+
+### 6.3 Backend (Rust + SQLite) — ВЫПОЛНЕНО
+- Новые колонки в таблице `consoles`: `connection_type`, `ssh_host`, `ssh_port`, `ssh_user`, `ssh_key_path`, `ssh_extra_args`
+- Автомиграция для существующих БД
+- Новая команда `update_console_config` для полного обновления настроек консоли
+
+### 6.4 Frontend — ВЫПОЛНЕНО
+- `CreateConsoleDialog` — переключатель Local/SSH, все SSH-поля, Browse для ключа, textarea для startup команд
+- `EditConsoleDialog` (новый) — то же самое для редактирования, через контекстное меню "Настройки подключения..."
+- SSH badge (синий) в дереве рядом с именем SSH-консолей
+
+---
+
+## Этап 7: Post-MVP
+
+- GlobalSearch (Cmd+Shift+K) — FTS5 по wiki с подсветкой
+- Горячие клавиши: Cmd+T/W/Tab/1-9/Delete
+- Settings.tsx (Cmd+,) — шрифт, тема, scrollback
 - Сплит-терминал (Ctrl+Shift+H / V)
-- Broadcast-режим
+- Broadcast-режим (ввод одновременно в несколько консолей)
 - Snippets / быстрые команды с параметрами
 - Экспорт/импорт workspace (zip + Markdown)
 - Интеграции: Git (текущая ветка), Docker (статус), VS Code (открыть)

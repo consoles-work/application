@@ -61,6 +61,7 @@ pub fn run() {
             delete_project,
             create_console,
             update_console,
+            update_console_config,
             delete_console,
 
             // PTY (терминал)

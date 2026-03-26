@@ -89,16 +89,22 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
 
         -- Consoles (внутри project)
         CREATE TABLE IF NOT EXISTS consoles (
-            id             TEXT PRIMARY KEY,
-            project_id     TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-            name           TEXT NOT NULL,
-            shell_override TEXT,
-            cwd_override   TEXT,
-            startup_cmd    TEXT,
-            env_vars       TEXT,
-            sort_order     INTEGER NOT NULL DEFAULT 0,
-            is_danger      INTEGER NOT NULL DEFAULT 0,
-            danger_label   TEXT NOT NULL DEFAULT 'PRODUCTION'
+            id              TEXT PRIMARY KEY,
+            project_id      TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            name            TEXT NOT NULL,
+            shell_override  TEXT,
+            cwd_override    TEXT,
+            startup_cmd     TEXT,
+            env_vars        TEXT,
+            sort_order      INTEGER NOT NULL DEFAULT 0,
+            is_danger       INTEGER NOT NULL DEFAULT 0,
+            danger_label    TEXT NOT NULL DEFAULT 'PRODUCTION',
+            connection_type TEXT NOT NULL DEFAULT 'local',
+            ssh_host        TEXT NOT NULL DEFAULT '',
+            ssh_port        INTEGER NOT NULL DEFAULT 22,
+            ssh_user        TEXT NOT NULL DEFAULT '',
+            ssh_key_path    TEXT NOT NULL DEFAULT '',
+            ssh_extra_args  TEXT NOT NULL DEFAULT ''
         );
 
         -- Wiki pages (привязаны к любому узлу)
@@ -132,6 +138,13 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
     let _ = conn.execute("ALTER TABLE projects ADD COLUMN danger_label TEXT NOT NULL DEFAULT 'PRODUCTION'", []);
     let _ = conn.execute("ALTER TABLE consoles ADD COLUMN is_danger INTEGER NOT NULL DEFAULT 0", []);
     let _ = conn.execute("ALTER TABLE consoles ADD COLUMN danger_label TEXT NOT NULL DEFAULT 'PRODUCTION'", []);
+    // Миграция v3: SSH-подключение
+    let _ = conn.execute("ALTER TABLE consoles ADD COLUMN connection_type TEXT NOT NULL DEFAULT 'local'", []);
+    let _ = conn.execute("ALTER TABLE consoles ADD COLUMN ssh_host TEXT NOT NULL DEFAULT ''", []);
+    let _ = conn.execute("ALTER TABLE consoles ADD COLUMN ssh_port INTEGER NOT NULL DEFAULT 22", []);
+    let _ = conn.execute("ALTER TABLE consoles ADD COLUMN ssh_user TEXT NOT NULL DEFAULT ''", []);
+    let _ = conn.execute("ALTER TABLE consoles ADD COLUMN ssh_key_path TEXT NOT NULL DEFAULT ''", []);
+    let _ = conn.execute("ALTER TABLE consoles ADD COLUMN ssh_extra_args TEXT NOT NULL DEFAULT ''", []);
 
     // Сохраняем подключение в глобальную переменную
     DB.set(Mutex::new(conn))
@@ -212,7 +225,7 @@ fn load_projects_for_workspace(db: &Connection, workspace_id: &str) -> Result<Ve
 
 fn load_consoles_for_project(db: &Connection, project_id: &str) -> Result<Vec<ConsoleConfig>, String> {
     let mut stmt = db.prepare(
-        "SELECT id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label FROM consoles WHERE project_id = ?1 ORDER BY sort_order"
+        "SELECT id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args FROM consoles WHERE project_id = ?1 ORDER BY sort_order"
     ).map_err(|e| e.to_string())?;
 
     let consoles = stmt.query_map(params![project_id], |row| {
@@ -230,6 +243,12 @@ fn load_consoles_for_project(db: &Connection, project_id: &str) -> Result<Vec<Co
             sort_order: row.get(7)?,
             is_danger: row.get::<_, i32>(8)? != 0,
             danger_label: row.get(9)?,
+            connection_type: row.get::<_, Option<String>>(10)?.unwrap_or_else(|| "local".to_string()),
+            ssh_host: row.get::<_, Option<String>>(11)?.unwrap_or_default(),
+            ssh_port: row.get::<_, Option<i32>>(12)?.unwrap_or(22),
+            ssh_user: row.get::<_, Option<String>>(13)?.unwrap_or_default(),
+            ssh_key_path: row.get::<_, Option<String>>(14)?.unwrap_or_default(),
+            ssh_extra_args: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
         })
     }).map_err(|e| e.to_string())?
     .filter_map(|r| r.ok())
@@ -303,8 +322,8 @@ pub fn save_console(con: &ConsoleConfig) -> Result<(), String> {
     let env_json = con.env_vars.as_ref()
         .map(|e| serde_json::to_string(e).unwrap_or_default());
     db.execute(
-        "INSERT OR REPLACE INTO consoles (id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-        params![con.id, con.project_id, con.name, con.shell_override, con.cwd_override, con.startup_cmd, env_json, con.sort_order, con.is_danger as i32, con.danger_label],
+        "INSERT OR REPLACE INTO consoles (id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+        params![con.id, con.project_id, con.name, con.shell_override, con.cwd_override, con.startup_cmd, env_json, con.sort_order, con.is_danger as i32, con.danger_label, con.connection_type, con.ssh_host, con.ssh_port, con.ssh_user, con.ssh_key_path, con.ssh_extra_args],
     ).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -314,6 +333,25 @@ pub fn update_console_name(id: &str, name: &str) -> Result<(), String> {
     db.execute(
         "UPDATE consoles SET name = ?2 WHERE id = ?1",
         params![id, name],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn update_console_config_fields(
+    id: &str,
+    name: &str,
+    startup_cmd: Option<&str>,
+    connection_type: &str,
+    ssh_host: &str,
+    ssh_port: i32,
+    ssh_user: &str,
+    ssh_key_path: &str,
+    ssh_extra_args: &str,
+) -> Result<(), String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    db.execute(
+        "UPDATE consoles SET name = ?2, startup_cmd = ?3, connection_type = ?4, ssh_host = ?5, ssh_port = ?6, ssh_user = ?7, ssh_key_path = ?8, ssh_extra_args = ?9 WHERE id = ?1",
+        params![id, name, startup_cmd, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args],
     ).map_err(|e| e.to_string())?;
     Ok(())
 }

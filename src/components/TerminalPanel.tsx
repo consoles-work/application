@@ -181,9 +181,27 @@ function TerminalView({
     const consoleConfig = findConsoleById(session.console_id);
     const project = findProjectForConsole(session.console_id);
 
-    const shell = consoleConfig?.shell_override || project?.default_shell || "";
-    const cwd = consoleConfig?.cwd_override || project?.path || "";
+    let shell = consoleConfig?.shell_override || project?.default_shell || "";
+    let cwd = consoleConfig?.cwd_override || project?.path || "";
     const envVars = { ...project?.env_vars, ...consoleConfig?.env_vars };
+
+    // SSH: строим команду подключения
+    if (consoleConfig?.connectionType === "ssh") {
+      const host = consoleConfig.sshHost || "";
+      const port = consoleConfig.sshPort || 22;
+      const user = consoleConfig.sshUser || "";
+      const keyPath = consoleConfig.sshKeyPath || "";
+      const extraArgs = consoleConfig.sshExtraArgs || "";
+
+      let sshCmd = "ssh";
+      if (port !== 22) sshCmd += ` -p ${port}`;
+      if (keyPath) sshCmd += ` -i "${keyPath}"`;
+      if (extraArgs) sshCmd += ` ${extraArgs}`;
+      sshCmd += user ? ` ${user}@${host}` : ` ${host}`;
+
+      shell = sshCmd;
+      cwd = "";
+    }
 
     // Запускаем PTY и подключаем всё
     let disposed = false;
@@ -214,12 +232,15 @@ function TerminalView({
         // Изменение размера → PTY
         term.onResize(({ cols, rows }) => resizePty(ptyId, cols, rows));
 
-        // Стартовая команда (если задана)
+        // Стартовые команды — каждая строка выполняется с задержкой
         if (consoleConfig?.startup_cmd) {
-          setTimeout(
-            () => writeToPty(ptyId, consoleConfig.startup_cmd! + "\n"),
-            300
-          );
+          const lines = consoleConfig.startup_cmd
+            .split("\n")
+            .map((l) => l.trim())
+            .filter((l) => l.length > 0);
+          lines.forEach((line, i) => {
+            setTimeout(() => writeToPty(ptyId, line + "\n"), 500 + i * 400);
+          });
         }
       } catch (e) {
         term.write(`\x1b[31mОшибка запуска PTY: ${e}\x1b[0m\r\n`);

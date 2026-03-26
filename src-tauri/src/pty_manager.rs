@@ -87,7 +87,15 @@ pub fn spawn(
     // Выбираем шелл: переданный аргумент или системный по умолчанию
     let shell_cmd = if shell.is_empty() { default_shell() } else { shell };
 
-    let mut cmd = CommandBuilder::new(&shell_cmd);
+    // Если команда содержит пробелы (например, "ssh user@host" или "ssh -i key user@host")
+    // запускаем через sh -c, чтобы корректно разобрать аргументы
+    let mut cmd = if shell_cmd.contains(' ') {
+        let mut c = CommandBuilder::new("sh");
+        c.args(["-c", &shell_cmd]);
+        c
+    } else {
+        CommandBuilder::new(&shell_cmd)
+    };
     if !cwd.is_empty() {
         cmd.cwd(&cwd);
     }

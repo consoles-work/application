@@ -62,6 +62,13 @@ pub struct ConsoleConfig {
     pub sort_order: i32,
     pub is_danger: bool,
     pub danger_label: String,
+    // Параметры подключения
+    pub connection_type: String,   // "local" | "ssh"
+    pub ssh_host: String,
+    pub ssh_port: i32,
+    pub ssh_user: String,
+    pub ssh_key_path: String,
+    pub ssh_extra_args: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -167,6 +174,12 @@ pub fn create_console(
     project_id: String,
     name: String,
     startup_cmd: Option<String>,
+    connection_type: Option<String>,
+    ssh_host: Option<String>,
+    ssh_port: Option<i32>,
+    ssh_user: Option<String>,
+    ssh_key_path: Option<String>,
+    ssh_extra_args: Option<String>,
 ) -> Result<ConsoleConfig, String> {
     let id = uuid::Uuid::new_v4().to_string();
     let console = ConsoleConfig {
@@ -180,16 +193,42 @@ pub fn create_console(
         sort_order: 0,
         is_danger: false,
         danger_label: "PRODUCTION".to_string(),
+        connection_type: connection_type.unwrap_or_else(|| "local".to_string()),
+        ssh_host: ssh_host.unwrap_or_default(),
+        ssh_port: ssh_port.unwrap_or(22),
+        ssh_user: ssh_user.unwrap_or_default(),
+        ssh_key_path: ssh_key_path.unwrap_or_default(),
+        ssh_extra_args: ssh_extra_args.unwrap_or_default(),
     };
 
     crate::db::save_console(&console)?;
     Ok(console)
 }
 
-/// Обновить консоль
+/// Обновить имя консоли (используется при inline-rename)
 #[tauri::command]
 pub fn update_console(id: String, name: String) -> Result<(), String> {
     crate::db::update_console_name(&id, &name)
+}
+
+/// Обновить полную конфигурацию консоли (подключение, startup и т.д.)
+#[tauri::command]
+pub fn update_console_config(
+    id: String,
+    name: String,
+    startup_cmd: Option<String>,
+    connection_type: String,
+    ssh_host: String,
+    ssh_port: i32,
+    ssh_user: String,
+    ssh_key_path: String,
+    ssh_extra_args: String,
+) -> Result<(), String> {
+    crate::db::update_console_config_fields(
+        &id, &name, startup_cmd.as_deref(),
+        &connection_type, &ssh_host, ssh_port,
+        &ssh_user, &ssh_key_path, &ssh_extra_args,
+    )
 }
 
 /// Удалить консоль

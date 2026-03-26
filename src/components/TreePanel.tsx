@@ -6,7 +6,8 @@ import { ContextMenu, type ContextMenuState } from "./ContextMenu";
 import { CreateWorkspaceDialog } from "./dialogs/CreateWorkspaceDialog";
 import { CreateProjectDialog } from "./dialogs/CreateProjectDialog";
 import { CreateConsoleDialog } from "./dialogs/CreateConsoleDialog";
-import type { TreeNode } from "../types";
+import { EditConsoleDialog } from "./dialogs/EditConsoleDialog";
+import type { TreeNode, ConsoleConfig } from "../types";
 
 // ══════════════════════════════════════
 // TreePanel — дерево проектов
@@ -32,10 +33,11 @@ export function TreePanel() {
   // ── Контекстное меню ──
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
-  // ── Диалоги создания ──
+  // ── Диалоги создания / редактирования ──
   const [createWorkspace, setCreateWorkspace] = useState(false);
   const [createProjectFor, setCreateProjectFor] = useState<string | null>(null);   // workspaceId
   const [createConsoleFor, setCreateConsoleFor] = useState<string | null>(null);   // projectId
+  const [editConsole, setEditConsole] = useState<ConsoleConfig | null>(null);
 
   // ── Inline rename ──
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -216,6 +218,13 @@ export function TreePanel() {
                 <span className="truncate flex-1 text-xs">{node.name}</span>
               )}
 
+              {/* SSH badge */}
+              {node.type === "console" && (node.data as { connectionType?: string }).connectionType === "ssh" && (
+                <span className="shrink-0 text-2xs px-1 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/25 font-mono">
+                  ssh
+                </span>
+              )}
+
               {/* Danger badge */}
               {(node.data as { isDanger?: boolean; dangerLabel?: string }).isDanger && (
                 <span className="shrink-0 text-2xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30 font-medium">
@@ -242,10 +251,11 @@ export function TreePanel() {
           onCreateConsole={(projId) => setCreateConsoleFor(projId)}
           onRename={(node) => startRename(node)}
           onToggleDanger={(node) => handleToggleDanger(node)}
+          onEditConsole={(node) => setEditConsole(node.data as ConsoleConfig)}
         />
       )}
 
-      {/* Диалоги создания */}
+      {/* Диалоги создания / редактирования */}
       {createWorkspace && (
         <CreateWorkspaceDialog onClose={() => setCreateWorkspace(false)} />
       )}
@@ -259,6 +269,12 @@ export function TreePanel() {
         <CreateConsoleDialog
           projectId={createConsoleFor}
           onClose={() => setCreateConsoleFor(null)}
+        />
+      )}
+      {editConsole && (
+        <EditConsoleDialog
+          console_={editConsole}
+          onClose={() => setEditConsole(null)}
         />
       )}
     </>

@@ -23,6 +23,7 @@ interface ContextMenuProps {
   onCreateConsole: (projectId: string) => void;
   onRename: (node: TreeNode) => void;
   onToggleDanger: (node: TreeNode) => void;
+  onEditConsole: (node: TreeNode) => void;
 }
 
 export function ContextMenu({
@@ -32,6 +33,7 @@ export function ContextMenu({
   onCreateConsole,
   onRename,
   onToggleDanger,
+  onEditConsole,
 }: ContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const {
@@ -159,6 +161,7 @@ export function ContextMenu({
     onOpenFinder: handleOpenInFinder,
     onRunConsole: handleRunConsole,
     onToggleDanger: handleToggleDanger,
+    onEditConsole: () => { onClose(); onEditConsole(menu.node); },
   });
 
   return createPortal(
@@ -204,6 +207,7 @@ function getMenuItems(handlers: {
   onOpenFinder: () => void;
   onRunConsole: () => void;
   onToggleDanger: () => void;
+  onEditConsole: () => void;
 }): MenuItem[] {
   const { node } = handlers;
   const data = node.data as { isDanger?: boolean };
@@ -238,6 +242,7 @@ function getMenuItems(handlers: {
   // console
   return [
     { label: "Запустить", icon: "▶", action: handlers.onRunConsole },
+    { label: "Настройки подключения...", icon: "⚙", action: handlers.onEditConsole },
     "separator",
     data.isDanger
       ? { label: "Снять пометку опасности", icon: "✓", action: handlers.onToggleDanger }
