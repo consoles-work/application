@@ -2,6 +2,183 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ══════════════════════════════════════════════
+   Темы — CSS-переменные
+   accent задаётся как "R G B" (без скобок) для
+   поддержки opacity-модификаторов Tailwind: bg-accent/15
+   ══════════════════════════════════════════════ */
+
+:root,
+[data-theme="dark"] {
+  --surface-0: #0d1117;
+  --surface-1: #161b22;
+  --surface-2: #1c2128;
+  --surface-3: #2d333b;
+  --border: #30363d;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #484f58;
+  --accent: 88 166 255;
+  --accent-hover: 121 192 255;
+  --accent-subtle: #1f3a5f;
+  --scrollbar: #30363d;
+  --scrollbar-hover: #484f58;
+  --resizer: #30363d;
+}
+
+[data-theme="light"] {
+  --surface-0: #ffffff;
+  --surface-1: #f6f8fa;
+  --surface-2: #eaeef2;
+  --surface-3: #d0d7de;
+  --border: #d0d7de;
+  --text-primary: #1f2328;
+  --text-secondary: #636c76;
+  --text-muted: #9198a1;
+  --accent: 9 105 218;
+  --accent-hover: 5 80 174;
+  --accent-subtle: #ddf4ff;
+  --scrollbar: #d0d7de;
+  --scrollbar-hover: #9198a1;
+  --resizer: #d0d7de;
+}
+
+[data-theme="dracula"] {
+  --surface-0: #282a36;
+  --surface-1: #21222c;
+  --surface-2: #2a2b3d;
+  --surface-3: #44475a;
+  --border: #44475a;
+  --text-primary: #f8f8f2;
+  --text-secondary: #cdd6f4;
+  --text-muted: #6272a4;
+  --accent: 189 147 249;
+  --accent-hover: 214 172 255;
+  --accent-subtle: #3a2f5e;
+  --scrollbar: #44475a;
+  --scrollbar-hover: #6272a4;
+  --resizer: #44475a;
+}
+
+[data-theme="monokai"] {
+  --surface-0: #272822;
+  --surface-1: #1e1f1a;
+  --surface-2: #2d2e25;
+  --surface-3: #3e3d32;
+  --border: #3e3d32;
+  --text-primary: #f8f8f2;
+  --text-secondary: #cfcfc2;
+  --text-muted: #75715e;
+  --accent: 166 226 46;
+  --accent-hover: 230 219 116;
+  --accent-subtle: #3a3d1a;
+  --scrollbar: #3e3d32;
+  --scrollbar-hover: #75715e;
+  --resizer: #3e3d32;
+}
+
+[data-theme="nord"] {
+  --surface-0: #2e3440;
+  --surface-1: #3b4252;
+  --surface-2: #434c5e;
+  --surface-3: #4c566a;
+  --border: #4c566a;
+  --text-primary: #eceff4;
+  --text-secondary: #d8dee9;
+  --text-muted: #8d9ab0;
+  --accent: 136 192 208;
+  --accent-hover: 143 188 187;
+  --accent-subtle: #2d3f4f;
+  --scrollbar: #4c566a;
+  --scrollbar-hover: #8d9ab0;
+  --resizer: #4c566a;
+}
+
+[data-theme="solarized"] {
+  --surface-0: #002b36;
+  --surface-1: #073642;
+  --surface-2: #0a4454;
+  --surface-3: #586e75;
+  --border: #586e75;
+  --text-primary: #fdf6e3;
+  --text-secondary: #839496;
+  --text-muted: #657b83;
+  --accent: 38 139 210;
+  --accent-hover: 42 161 152;
+  --accent-subtle: #003848;
+  --scrollbar: #586e75;
+  --scrollbar-hover: #839496;
+  --resizer: #586e75;
+}
+
+[data-theme="tokyo-night"] {
+  --surface-0: #1a1b2e;
+  --surface-1: #16161e;
+  --surface-2: #1f2335;
+  --surface-3: #292e42;
+  --border: #292e42;
+  --text-primary: #c0caf5;
+  --text-secondary: #a9b1d6;
+  --text-muted: #565f89;
+  --accent: 122 162 247;
+  --accent-hover: 187 154 247;
+  --accent-subtle: #1a2a4f;
+  --scrollbar: #292e42;
+  --scrollbar-hover: #565f89;
+  --resizer: #292e42;
+}
+
+[data-theme="catppuccin"] {
+  --surface-0: #1e1e2e;
+  --surface-1: #181825;
+  --surface-2: #313244;
+  --surface-3: #45475a;
+  --border: #45475a;
+  --text-primary: #cdd6f4;
+  --text-secondary: #a6adc8;
+  --text-muted: #6c7086;
+  --accent: 137 180 250;
+  --accent-hover: 203 166 247;
+  --accent-subtle: #2a3a5e;
+  --scrollbar: #45475a;
+  --scrollbar-hover: #6c7086;
+  --resizer: #45475a;
+}
+
+[data-theme="one-dark"] {
+  --surface-0: #282c34;
+  --surface-1: #21252b;
+  --surface-2: #2c313c;
+  --surface-3: #3e4452;
+  --border: #3e4452;
+  --text-primary: #abb2bf;
+  --text-secondary: #9198a1;
+  --text-muted: #5c6370;
+  --accent: 97 175 239;
+  --accent-hover: 86 182 194;
+  --accent-subtle: #1f3a5f;
+  --scrollbar: #3e4452;
+  --scrollbar-hover: #5c6370;
+  --resizer: #3e4452;
+}
+
+[data-theme="gruvbox"] {
+  --surface-0: #282828;
+  --surface-1: #1d2021;
+  --surface-2: #32302f;
+  --surface-3: #504945;
+  --border: #504945;
+  --text-primary: #ebdbb2;
+  --text-secondary: #d5c4a1;
+  --text-muted: #928374;
+  --accent: 131 165 152;
+  --accent-hover: 250 189 47;
+  --accent-subtle: #3c3836;
+  --scrollbar: #504945;
+  --scrollbar-hover: #928374;
+  --resizer: #504945;
+}
+
 /* ── Базовые стили ── */
 * {
   margin: 0;
@@ -28,26 +205,26 @@ body,
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #30363d;
+  background: var(--scrollbar);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #484f58;
+  background: var(--scrollbar-hover);
 }
 
 /* ── Сплиттер между панелями ── */
 .panel-resizer {
   width: 4px;
   cursor: col-resize;
-  background: #30363d;
+  background: var(--resizer);
   transition: background 0.15s;
   flex-shrink: 0;
 }
 
 .panel-resizer:hover,
 .panel-resizer.dragging {
-  background: #58a6ff;
+  background: rgb(var(--accent));
 }
 
 /* ── Дерево проектов ── */
@@ -84,7 +261,6 @@ body,
 }
 
 .xterm-viewport {
-  /* Скрываем стандартный скроллбар xterm — используем встроенный */
   overflow-y: hidden !important;
 }
 
@@ -160,7 +336,8 @@ body,
 }
 
 .wiki-editor .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"] {
-  @apply w-3.5 h-3.5 accent-[#58a6ff] cursor-pointer;
+  @apply w-3.5 h-3.5 cursor-pointer;
+  accent-color: rgb(var(--accent));
 }
 
 .wiki-editor .ProseMirror ul[data-type="taskList"] li > div {

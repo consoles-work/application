@@ -15,7 +15,7 @@ use rusqlite::{Connection, params};
 use std::sync::Mutex;
 use std::collections::HashMap;
 
-use crate::commands::{Workspace, Project, ConsoleConfig, WikiPage};
+use crate::commands::{Workspace, Project, ConsoleConfig, WikiPage, DbInfo};
 
 // Глобальное подключение к БД, защищённое Mutex
 // lazy_static нам не нужен — используем std::sync::OnceLock
@@ -131,6 +131,12 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
         CREATE INDEX IF NOT EXISTS idx_projects_workspace ON projects(workspace_id);
         CREATE INDEX IF NOT EXISTS idx_consoles_project ON consoles(project_id);
         CREATE INDEX IF NOT EXISTS idx_wiki_parent ON wiki_pages(parent_type, parent_id);
+
+        -- Настройки приложения
+        CREATE TABLE IF NOT EXISTS settings (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
     ")?;
 
     // Миграция для существующих БД — добавляем столбцы если их ещё нет
@@ -432,6 +438,162 @@ pub fn update_node_danger(id: &str, node_type: &str, is_danger: bool, danger_lab
         _ => return Err("Unknown node type".to_string()),
     }.map_err(|e| e.to_string())?;
     Ok(())
+}
+
+// ══════════════════════════════════════════════
+// Клонирование
+// ══════════════════════════════════════════════
+
+pub fn clone_console_by_id(id: &str) -> Result<ConsoleConfig, String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+
+    let mut stmt = db.prepare(
+        "SELECT project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args FROM consoles WHERE id = ?1"
+    ).map_err(|e| e.to_string())?;
+
+    let con = stmt.query_row(params![id], |row| {
+        let env_str: Option<String> = row.get(5)?;
+        let env_vars: Option<HashMap<String, String>> = env_str
+            .and_then(|s| serde_json::from_str(&s).ok());
+        Ok(ConsoleConfig {
+            id: String::new(),
+            project_id: row.get(0)?,
+            name: row.get(1)?,
+            shell_override: row.get(2)?,
+            cwd_override: row.get(3)?,
+            startup_cmd: row.get(4)?,
+            env_vars,
+            sort_order: row.get(6)?,
+            is_danger: row.get::<_, i32>(7)? != 0,
+            danger_label: row.get(8)?,
+            connection_type: row.get::<_, Option<String>>(9)?.unwrap_or_else(|| "local".to_string()),
+            ssh_host: row.get::<_, Option<String>>(10)?.unwrap_or_default(),
+            ssh_port: row.get::<_, Option<i32>>(11)?.unwrap_or(22),
+            ssh_user: row.get::<_, Option<String>>(12)?.unwrap_or_default(),
+            ssh_key_path: row.get::<_, Option<String>>(13)?.unwrap_or_default(),
+            ssh_extra_args: row.get::<_, Option<String>>(14)?.unwrap_or_default(),
+        })
+    }).map_err(|e| e.to_string())?;
+
+    let new_name = format!("{} (copy)", con.name);
+    let new_con = ConsoleConfig {
+        id: uuid::Uuid::new_v4().to_string(),
+        name: new_name,
+        ..con
+    };
+
+    let env_json = new_con.env_vars.as_ref()
+        .map(|e| serde_json::to_string(e).unwrap_or_default());
+    db.execute(
+        "INSERT INTO consoles (id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+        params![new_con.id, new_con.project_id, new_con.name, new_con.shell_override, new_con.cwd_override, new_con.startup_cmd, env_json, new_con.sort_order, new_con.is_danger as i32, new_con.danger_label, new_con.connection_type, new_con.ssh_host, new_con.ssh_port, new_con.ssh_user, new_con.ssh_key_path, new_con.ssh_extra_args],
+    ).map_err(|e| e.to_string())?;
+
+    Ok(new_con)
+}
+
+pub fn clone_project_by_id(id: &str) -> Result<Project, String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+
+    let mut stmt = db.prepare(
+        "SELECT workspace_id, name, icon, color, path, default_shell, env_vars, sort_order, is_expanded, is_danger, danger_label FROM projects WHERE id = ?1"
+    ).map_err(|e| e.to_string())?;
+
+    let proj = stmt.query_row(params![id], |row| {
+        let env_str: String = row.get(6)?;
+        let env_vars: HashMap<String, String> = serde_json::from_str(&env_str).unwrap_or_default();
+        Ok(Project {
+            id: String::new(),
+            workspace_id: row.get(0)?,
+            name: row.get(1)?,
+            icon: row.get(2)?,
+            color: row.get(3)?,
+            path: row.get(4)?,
+            default_shell: row.get(5)?,
+            env_vars,
+            sort_order: row.get(7)?,
+            is_expanded: row.get::<_, i32>(8)? != 0,
+            is_danger: row.get::<_, i32>(9)? != 0,
+            danger_label: row.get(10)?,
+            consoles: Vec::new(),
+        })
+    }).map_err(|e| e.to_string())?;
+
+    let original_consoles = load_consoles_for_project(&db, id)?;
+    let new_id = uuid::Uuid::new_v4().to_string();
+    let new_name = format!("{} (copy)", proj.name);
+    let new_proj = Project {
+        id: new_id.clone(),
+        name: new_name,
+        consoles: Vec::new(),
+        ..proj
+    };
+
+    let env_json = serde_json::to_string(&new_proj.env_vars).unwrap_or_default();
+    db.execute(
+        "INSERT INTO projects (id, workspace_id, name, icon, color, path, default_shell, env_vars, sort_order, is_expanded, is_danger, danger_label) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+        params![new_proj.id, new_proj.workspace_id, new_proj.name, new_proj.icon, new_proj.color, new_proj.path, new_proj.default_shell, env_json, new_proj.sort_order, new_proj.is_expanded as i32, new_proj.is_danger as i32, new_proj.danger_label],
+    ).map_err(|e| e.to_string())?;
+
+    let mut new_consoles = Vec::new();
+    for con in original_consoles {
+        let con_env_json = con.env_vars.as_ref()
+            .map(|e| serde_json::to_string(e).unwrap_or_default());
+        let new_con = ConsoleConfig {
+            id: uuid::Uuid::new_v4().to_string(),
+            project_id: new_id.clone(),
+            ..con
+        };
+        db.execute(
+            "INSERT INTO consoles (id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+            params![new_con.id, new_con.project_id, new_con.name, new_con.shell_override, new_con.cwd_override, new_con.startup_cmd, con_env_json, new_con.sort_order, new_con.is_danger as i32, new_con.danger_label, new_con.connection_type, new_con.ssh_host, new_con.ssh_port, new_con.ssh_user, new_con.ssh_key_path, new_con.ssh_extra_args],
+        ).map_err(|e| e.to_string())?;
+        new_consoles.push(new_con);
+    }
+
+    Ok(Project { consoles: new_consoles, ..new_proj })
+}
+
+// ══════════════════════════════════════════════
+// CRUD: Settings
+// ══════════════════════════════════════════════
+
+pub fn get_all_settings() -> Result<HashMap<String, String>, String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    let mut stmt = db.prepare("SELECT key, value FROM settings")
+        .map_err(|e| e.to_string())?;
+    let map: HashMap<String, String> = stmt.query_map([], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+    }).map_err(|e| e.to_string())?
+    .filter_map(|r| r.ok())
+    .collect();
+    Ok(map)
+}
+
+pub fn set_setting_value(key: &str, value: &str) -> Result<(), String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    db.execute(
+        "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, ?2)",
+        params![key, value],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn get_db_info_data() -> DbInfo {
+    let path = db_path();
+    let path_str = path.to_string_lossy().to_string();
+    let dir_path = path.parent()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let size_bytes = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+    let created_at = std::fs::metadata(&path)
+        .and_then(|m| m.created())
+        .map(|t| {
+            let dt: chrono::DateTime<chrono::Local> = t.into();
+            dt.format("%Y-%m-%d %H:%M").to_string()
+        })
+        .unwrap_or_else(|_| "—".to_string());
+    DbInfo { path: path_str, dir_path, size_bytes, created_at }
 }
 
 pub fn search_wiki_fts(query: &str) -> Result<Vec<WikiPage>, String> {

@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from "react";
-import { ChevronRight, ChevronDown } from "lucide-react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { ChevronRight, ChevronDown, Search, X } from "lucide-react";
 import { useAppStore } from "../stores/appStore";
-import { updateWorkspace, updateProject, updateConsole, setNodeDanger } from "../lib/tauriCommands";
+import { updateWorkspace, updateProject, updateConsole, setNodeDanger, cloneConsole, cloneProject } from "../lib/tauriCommands";
 import { ContextMenu, type ContextMenuState } from "./ContextMenu";
 import { CreateWorkspaceDialog } from "./dialogs/CreateWorkspaceDialog";
 import { CreateProjectDialog } from "./dialogs/CreateProjectDialog";
@@ -15,6 +15,7 @@ import type { TreeNode, ConsoleConfig } from "../types";
 
 export function TreePanel() {
   const {
+    workspaces,
     selectedNode,
     selectNode,
     toggleNodeExpanded,
@@ -22,6 +23,8 @@ export function TreePanel() {
     updateWorkspace: storeUpdateWorkspace,
     updateProject: storeUpdateProject,
     updateConsole: storeUpdateConsole,
+    addConsole: storeAddConsole,
+    addProject: storeAddProject,
     openSession,
     sessions,
     setActiveSession,
@@ -38,6 +41,53 @@ export function TreePanel() {
   const [createProjectFor, setCreateProjectFor] = useState<string | null>(null);   // workspaceId
   const [createConsoleFor, setCreateConsoleFor] = useState<string | null>(null);   // projectId
   const [editConsole, setEditConsole] = useState<ConsoleConfig | null>(null);
+
+  // ── Поиск по дереву ──
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchActive, setSearchActive] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (searchActive) searchInputRef.current?.focus();
+  }, [searchActive]);
+
+  // Все узлы (включая свёрнутые) для поиска
+  const allNodes = useMemo(() => {
+    type FlatNode = { id: string; type: string; name: string; icon: string; color: string; breadcrumb: string; data: unknown };
+    const result: FlatNode[] = [];
+    for (const ws of workspaces) {
+      result.push({ id: ws.id, type: "workspace", name: ws.name, icon: ws.icon, color: ws.color, breadcrumb: "", data: ws });
+      for (const proj of ws.projects) {
+        result.push({ id: proj.id, type: "project", name: proj.name, icon: proj.icon, color: proj.color, breadcrumb: ws.name, data: proj });
+        for (const con of proj.consoles) {
+          result.push({ id: con.id, type: "console", name: con.name, icon: "▶", color: proj.color, breadcrumb: `${ws.name} › ${proj.name}`, data: con });
+        }
+      }
+    }
+    return result;
+  }, [workspaces]);
+
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase();
+    return allNodes.filter((n) => n.name.toLowerCase().includes(q));
+  }, [searchQuery, allNodes]);
+
+  const handleSearchSelect = (node: typeof allNodes[0]) => {
+    selectNode({ type: node.type as "workspace" | "project" | "console", id: node.id });
+    if (node.type === "console") {
+      const existing = sessions.find((s) => s.console_id === node.id);
+      if (existing) setActiveSession(existing.id);
+      else openSession({ id: `session-${Date.now()}`, console_id: node.id, title: node.name, is_active: true });
+    }
+    setSearchQuery("");
+    setSearchActive(false);
+  };
+
+  const closeSearch = () => {
+    setSearchActive(false);
+    setSearchQuery("");
+  };
 
   // ── Inline rename ──
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -107,6 +157,8 @@ export function TreePanel() {
           is_active: true,
         });
       }
+    } else {
+      toggleNodeExpanded(node.type, node.id);
     }
   };
 
@@ -150,22 +202,123 @@ export function TreePanel() {
     }
   };
 
+  const handleCloneConsole = async (node: TreeNode) => {
+    try {
+      const cloned = await cloneConsole(node.id);
+      // Ищем родительский проект через workspaces (project_id может быть projectId из-за camelCase)
+      let projectId = "";
+      for (const ws of workspaces) {
+        for (const proj of ws.projects) {
+          if (proj.consoles.some((c) => c.id === node.id)) {
+            projectId = proj.id;
+            break;
+          }
+        }
+        if (projectId) break;
+      }
+      if (!projectId) {
+        showToast("error", "Не удалось найти родительский проект");
+        return;
+      }
+      storeAddConsole(projectId, cloned);
+      showToast("success", `Консоль «${cloned.name}» создана`);
+    } catch (e) {
+      showToast("error", `Ошибка дублирования: ${e}`);
+    }
+  };
+
+  const handleCloneProject = async (node: TreeNode) => {
+    try {
+      const cloned = await cloneProject(node.id);
+      // Ищем родительский workspace через workspaces
+      const parentWs = workspaces.find((ws) =>
+        ws.projects.some((p) => p.id === node.id)
+      );
+      if (!parentWs) {
+        showToast("error", "Не удалось найти workspace");
+        return;
+      }
+      storeAddProject(parentWs.id, cloned);
+      showToast("success", `Проект «${cloned.name}» создан`);
+    } catch (e) {
+      showToast("error", `Ошибка дублирования: ${e}`);
+    }
+  };
+
   return (
     <>
       <div className="h-full flex flex-col bg-surface-1">
         {/* Header */}
-        <div className="h-9 flex items-center justify-between px-3 border-b border-border shrink-0">
-          <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-            Projects
-          </span>
-          <button
-            className="text-text-muted hover:text-text-primary text-lg leading-none"
-            title="Создать Workspace"
-            onClick={() => setCreateWorkspace(true)}
-          >
-            +
-          </button>
+        <div className="h-9 flex items-center px-3 border-b border-border shrink-0 gap-2">
+          {searchActive ? (
+            <>
+              <Search size={12} className="text-text-muted shrink-0" />
+              <input
+                ref={searchInputRef}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Escape") closeSearch(); }}
+                placeholder="Поиск..."
+                className="flex-1 bg-transparent text-xs text-text-primary outline-none placeholder:text-text-muted"
+              />
+              <button onClick={closeSearch} className="text-text-muted hover:text-text-primary">
+                <X size={12} />
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider flex-1">
+                Projects
+              </span>
+              <button
+                onClick={() => setSearchActive(true)}
+                className="text-text-muted hover:text-text-primary p-0.5 rounded"
+                title="Поиск (Ctrl+F)"
+              >
+                <Search size={13} />
+              </button>
+              <button
+                className="text-text-muted hover:text-text-primary text-lg leading-none"
+                title="Создать Workspace"
+                onClick={() => setCreateWorkspace(true)}
+              >
+                +
+              </button>
+            </>
+          )}
         </div>
+
+        {/* Результаты поиска */}
+        {searchActive && searchQuery.trim() && (
+          <div className="border-b border-border bg-surface-0 overflow-y-auto shrink-0" style={{ maxHeight: "60%" }}>
+            {searchResults.length === 0 ? (
+              <div className="px-3 py-3 text-2xs text-text-muted text-center">Ничего не найдено</div>
+            ) : (
+              searchResults.map((node) => (
+                <div
+                  key={`${node.type}-${node.id}`}
+                  onClick={() => handleSearchSelect(node)}
+                  className="flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-surface-2 text-text-primary"
+                >
+                  <span className="text-sm shrink-0">{node.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs truncate">{node.name}</div>
+                    {node.breadcrumb && (
+                      <div className="text-2xs text-text-muted truncate">{node.breadcrumb}</div>
+                    )}
+                  </div>
+                  <span className={`text-2xs px-1 py-0.5 rounded font-mono shrink-0 ${
+                    node.type === "workspace" ? "bg-surface-3 text-text-muted" :
+                    node.type === "project" ? "bg-blue-500/15 text-blue-400" :
+                    "bg-green-500/15 text-green-400"
+                  }`}>
+                    {node.type === "workspace" ? "WS" : node.type === "project" ? "PRJ" : "CON"}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        )}
 
         {/* Tree */}
         <div className="flex-1 overflow-y-auto py-1">
@@ -252,6 +405,8 @@ export function TreePanel() {
           onRename={(node) => startRename(node)}
           onToggleDanger={(node) => handleToggleDanger(node)}
           onEditConsole={(node) => setEditConsole(node.data as ConsoleConfig)}
+          onCloneConsole={handleCloneConsole}
+          onCloneProject={handleCloneProject}
         />
       )}
 

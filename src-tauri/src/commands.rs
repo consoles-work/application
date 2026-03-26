@@ -73,6 +73,15 @@ pub struct ConsoleConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct DbInfo {
+    pub path: String,
+    pub dir_path: String,
+    pub size_bytes: u64,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WikiPage {
     pub id: String,
     pub parent_type: String,
@@ -302,4 +311,38 @@ pub fn search_wiki(query: String) -> Result<Vec<WikiPage>, String> {
 #[tauri::command]
 pub fn set_node_danger(id: String, node_type: String, is_danger: bool, danger_label: String) -> Result<(), String> {
     crate::db::update_node_danger(&id, &node_type, is_danger, &danger_label)
+}
+
+/// Дублировать консоль (копия с именем "{имя} (copy)")
+#[tauri::command]
+pub fn clone_console(id: String) -> Result<ConsoleConfig, String> {
+    crate::db::clone_console_by_id(&id)
+}
+
+/// Дублировать проект со всеми консолями
+#[tauri::command]
+pub fn clone_project(id: String) -> Result<Project, String> {
+    crate::db::clone_project_by_id(&id)
+}
+
+// ══════════════════════════════════════════════
+// Команды: Настройки
+// ══════════════════════════════════════════════
+
+/// Загрузить все настройки приложения
+#[tauri::command]
+pub fn get_settings() -> Result<std::collections::HashMap<String, String>, String> {
+    crate::db::get_all_settings()
+}
+
+/// Сохранить одну настройку
+#[tauri::command]
+pub fn set_setting(key: String, value: String) -> Result<(), String> {
+    crate::db::set_setting_value(&key, &value)
+}
+
+/// Получить информацию о файле базы данных
+#[tauri::command]
+pub fn get_db_info() -> DbInfo {
+    crate::db::get_db_info_data()
 }

@@ -2,23 +2,37 @@ import { useEffect, useState } from "react";
 import { Layout } from "./components/Layout";
 import { ToastContainer } from "./components/Toast";
 import { CommandPalette } from "./components/CommandPalette";
+import { SettingsDialog } from "./components/SettingsDialog";
 import { useAppStore } from "./stores/appStore";
-import { loadAllWorkspaces } from "./lib/tauriCommands";
+import { loadAllWorkspaces, getSettings } from "./lib/tauriCommands";
+import { applyTheme } from "./lib/themes";
 
 // ══════════════════════════════════════
 // App — корневой компонент
 // ══════════════════════════════════════
 
 function App() {
-  const { setWorkspaces, toggleTreePanel, toggleWikiPanel, showToast } = useAppStore();
+  const { setWorkspaces, setSettings, toggleTreePanel, toggleWikiPanel, showToast } = useAppStore();
   const [showPalette, setShowPalette] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   // Загрузка данных из SQLite при старте
   useEffect(() => {
     loadAllWorkspaces()
       .then(setWorkspaces)
       .catch((e) => showToast("error", `Ошибка загрузки данных: ${e}`));
-  }, [setWorkspaces, showToast]);
+
+    getSettings().then((s) => {
+      setSettings(s);
+      applyTheme(s["ui.theme"] ?? "dark");
+    }).catch(() => {});
+  }, [setWorkspaces, setSettings, showToast]);
+
+  // Применяем тему при изменении настроек
+  const { settings } = useAppStore();
+  useEffect(() => {
+    applyTheme(settings["ui.theme"] ?? "dark");
+  }, [settings["ui.theme"]]);
 
   // Глобальные горячие клавиши
   useEffect(() => {
@@ -37,6 +51,10 @@ function App() {
         e.preventDefault();
         setShowPalette(true);
       }
+      if (mod && e.key === ",") {
+        e.preventDefault();
+        setShowSettings(true);
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -45,9 +63,10 @@ function App() {
 
   return (
     <>
-      <Layout />
+      <Layout onOpenSettings={() => setShowSettings(true)} />
       <ToastContainer />
       {showPalette && <CommandPalette onClose={() => setShowPalette(false)} />}
+      {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
     </>
   );
 }

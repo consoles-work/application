@@ -5,6 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../stores/appStore";
 import { spawnPty, writeToPty, resizePty, killPty } from "../lib/tauriCommands";
+import { getThemeById, resolveThemeId } from "../lib/themes";
 import type { TerminalSession, ConsoleConfig, Project } from "../types";
 
 // ══════════════════════════════════════
@@ -118,6 +119,15 @@ export function TerminalPanel() {
 // TerminalView — один xterm.js инстанс
 // ══════════════════════════════════════
 
+function getTerminalSettings() {
+  const { settings } = useAppStore.getState();
+  const fontSize = parseInt(settings["terminal.fontSize"] ?? "14");
+  const fontFamily = settings["terminal.fontFamily"] ?? "Menlo";
+  const scrollback = parseInt(settings["terminal.scrollback"] ?? "5000");
+  const cursorStyle = (settings["terminal.cursorStyle"] ?? "block") as "block" | "underline" | "bar";
+  return { fontSize, fontFamily: `${fontFamily}, monospace`, scrollback, cursorStyle };
+}
+
 function TerminalView({
   session,
   isActive,
@@ -135,38 +145,39 @@ function TerminalView({
   const ptyIdRef = useRef<number | null>(null);
   const unlistenRef = useRef<(() => void) | null>(null);
 
+  const { settings } = useAppStore();
+
+  // ── Применение настроек к уже запущенному терминалу ──
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term) return;
+    const { fontSize, fontFamily, scrollback, cursorStyle } = getTerminalSettings();
+    const themeId = resolveThemeId(settings["ui.theme"] ?? "dark");
+    const xtermTheme = getThemeById(themeId).xterm;
+    term.options.fontSize = fontSize;
+    term.options.fontFamily = fontFamily;
+    term.options.scrollback = scrollback;
+    term.options.cursorStyle = cursorStyle;
+    term.options.theme = xtermTheme;
+    fitAddonRef.current?.fit();
+  }, [settings]);
+
   // ── Инициализация: создаём terminal и PTY ──
   useEffect(() => {
     if (!containerRef.current) return;
 
+    const { fontSize, fontFamily, scrollback, cursorStyle } = getTerminalSettings();
+    const themeId = resolveThemeId(useAppStore.getState().settings["ui.theme"] ?? "dark");
+    const xtermTheme = getThemeById(themeId).xterm;
+
     const term = new Terminal({
-      fontFamily: "JetBrains Mono, Menlo, monospace",
-      fontSize: 14,
+      fontFamily,
+      fontSize,
       lineHeight: 1.2,
       cursorBlink: true,
-      scrollback: 10000,
-      theme: {
-        background: "#0d1117",
-        foreground: "#e6edf3",
-        cursor: "#58a6ff",
-        selectionBackground: "#264f78",
-        black: "#484f58",
-        red: "#f85149",
-        green: "#3fb950",
-        yellow: "#d29922",
-        blue: "#58a6ff",
-        magenta: "#bc8cff",
-        cyan: "#39c5cf",
-        white: "#b1bac4",
-        brightBlack: "#6e7681",
-        brightRed: "#ff7b72",
-        brightGreen: "#56d364",
-        brightYellow: "#e3b341",
-        brightBlue: "#79c0ff",
-        brightMagenta: "#d2a8ff",
-        brightCyan: "#56d4dd",
-        brightWhite: "#f0f6fc",
-      },
+      cursorStyle,
+      scrollback,
+      theme: xtermTheme,
     });
 
     const fitAddon = new FitAddon();

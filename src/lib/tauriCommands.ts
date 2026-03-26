@@ -12,6 +12,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { Workspace, Project, ConsoleConfig, WikiPage } from "../types";
 
+export interface DbInfo {
+  path: string;
+  dirPath: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
 // ── Дерево проектов ──
 
 export async function loadAllWorkspaces(): Promise<Workspace[]> {
@@ -182,4 +189,26 @@ export async function setNodeDanger(
   dangerLabel: string
 ): Promise<void> {
   return invoke("set_node_danger", { id, nodeType, isDanger, dangerLabel });
+}
+
+export async function cloneConsole(id: string): Promise<ConsoleConfig> {
+  return invoke<ConsoleConfig>("clone_console", { id });
+}
+
+export async function cloneProject(id: string): Promise<Project> {
+  return invoke<Project>("clone_project", { id });
+}
+
+// ── Настройки ──
+
+export async function getSettings(): Promise<Record<string, string>> {
+  return invoke<Record<string, string>>("get_settings");
+}
+
+export async function setSetting(key: string, value: string): Promise<void> {
+  return invoke("set_setting", { key, value });
+}
+
+export async function getDbInfo(): Promise<DbInfo> {
+  return invoke<DbInfo>("get_db_info");
 }

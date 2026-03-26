@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { open as shellOpen } from "@tauri-apps/plugin-shell";
+import { ask } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../stores/appStore";
 import {
   deleteWorkspace,
@@ -24,6 +25,8 @@ interface ContextMenuProps {
   onRename: (node: TreeNode) => void;
   onToggleDanger: (node: TreeNode) => void;
   onEditConsole: (node: TreeNode) => void;
+  onCloneConsole: (node: TreeNode) => void;
+  onCloneProject: (node: TreeNode) => void;
 }
 
 export function ContextMenu({
@@ -34,6 +37,8 @@ export function ContextMenu({
   onRename,
   onToggleDanger,
   onEditConsole,
+  onCloneConsole,
+  onCloneProject,
 }: ContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const {
@@ -69,6 +74,11 @@ export function ContextMenu({
 
   const handleDeleteWorkspace = async () => {
     onClose();
+    const confirmed = await ask(
+      `Удалить workspace «${menu.node.name}»?\nБудут удалены все проекты и консоли внутри.`,
+      { title: "Удаление workspace", kind: "warning" }
+    );
+    if (!confirmed) return;
     try {
       await deleteWorkspace(menu.node.id);
       removeWorkspace(menu.node.id);
@@ -80,6 +90,11 @@ export function ContextMenu({
 
   const handleDeleteProject = async () => {
     onClose();
+    const confirmed = await ask(
+      `Удалить проект «${menu.node.name}»?\nБудут удалены все консоли внутри.`,
+      { title: "Удаление проекта", kind: "warning" }
+    );
+    if (!confirmed) return;
     try {
       await deleteProject(menu.node.id);
       removeProject(menu.node.id);
@@ -91,6 +106,11 @@ export function ContextMenu({
 
   const handleDeleteConsole = async () => {
     onClose();
+    const confirmed = await ask(
+      `Удалить консоль «${menu.node.name}»?`,
+      { title: "Удаление консоли", kind: "warning" }
+    );
+    if (!confirmed) return;
     try {
       await deleteConsole(menu.node.id);
       removeConsole(menu.node.id);
@@ -162,6 +182,8 @@ export function ContextMenu({
     onRunConsole: handleRunConsole,
     onToggleDanger: handleToggleDanger,
     onEditConsole: () => { onClose(); onEditConsole(menu.node); },
+    onCloneConsole: () => { onClose(); onCloneConsole(menu.node); },
+    onCloneProject: () => { onClose(); onCloneProject(menu.node); },
   });
 
   return createPortal(
@@ -208,6 +230,8 @@ function getMenuItems(handlers: {
   onRunConsole: () => void;
   onToggleDanger: () => void;
   onEditConsole: () => void;
+  onCloneConsole: () => void;
+  onCloneProject: () => void;
 }): MenuItem[] {
   const { node } = handlers;
   const data = node.data as { isDanger?: boolean };
@@ -225,6 +249,7 @@ function getMenuItems(handlers: {
   if (node.type === "project") {
     return [
       { label: "Добавить консоль", icon: "+", action: handlers.onCreateConsole },
+      { label: "Дублировать проект", icon: "⎘", action: handlers.onCloneProject },
       "separator",
       { label: "Открыть в VS Code", icon: "⎋", action: handlers.onOpenVSCode },
       { label: "Открыть в Finder", icon: "⌂", action: handlers.onOpenFinder },
@@ -243,6 +268,7 @@ function getMenuItems(handlers: {
   return [
     { label: "Запустить", icon: "▶", action: handlers.onRunConsole },
     { label: "Настройки подключения...", icon: "⚙", action: handlers.onEditConsole },
+    { label: "Дублировать консоль", icon: "⎘", action: handlers.onCloneConsole },
     "separator",
     data.isDanger
       ? { label: "Снять пометку опасности", icon: "✓", action: handlers.onToggleDanger }

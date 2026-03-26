@@ -78,6 +78,15 @@ pub fn run() {
 
             // Утилиты
             set_node_danger,
+
+            // Клонирование
+            clone_console,
+            clone_project,
+
+            // Настройки
+            get_settings,
+            set_setting,
+            get_db_info,
         ])
 
         // Запускаем приложение

@@ -6,7 +6,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { TaskList } from "@tiptap/extension-task-list";
 import { TaskItem } from "@tiptap/extension-task-item";
 import { createLowlight, common } from "lowlight";
-import { Plus, Trash2, Pin } from "lucide-react";
+import { Plus, Trash2, Pin, Search, X } from "lucide-react";
 
 import { useAppStore } from "../stores/appStore";
 import { WikiToolbar } from "./WikiToolbar";
@@ -14,6 +14,7 @@ import {
   loadWikiPages,
   saveWikiPage,
   deleteWikiPage,
+  searchWiki,
 } from "../lib/tauriCommands";
 import type { WikiPage } from "../types";
 
@@ -150,6 +151,25 @@ export function WikiPanel() {
   const [showPageList, setShowPageList] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Поиск по wiki ──
+  const [searchActive, setSearchActive] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<WikiPage[]>([]);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (searchActive) searchInputRef.current?.focus();
+    else { setSearchQuery(""); setSearchResults([]); }
+  }, [searchActive]);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) { setSearchResults([]); return; }
+    const timer = setTimeout(() => {
+      searchWiki(searchQuery).then(setSearchResults).catch(() => setSearchResults([]));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   // Загрузка страниц при смене контекста
   useEffect(() => {
     let cancelled = false;
@@ -258,33 +278,100 @@ export function WikiPanel() {
     <div className="h-full flex flex-col bg-surface-1 min-w-0">
       {/* ── Header ── */}
       <div className="h-9 flex items-center justify-between px-3 border-b border-border shrink-0 gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider shrink-0">
-            Wiki
-          </span>
-          <span className="text-2xs text-text-muted truncate">{contextLabel}</span>
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            onClick={() => setShowPageList((v) => !v)}
-            className={`px-2 py-0.5 rounded text-2xs transition-colors ${
-              showPageList
-                ? "bg-accent-subtle text-accent"
-                : "text-text-muted hover:text-text-secondary"
-            }`}
-            title="Список страниц"
-          >
-            Страницы ({currentWikiPages.length})
-          </button>
-          <button
-            onClick={handleNewPage}
-            className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-2xs text-accent hover:bg-accent-subtle"
-            title="Новая страница"
-          >
-            <Plus size={11} />
-          </button>
-        </div>
+        {searchActive ? (
+          <>
+            <Search size={13} className="text-text-muted shrink-0" />
+            <input
+              ref={searchInputRef}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Escape") setSearchActive(false); }}
+              placeholder="Поиск по wiki..."
+              className="flex-1 text-xs bg-transparent outline-none text-text-primary placeholder:text-text-muted"
+            />
+            <button onClick={() => setSearchActive(false)} className="text-text-muted hover:text-text-primary shrink-0">
+              <X size={13} />
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider shrink-0">
+                Wiki
+              </span>
+              <span className="text-2xs text-text-muted truncate">{contextLabel}</span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => setSearchActive(true)}
+                className="p-1 rounded text-text-muted hover:text-text-primary transition-colors"
+                title="Поиск по wiki"
+              >
+                <Search size={13} />
+              </button>
+              <button
+                onClick={() => setShowPageList((v) => !v)}
+                className={`px-2 py-0.5 rounded text-2xs transition-colors ${
+                  showPageList
+                    ? "bg-accent-subtle text-accent"
+                    : "text-text-muted hover:text-text-secondary"
+                }`}
+                title="Список страниц"
+              >
+                Страницы ({currentWikiPages.length})
+              </button>
+              <button
+                onClick={handleNewPage}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-2xs text-accent hover:bg-accent-subtle"
+                title="Новая страница"
+              >
+                <Plus size={11} />
+              </button>
+            </div>
+          </>
+        )}
       </div>
+
+      {/* ── Результаты поиска ── */}
+      {searchActive && searchQuery.trim() && (
+        <div className="border-b border-border bg-surface-2 max-h-64 overflow-y-auto shrink-0">
+          {searchResults.length === 0 ? (
+            <div className="px-3 py-3 text-2xs text-text-muted text-center">Ничего не найдено</div>
+          ) : (
+            searchResults.map((page) => (
+              <div
+                key={page.id}
+                onClick={async () => {
+                  // Загружаем страницы нужного контекста и открываем найденную
+                  const pages = await loadWikiPages(page.parentType, page.parentId);
+                  setWikiPages(pages);
+                  setActiveWikiPage(page.id);
+                  setSearchActive(false);
+                }}
+                className="flex flex-col gap-0.5 px-3 py-2 cursor-pointer hover:bg-surface-3 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-text-primary truncate flex-1">
+                    {page.title || "Без названия"}
+                  </span>
+                  <span className="text-2xs text-text-muted shrink-0 capitalize">
+                    {page.parentType === "global" ? "Глобальная" : page.parentType}
+                  </span>
+                </div>
+                {page.tags.length > 0 && (
+                  <div className="flex gap-1 flex-wrap">
+                    {page.tags.slice(0, 4).map((tag) => (
+                      <span key={tag} className="text-2xs px-1 py-0.5 rounded bg-surface-3 text-text-muted">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       {/* ── Список страниц (dropdown) ── */}
       {showPageList && (

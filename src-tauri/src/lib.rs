@@ -40,6 +40,11 @@ pub fn run() {
             delete_wiki_page,
             search_wiki,
             set_node_danger,
+            clone_console,
+            clone_project,
+            get_settings,
+            set_setting,
+            get_db_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running DevConsole Hub");

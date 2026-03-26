@@ -5,27 +5,28 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Основная палитра — тёмная тема в стиле IDE
+        // Цвета через CSS-переменные — меняются при смене темы
         surface: {
-          0: "#0d1117", // Фон приложения
-          1: "#161b22", // Панели
-          2: "#1c2128", // Карточки, поповеры
-          3: "#2d333b", // Элементы при ховере
+          0: "var(--surface-0)",
+          1: "var(--surface-1)",
+          2: "var(--surface-2)",
+          3: "var(--surface-3)",
         },
         border: {
-          DEFAULT: "#30363d",
-          active: "#58a6ff",
+          DEFAULT: "var(--border)",
         },
         text: {
-          primary: "#e6edf3",
-          secondary: "#8b949e",
-          muted: "#484f58",
+          primary: "var(--text-primary)",
+          secondary: "var(--text-secondary)",
+          muted: "var(--text-muted)",
         },
+        // accent через RGB-каналы, чтобы работало bg-accent/15
         accent: {
-          DEFAULT: "#58a6ff",
-          hover: "#79c0ff",
-          subtle: "#1f3a5f",
+          DEFAULT: "rgb(var(--accent) / <alpha-value>)",
+          hover: "rgb(var(--accent-hover) / <alpha-value>)",
+          subtle: "var(--accent-subtle)",
         },
+        // Семантические цвета — фиксированные
         success: "#3fb950",
         warning: "#d29922",
         danger: "#f85149",

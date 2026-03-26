@@ -9,7 +9,11 @@ import { WikiPanel } from "./WikiPanel";
 // [Tree | Terminal | Wiki]
 // ══════════════════════════════════════
 
-export function Layout() {
+interface LayoutProps {
+  onOpenSettings: () => void;
+}
+
+export function Layout({ onOpenSettings }: LayoutProps) {
   const {
     showTreePanel,
     showWikiPanel,
@@ -86,6 +90,13 @@ export function Layout() {
             title="Toggle Wiki (Ctrl+\)"
           >
             Wiki
+          </button>
+          <button
+            onClick={onOpenSettings}
+            className="px-2 py-1 rounded text-2xs text-text-muted hover:text-text-secondary"
+            title="Настройки (Cmd+,)"
+          >
+            Settings
           </button>
         </div>
       </div>

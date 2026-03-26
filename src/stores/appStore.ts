@@ -78,6 +78,11 @@ interface AppState {
   showToast: (type: Toast["type"], message: string) => void;
   removeToast: (id: string) => void;
 
+  // ── Settings ──
+  settings: Record<string, string>;
+  setSettings: (settings: Record<string, string>) => void;
+  setSetting: (key: string, value: string) => void;
+
   // ── Helpers ──
   getFlatTree: () => TreeNode[];
 }
@@ -95,6 +100,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   treePanelWidth: 250,
   wikiPanelWidth: 350,
   toasts: [],
+  settings: {},
 
   // ── Дерево ──
   setWorkspaces: (workspaces) => set({ workspaces }),
@@ -259,6 +265,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
   removeToast: (id) =>
     set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
+
+  // ── Settings ──
+  setSettings: (settings) => set({ settings }),
+  setSetting: (key, value) =>
+    set((state) => ({ settings: { ...state.settings, [key]: value } })),
 
   // ── Flat tree для рендера ──
   getFlatTree: () => {
