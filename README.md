@@ -146,6 +146,79 @@ npm run tauri dev
 | `npm run tauri build` | Продакшн-бинарник под текущую ОС |
 | `npm run dev` | Только фронтенд в браузере (без Tauri) |
 | `npm run build` | Сборка фронтенда (TypeScript + Vite) |
+| `./scripts/build-linux.sh` | Сборка под Linux через Docker (с macOS/Windows) |
+
+---
+
+## Сборка под Linux (через Docker)
+
+Позволяет собрать `.deb` / `.AppImage` прямо с macOS или Windows без виртуальной машины.
+
+### Требования
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — запущен
+
+### Первая сборка
+
+```bash
+./scripts/build-linux.sh
+```
+
+Первый раз занимает **10–20 минут** — Docker скачивает образ Ubuntu, устанавливает зависимости и компилирует Rust-зависимости с нуля.
+
+Повторные сборки — **1–3 минуты** благодаря Docker volumes-кэшу:
+- `devconsole-hub-cargo-registry` — кэш Cargo registry
+- `devconsole-hub-cargo-git` — кэш Cargo git-зависимостей
+- `devconsole-hub-target` — скомпилированные Rust-артефакты
+
+### Результат
+
+Артефакты появятся в `src-tauri/target/release/bundle/`:
+
+```
+src-tauri/target/release/bundle/
+├── deb/
+│   └── devconsole-hub_0.1.0_amd64.deb
+└── appimage/
+    └── devconsole-hub_0.1.0_amd64.AppImage
+```
+
+### Очистка кэша (если нужно пересобрать с нуля)
+
+```bash
+docker volume rm devconsole-hub-cargo-registry devconsole-hub-cargo-git devconsole-hub-target
+```
+
+---
+
+## Сборка под Windows
+
+Windows-бинарник требует MSVC-компилятор, который работает **только на Windows**. Docker здесь не поможет.
+
+### Вариант 1 — На Windows-машине
+
+Установить зависимости (см. раздел «Предварительные требования → Windows») и запустить:
+
+```bash
+npm install
+npm run tauri build
+```
+
+Артефакты: `src-tauri/target/release/bundle/msi/*.msi` и `nsis/*.exe`
+
+### Вариант 2 — GitHub Actions (рекомендуется)
+
+Workflow `.github/workflows/build.yml` собирает под **Linux + macOS + Windows** одновременно на облачных раннерах.
+
+**Запуск по тегу:**
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+**Запуск вручную:** GitHub → Actions → Build → Run workflow
+
+Готовые артефакты (.deb, .AppImage, .dmg, .msi, .exe) появятся во вкладке **Artifacts** после завершения сборки (~10–15 мин).
 
 ---
 
