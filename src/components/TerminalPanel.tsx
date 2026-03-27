@@ -301,17 +301,17 @@ function TerminalView({
     >
       {/* Danger banner */}
       {isDanger && (
-        <div className="shrink-0 flex items-center gap-3 px-4 py-1.5 bg-red-950/60 border-b border-red-500/40">
-          <span className="text-red-400 font-bold text-xs">⚠ {dangerLabel}</span>
+        <div className="shrink-0 flex items-center gap-2 px-3 py-1.5 border-b-2 border-red-500/70" style={{ background: "rgba(220,38,38,0.18)" }}>
+          <span className="text-red-400 text-sm leading-none">⚠</span>
+          <span className="text-red-300 font-bold text-xs tracking-widest uppercase">{dangerLabel}</span>
+          <span className="text-red-400/50 text-xs">—</span>
           <DangerWarning />
         </div>
       )}
-      {/* Terminal container с красной рамкой для опасных */}
+      {/* Terminal container с красноватым фоном для опасных */}
       <div
-        className={`flex-1 overflow-hidden p-1 ${
-          isDanger ? "ring-1 ring-red-500/20" : ""
-        }`}
-        style={isDanger ? { background: "linear-gradient(180deg, rgba(220,38,38,0.04) 0%, transparent 120px)" } : undefined}
+        className="flex-1 overflow-hidden p-1"
+        style={isDanger ? { backgroundColor: "rgba(220,38,38,0.045)" } : undefined}
       >
         <div ref={containerRef} className="h-full w-full" />
       </div>

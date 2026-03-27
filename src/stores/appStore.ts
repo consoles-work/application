@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { setSetting as persistSetting } from "../lib/tauriCommands";
 import type {
   Workspace,
   Project,
@@ -70,6 +71,8 @@ interface AppState {
   // ── Actions: UI ──
   toggleTreePanel: () => void;
   toggleWikiPanel: () => void;
+  setShowTreePanel: (visible: boolean) => void;
+  setShowWikiPanel: (visible: boolean) => void;
   setTreePanelWidth: (width: number) => void;
   setWikiPanelWidth: (width: number) => void;
 
@@ -251,10 +254,18 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
 
   // ── UI ──
-  toggleTreePanel: () =>
-    set((state) => ({ showTreePanel: !state.showTreePanel })),
-  toggleWikiPanel: () =>
-    set((state) => ({ showWikiPanel: !state.showWikiPanel })),
+  toggleTreePanel: () => {
+    const next = !get().showTreePanel;
+    set({ showTreePanel: next });
+    persistSetting("ui.showTreePanel", next ? "true" : "false").catch(() => {});
+  },
+  toggleWikiPanel: () => {
+    const next = !get().showWikiPanel;
+    set({ showWikiPanel: next });
+    persistSetting("ui.showWikiPanel", next ? "true" : "false").catch(() => {});
+  },
+  setShowTreePanel: (visible) => set({ showTreePanel: visible }),
+  setShowWikiPanel: (visible) => set({ showWikiPanel: visible }),
   setTreePanelWidth: (width) => set({ treePanelWidth: width }),
   setWikiPanelWidth: (width) => set({ wikiPanelWidth: width }),
 

@@ -1,6 +1,6 @@
 # DevConsole Hub — Статус проекта
 
-> Последнее обновление: 2026-03-26
+> Последнее обновление: 2026-03-27 (сессия 2)
 
 ---
 
@@ -18,12 +18,12 @@
 | Файл | Статус | Примечания |
 |------|--------|------------|
 | `src/types/index.ts` | ✅ Готово | Все интерфейсы: WikiPage (camelCase), isDanger/dangerLabel, SSH-поля, AppSettings |
-| `src/stores/appStore.ts` | ✅ Готово | CRUD + Toast + Wiki + settings (Record<string,string>) |
+| `src/stores/appStore.ts` | ✅ Готово | CRUD + Toast + Wiki + settings; `toggleTreePanel`/`toggleWikiPanel` сохраняют состояние в SQLite; `setShowTreePanel`/`setShowWikiPanel` для прямого восстановления |
 | `src/lib/tauriCommands.ts` | ✅ Готово | Все IPC-обёртки: дерево, PTY, wiki, clone_console, clone_project, get_settings, set_setting, get_db_info |
 | `src/lib/themes.ts` | ✅ Готово | 10 тем с UI-цветами и полной xterm-палитрой, resolveThemeId, applyTheme |
 | `src/components/Layout.tsx` | ✅ Готово | Трёхпанельный layout с resizable сплиттерами + кнопка Settings в titlebar |
 | `src/components/TreePanel.tsx` | ✅ Готово | Дерево + раскрытие по клику на строку + контекстное меню + inline rename (F2) + danger/ssh badge + клонирование + поиск по дереву |
-| `src/components/TerminalPanel.tsx` | ✅ Готово | xterm.js + PTY + danger-баннер + SSH + startup + динамические настройки (шрифт, тема) |
+| `src/components/TerminalPanel.tsx` | ✅ Готово | xterm.js + PTY + danger-баннер (видимая красная полоса) + красноватый фон для опасных консолей + SSH + startup + динамические настройки (шрифт, тема) |
 | `src/components/WikiPanel.tsx` | ✅ Готово | TipTap редактор + привязка к узлу + автосохранение debounce + теги + поиск по wiki (FTS5) |
 | `src/components/WikiToolbar.tsx` | ✅ Готово | H1/H2/H3, Bold/Italic/Code, списки, TaskList, CodeBlock, HR, Undo/Redo |
 | `src/components/CommandPalette.tsx` | ✅ Готово | Fuzzy-поиск по дереву, ↑↓/Enter/Esc, danger badge |
@@ -34,7 +34,7 @@
 | `src/components/dialogs/CreateProjectDialog.tsx` | ✅ Готово | Имя + Browse + shell + emoji + цвет + danger-чекбокс |
 | `src/components/dialogs/CreateConsoleDialog.tsx` | ✅ Готово | Имя + Local/SSH + все SSH-поля + Browse для ключа + textarea startup + danger-чекбокс |
 | `src/components/dialogs/EditConsoleDialog.tsx` | ✅ Готово | Редактирование существующей консоли |
-| `src/App.tsx` | ✅ Готово | Загрузка данных + настроек + применение темы при старте; Cmd+B/\\/P/, |
+| `src/App.tsx` | ✅ Готово | Загрузка данных + настроек + применение темы при старте; восстановление видимости панелей из SQLite; Cmd+B/\\/P/, |
 | `src/styles/globals.css` | ✅ Готово | CSS-переменные для 10 тем + xterm.js + TipTap стили |
 
 ### Backend (Rust)
@@ -45,7 +45,7 @@
 | `src-tauri/src/lib.rs` | ✅ Готово | Дубликат для мобильных/библиотечной сборки — синхронизирован с main.rs |
 | `src-tauri/src/commands.rs` | ✅ Готово | CRUD дерева, PTY, wiki, danger, clone, settings; DbInfo struct |
 | `src-tauri/src/db.rs` | ✅ Готово | Полный CRUD + FTS5 + клонирование + settings-таблица + get_db_info_data + миграции v1-v3 |
-| `src-tauri/src/pty_manager.rs` | ✅ Готово | portable-pty: spawn/write/resize/kill; `sh -c` для команд с пробелами |
+| `src-tauri/src/pty_manager.rs` | ✅ Готово | portable-pty: spawn/write/resize/kill; `sh -c` для команд с пробелами; явная установка `LANG`/`LC_CTYPE`/`TERM` для поддержки UTF-8 (кириллица) |
 
 ---
 
@@ -83,6 +83,24 @@
 - Snippets / быстрые команды
 - Экспорт/импорт workspace (zip + Markdown)
 - Интеграции: Git, Docker
+
+---
+
+## История изменений
+
+### 2026-03-27
+
+**Поддержка UTF-8 / кириллицы в терминале**
+- `pty_manager.rs`: при запуске PTY-сессии явно выставляются `LANG`, `LC_CTYPE`, `TERM=xterm-256color`
+- Причина: Tauri-приложение, запущенное не из терминала (dock, Finder), не наследует пользовательскую локаль → кириллица отображалась кракозябрами
+
+**Danger-индикация в терминале**
+- `TerminalPanel.tsx`: исправлен danger-баннер — был `bg-red-950/60` (сливался с тёмным фоном), заменён на явный красный `rgba(220,38,38,0.18)` с границей `border-b-2 border-red-500/70`
+- Добавлен равномерный красноватый фон терминала для опасных консолей (`rgba(220,38,38,0.045)`)
+
+**Сохранение видимости панелей между запусками**
+- `appStore.ts`: `toggleTreePanel`/`toggleWikiPanel` теперь сохраняют состояние в SQLite через `set_setting` (`ui.showTreePanel`, `ui.showWikiPanel`); добавлены `setShowTreePanel`/`setShowWikiPanel` для прямого восстановления без побочных эффектов
+- `App.tsx`: при загрузке настроек читает `ui.showTreePanel`/`ui.showWikiPanel` из SQLite и восстанавливает видимость панелей
 
 ---
 

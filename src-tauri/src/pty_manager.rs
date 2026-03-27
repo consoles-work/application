@@ -99,6 +99,22 @@ pub fn spawn(
     if !cwd.is_empty() {
         cmd.cwd(&cwd);
     }
+
+    // Гарантируем UTF-8 локаль: если Tauri запущен не из терминала,
+    // переменные LANG/LC_CTYPE могут отсутствовать → кириллица показывается кракозябрами.
+    // Сначала берём значение из системного окружения, иначе ставим UTF-8 по умолчанию.
+    if !env_vars.contains_key("LANG") {
+        let lang = std::env::var("LANG").unwrap_or_else(|_| "en_US.UTF-8".to_string());
+        cmd.env("LANG", lang);
+    }
+    if !env_vars.contains_key("LC_CTYPE") {
+        let lc_ctype = std::env::var("LC_CTYPE").unwrap_or_else(|_| "UTF-8".to_string());
+        cmd.env("LC_CTYPE", lc_ctype);
+    }
+    if !env_vars.contains_key("TERM") {
+        cmd.env("TERM", "xterm-256color");
+    }
+
     for (key, value) in &env_vars {
         cmd.env(key, value);
     }

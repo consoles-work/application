@@ -14,7 +14,7 @@ import i18n from "./lib/i18n";
 // ══════════════════════════════════════
 
 function App() {
-  const { setWorkspaces, setSettings, toggleTreePanel, toggleWikiPanel, showToast } = useAppStore();
+  const { setWorkspaces, setSettings, toggleTreePanel, toggleWikiPanel, setShowTreePanel, setShowWikiPanel, showToast } = useAppStore();
   const { t } = useTranslation();
   const [showPalette, setShowPalette] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -29,6 +29,9 @@ function App() {
       setSettings(s);
       applyTheme(s["ui.theme"] ?? "dark");
       i18n.changeLanguage(s["ui.language"] ?? "ru");
+      // Восстанавливаем видимость панелей (по умолчанию — показывать)
+      if (s["ui.showTreePanel"] !== undefined) setShowTreePanel(s["ui.showTreePanel"] !== "false");
+      if (s["ui.showWikiPanel"] !== undefined) setShowWikiPanel(s["ui.showWikiPanel"] !== "false");
     }).catch(() => {});
   }, [setWorkspaces, setSettings, showToast]);
 
