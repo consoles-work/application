@@ -195,9 +195,9 @@ function TerminalView({
     const consoleConfig = findConsoleById(session.console_id);
     const project = findProjectForConsole(session.console_id);
 
-    let shell = consoleConfig?.shell_override || project?.default_shell || "";
-    let cwd = consoleConfig?.cwd_override || project?.path || "";
-    const envVars = { ...project?.env_vars, ...consoleConfig?.env_vars };
+    let shell = consoleConfig?.shellOverride || project?.default_shell || "";
+    let cwd = consoleConfig?.cwdOverride || project?.path || "";
+    const envVars = { ...project?.env_vars, ...consoleConfig?.envVars };
 
     // SSH: строим команду подключения
     if (consoleConfig?.connectionType === "ssh") {
@@ -247,8 +247,8 @@ function TerminalView({
         term.onResize(({ cols, rows }) => resizePty(ptyId, cols, rows));
 
         // Стартовые команды — каждая строка выполняется с задержкой
-        if (consoleConfig?.startup_cmd) {
-          const lines = consoleConfig.startup_cmd
+        if (consoleConfig?.startupCmd) {
+          const lines = consoleConfig.startupCmd
             .split("\n")
             .map((l) => l.trim())
             .filter((l) => l.length > 0);

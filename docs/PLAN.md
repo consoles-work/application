@@ -1,6 +1,6 @@
 # DevConsole Hub — План разработки
 
-> Последнее обновление: 2026-03-26 (финал MVP)
+> Последнее обновление: 2026-03-27 (баг-фиксы + подтверждение выхода)
 
 ---
 
@@ -209,10 +209,37 @@
 - Технические идентификаторы (ssh, local, bash, zsh, Local, SSH)
 
 ### 8.4 Переключение языка — ВЫПОЛНЕНО
-- Settings → "Интерфейс" → кнопки ru / en
+- Settings → "Интерфейс" → кнопки ru / en / zh / fr / kk
 - Сохраняется в `settings` (key: `ui.language`)
 - Применяется мгновенно через `i18n.changeLanguage(lang)`
 - Загружается из SQLite при старте в App.tsx
+
+---
+
+## Этап 8.5: Баг-фиксы и UX — ВЫПОЛНЕН
+
+### 8.5.1 Исправлен camelCase-мисматч в ConsoleConfig — ВЫПОЛНЕНО
+- Rust возвращает поля в camelCase (`startupCmd`, `shellOverride`, `cwdOverride`, `envVars`, `projectId`, `sortOrder`)
+- TypeScript-тип `ConsoleConfig` теперь полностью camelCase (исправлено: `startup_cmd` → `startupCmd` и др.)
+- `TerminalPanel.tsx`: стартовые команды теперь корректно читаются из `consoleConfig.startupCmd`
+- `EditConsoleDialog.tsx`: инициализация `startupCmd` и сохранение через `startupCmd:` вместо `startup_cmd:`
+
+### 8.5.2 Исправлено сохранение icon/color при создании проекта — ВЫПОЛНЕНО
+- `create_project` (Rust) принимал только `name/path/default_shell`, игнорировал `icon`/`color` → хардкодил `📁 / #58a6ff`
+- Добавлены параметры `icon: String, color: String` в `create_project` (commands.rs)
+- Обновлены: `tauriCommands.ts` → `createProject(...)`, `CreateProjectDialog.tsx` → передаёт реальные значения
+- Теперь выбранные emoji и цвет сохраняются в БД и не сбрасываются при перезапуске
+
+### 8.5.3 Подтверждение закрытия приложения — ВЫПОЛНЕНО
+- При нажатии кнопки закрытия окна показывается нативный диалог: "Are you sure you want to quit?" / "Quit"
+- Реализовано **полностью на стороне Rust** в `on_window_event` (`main.rs` + `lib.rs`):
+  - `CloseRequested` → `api.prevent_close()` → диалог в отдельном потоке (`std::thread::spawn`)
+  - `AtomicBool QUIT_DIALOG_ACTIVE` — предотвращает повторные срабатывания пока диалог открыт
+  - При «OK» → `app.exit(0)` завершает процесс напрямую
+  - При «Cancel» → флаг сбрасывается, следующее нажатие X снова покажет диалог
+- Использует `tauri_plugin_dialog::MessageDialogButtons::OkCancel` + `MessageDialogKind::Warning`
+- JS не участвует — исключает цикличность spurious CloseRequested событий на macOS
+- Текст на английском (i18n из Rust недоступен)
 
 ---
 

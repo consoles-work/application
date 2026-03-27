@@ -22,6 +22,11 @@ mod pty_manager; // src/pty_manager.rs — управление терминал
 
 // Подключаем публичные функции из модуля commands
 use commands::*;
+use std::sync::atomic::{AtomicBool, Ordering};
+use tauri::Manager;
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+
+static QUIT_DIALOG_ACTIVE: AtomicBool = AtomicBool::new(false);
 
 // ── Главная функция ──
 // #[cfg_attr(...)] — это макрос (аннотация). Здесь он говорит:
@@ -87,7 +92,33 @@ pub fn run() {
             get_settings,
             set_setting,
             get_db_info,
+            quit_app,
+            reset_quit_dialog,
         ])
+
+        // Перехватываем закрытие окна: всегда отменяем и просим фронт показать диалог
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                if QUIT_DIALOG_ACTIVE.swap(true, Ordering::SeqCst) {
+                    return; // диалог уже открыт
+                }
+                let app = window.app_handle().clone();
+                std::thread::spawn(move || {
+                    let confirmed = app
+                        .dialog()
+                        .message("Are you sure you want to quit?")
+                        .title("Quit")
+                        .kind(MessageDialogKind::Warning)
+                        .buttons(MessageDialogButtons::OkCancel)
+                        .blocking_show();
+                    QUIT_DIALOG_ACTIVE.store(false, Ordering::SeqCst);
+                    if confirmed {
+                        app.exit(0);
+                    }
+                });
+            }
+        })
 
         // Запускаем приложение
         // .expect() — если произошла ошибка, завершить программу с сообщением

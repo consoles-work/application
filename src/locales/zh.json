@@ -187,6 +187,8 @@
     "toastError": "错误: {{error}}"
   },
   "app": {
-    "toastLoadError": "加载数据失败: {{error}}"
+    "toastLoadError": "加载数据失败: {{error}}",
+    "quitTitle": "退出应用",
+    "quitMessage": "确定要退出吗？"
   }
 }

@@ -49,12 +49,16 @@ export async function deleteWorkspace(id: string): Promise<void> {
 export async function createProject(
   workspaceId: string,
   name: string,
+  icon: string,
+  color: string,
   path: string,
   defaultShell: string
 ): Promise<Project> {
   return invoke<Project>("create_project", {
     workspaceId,
     name,
+    icon,
+    color,
     path,
     defaultShell,
   });
@@ -211,4 +215,12 @@ export async function setSetting(key: string, value: string): Promise<void> {
 
 export async function getDbInfo(): Promise<DbInfo> {
   return invoke<DbInfo>("get_db_info");
+}
+
+export async function quitApp(): Promise<void> {
+  return invoke("quit_app");
+}
+
+export async function resetQuitDialog(): Promise<void> {
+  return invoke("reset_quit_dialog");
 }

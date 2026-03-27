@@ -16,7 +16,7 @@ export function EditConsoleDialog({ console_, onClose }: Props) {
   const [connectionType, setConnectionType] = useState<"local" | "ssh">(
     (console_.connectionType as "local" | "ssh") || "local"
   );
-  const [startupCmd, setStartupCmd] = useState(console_.startup_cmd || "");
+  const [startupCmd, setStartupCmd] = useState(console_.startupCmd || "");
 
   // SSH fields
   const [sshHost, setSshHost] = useState(console_.sshHost || "");
@@ -67,7 +67,7 @@ export function EditConsoleDialog({ console_, onClose }: Props) {
       );
       storeUpdateConsole(console_.id, {
         name: name.trim(),
-        startup_cmd: startupCmd.trim() || undefined,
+        startupCmd: startupCmd.trim() || undefined,
         connectionType,
         sshHost: sshHost.trim(),
         sshPort: port,

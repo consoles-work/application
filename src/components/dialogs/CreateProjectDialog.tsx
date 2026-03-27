@@ -44,7 +44,7 @@ export function CreateProjectDialog({ workspaceId, onClose }: Props) {
     if (!name.trim()) return;
     setLoading(true);
     try {
-      const proj = await createProject(workspaceId, name.trim(), path, shell);
+      const proj = await createProject(workspaceId, name.trim(), icon, color, path, shell);
       const finalLabel = dangerLabel.trim() || "PRODUCTION";
       if (isDanger) {
         await setNodeDanger(proj.id, "project", true, finalLabel);

@@ -141,6 +141,8 @@ pub fn delete_workspace(id: String) -> Result<(), String> {
 pub fn create_project(
     workspace_id: String,
     name: String,
+    icon: String,
+    color: String,
     path: String,
     default_shell: String,
 ) -> Result<Project, String> {
@@ -149,8 +151,8 @@ pub fn create_project(
         id: id.clone(),
         workspace_id,
         name,
-        icon: "📁".to_string(),
-        color: "#58a6ff".to_string(),
+        icon,
+        color,
         path,
         default_shell,
         env_vars: HashMap::new(),
@@ -345,4 +347,16 @@ pub fn set_setting(key: String, value: String) -> Result<(), String> {
 #[tauri::command]
 pub fn get_db_info() -> DbInfo {
     crate::db::get_db_info_data()
+}
+
+/// Завершить приложение (вызывается после подтверждения пользователем)
+#[tauri::command]
+pub fn quit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
+/// Сбросить флаг активного диалога выхода (вызывается при ответе "Нет")
+#[tauri::command]
+pub fn reset_quit_dialog() {
+    crate::QUIT_DIALOG_ACTIVE.store(false, std::sync::atomic::Ordering::SeqCst);
 }

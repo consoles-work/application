@@ -187,6 +187,8 @@
     "toastError": "Erreur: {{error}}"
   },
   "app": {
-    "toastLoadError": "Erreur de chargement des données: {{error}}"
+    "toastLoadError": "Erreur de chargement des données: {{error}}",
+    "quitTitle": "Quitter l'application",
+    "quitMessage": "Voulez-vous vraiment quitter ?"
   }
 }

@@ -187,6 +187,8 @@
     "toastError": "Error: {{error}}"
   },
   "app": {
-    "toastLoadError": "Data load error: {{error}}"
+    "toastLoadError": "Data load error: {{error}}",
+    "quitTitle": "Quit Application",
+    "quitMessage": "Are you sure you want to quit?"
   }
 }

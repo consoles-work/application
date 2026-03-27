@@ -139,19 +139,6 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
         );
     ")?;
 
-    // Миграция для существующих БД — добавляем столбцы если их ещё нет
-    let _ = conn.execute("ALTER TABLE projects ADD COLUMN is_danger INTEGER NOT NULL DEFAULT 0", []);
-    let _ = conn.execute("ALTER TABLE projects ADD COLUMN danger_label TEXT NOT NULL DEFAULT 'PRODUCTION'", []);
-    let _ = conn.execute("ALTER TABLE consoles ADD COLUMN is_danger INTEGER NOT NULL DEFAULT 0", []);
-    let _ = conn.execute("ALTER TABLE consoles ADD COLUMN danger_label TEXT NOT NULL DEFAULT 'PRODUCTION'", []);
-    // Миграция v3: SSH-подключение
-    let _ = conn.execute("ALTER TABLE consoles ADD COLUMN connection_type TEXT NOT NULL DEFAULT 'local'", []);
-    let _ = conn.execute("ALTER TABLE consoles ADD COLUMN ssh_host TEXT NOT NULL DEFAULT ''", []);
-    let _ = conn.execute("ALTER TABLE consoles ADD COLUMN ssh_port INTEGER NOT NULL DEFAULT 22", []);
-    let _ = conn.execute("ALTER TABLE consoles ADD COLUMN ssh_user TEXT NOT NULL DEFAULT ''", []);
-    let _ = conn.execute("ALTER TABLE consoles ADD COLUMN ssh_key_path TEXT NOT NULL DEFAULT ''", []);
-    let _ = conn.execute("ALTER TABLE consoles ADD COLUMN ssh_extra_args TEXT NOT NULL DEFAULT ''", []);
-
     // Сохраняем подключение в глобальную переменную
     DB.set(Mutex::new(conn))
         .map_err(|_| "Database already initialized")?;

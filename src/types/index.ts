@@ -32,13 +32,13 @@ export interface Project {
 
 export interface ConsoleConfig {
   id: string;
-  project_id: string;
+  projectId: string;
   name: string;
-  shell_override?: ShellType; // если отличается от проекта
-  cwd_override?: string; // если отличается от project.path
-  startup_cmd?: string; // команды при запуске (многострочные, каждая строка — отдельная команда)
-  env_vars?: Record<string, string>; // доп. переменные
-  sort_order: number;
+  shellOverride?: ShellType; // если отличается от проекта
+  cwdOverride?: string; // если отличается от project.path
+  startupCmd?: string; // команды при запуске (многострочные, каждая строка — отдельная команда)
+  envVars?: Record<string, string>; // доп. переменные
+  sortOrder: number;
   isDanger: boolean;
   dangerLabel: string;
   // Параметры подключения

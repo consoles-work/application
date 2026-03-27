@@ -187,6 +187,8 @@
     "toastError": "Қате: {{error}}"
   },
   "app": {
-    "toastLoadError": "Деректерді жүктеу қатесі: {{error}}"
+    "toastLoadError": "Деректерді жүктеу қатесі: {{error}}",
+    "quitTitle": "Қолданбадан шығу",
+    "quitMessage": "Шынымен шығасыз ба?"
   }
 }

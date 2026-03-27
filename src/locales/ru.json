@@ -187,6 +187,8 @@
     "toastError": "Ошибка: {{error}}"
   },
   "app": {
-    "toastLoadError": "Ошибка загрузки данных: {{error}}"
+    "toastLoadError": "Ошибка загрузки данных: {{error}}",
+    "quitTitle": "Выход из приложения",
+    "quitMessage": "Вы уверены, что хотите выйти?"
   }
 }
