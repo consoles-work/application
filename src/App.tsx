@@ -6,6 +6,8 @@ import { SettingsDialog } from "./components/SettingsDialog";
 import { useAppStore } from "./stores/appStore";
 import { loadAllWorkspaces, getSettings } from "./lib/tauriCommands";
 import { applyTheme } from "./lib/themes";
+import { useTranslation } from "react-i18next";
+import i18n from "./lib/i18n";
 
 // ══════════════════════════════════════
 // App — корневой компонент
@@ -13,6 +15,7 @@ import { applyTheme } from "./lib/themes";
 
 function App() {
   const { setWorkspaces, setSettings, toggleTreePanel, toggleWikiPanel, showToast } = useAppStore();
+  const { t } = useTranslation();
   const [showPalette, setShowPalette] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -20,11 +23,12 @@ function App() {
   useEffect(() => {
     loadAllWorkspaces()
       .then(setWorkspaces)
-      .catch((e) => showToast("error", `Ошибка загрузки данных: ${e}`));
+      .catch((e) => showToast("error", t("app.toastLoadError", { error: e })));
 
     getSettings().then((s) => {
       setSettings(s);
       applyTheme(s["ui.theme"] ?? "dark");
+      i18n.changeLanguage(s["ui.language"] ?? "ru");
     }).catch(() => {});
   }, [setWorkspaces, setSettings, showToast]);
 

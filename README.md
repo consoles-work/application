@@ -7,17 +7,79 @@
 - 💻 **Терминал** (центр) — вкладки с полноценными PTY-сессиями
 - 📖 **Wiki** (справа) — заметки, сниппеты, документация по каждому проекту
 
+---
+
+## Возможности
+
+### Дерево проектов
+- Иерархия: **Workspace → Project → Console**
+- Emoji-иконки и цветовые метки для визуальной группировки
+- Контекстное меню (ПКМ): создание, переименование, дублирование, удаление
+- Inline-переименование (F2 или двойной клик)
+- Поиск по дереву (иконка 🔍 или Ctrl+F)
+- **Danger-метки** ⚠ — выделение продакшн-окружений красным баннером
+- "Открыть в VS Code" и "Открыть в Finder" для проектов
+
+### Терминал
+- Полноценные PTY-сессии через `portable-pty`
+- Вкладки с мгновенным переключением
+- **Local** (нативный шелл) и **SSH** подключения
+- SSH: хост, порт, пользователь, ключ, дополнительные аргументы
+- Стартовые команды — выполняются автоматически при открытии сессии
+- Danger-баннер + красная рамка для опасных консолей
+
+### Wiki
+- Редактор **TipTap** (ProseMirror) с форматированием
+- Контекстная привязка: отдельные заметки для каждого workspace / project / console
+- Полнотекстовый поиск через **FTS5** (SQLite)
+- Автосохранение (debounce 1 сек)
+- Теги, заголовки H1–H3, списки, чекбоксы, блоки кода с подсветкой синтаксиса
+- Несколько страниц на один контекст
+
+### Поиск и навигация
+- **Cmd+P** — Command Palette: быстрый переход к любому узлу дерева
+- Поиск по дереву (Ctrl+F в панели проектов)
+- Полнотекстовый поиск по Wiki (FTS5)
+
+### Настройки
+- **10 тем**: GitHub Dark/Light, Dracula, Monokai, Nord, Solarized Dark, Tokyo Night, Catppuccin, One Dark, Gruvbox Dark + случайная при каждом запуске
+- **Терминал**: шрифт (Menlo, Monaco, JetBrains Mono, Fira Code), размер, scrollback, стиль курсора
+- **Данные**: путь к БД, размер файла, "Показать в Finder", "Скопировать путь"
+- Все настройки хранятся в SQLite, применяются без перезапуска
+
+### Локализация
+- **5 языков**: 🇷🇺 Русский, 🇺🇸 English, 🇨🇳 中文, 🇫🇷 Français, 🇰🇿 Қазақша
+- Переключение в Settings → Интерфейс → кнопки языков
+- Мгновенное применение без перезагрузки
+- Сохраняется в SQLite
+
+### Горячие клавиши
+
+| Сочетание | Действие |
+|-----------|----------|
+| `Cmd/Ctrl+P` | Command Palette (поиск по дереву) |
+| `Cmd/Ctrl+,` | Открыть настройки |
+| `Cmd/Ctrl+B` | Показать / скрыть панель дерева |
+| `Cmd/Ctrl+\` | Показать / скрыть wiki-панель |
+| `F2` | Переименовать выбранный узел |
+| `Ctrl+F` | Поиск в панели проектов |
+
+---
+
 ## Технологический стек
 
 | Слой | Технология |
 |------|-----------|
 | Оболочка | Tauri 2.0 (Rust) |
 | Frontend | React 18 + TypeScript + Vite |
-| Терминал | xterm.js + Tauri PTY bridge |
-| Wiki-редактор | TipTap (ProseMirror) |
-| Хранение | SQLite (через rusqlite) |
-| UI | Tailwind CSS |
+| Терминал | xterm.js + portable-pty (Rust) |
+| Wiki-редактор | TipTap (ProseMirror) + lowlight |
+| Хранение | SQLite (rusqlite, WAL-режим, FTS5) |
+| UI | Tailwind CSS + CSS-переменные тем |
 | Стейт | Zustand |
+| Локализация | i18next + react-i18next |
+
+---
 
 ## Предварительные требования
 
@@ -27,24 +89,24 @@
 2. **Rust** — https://rustup.rs/
 
 ```bash
-# Установка Rust (одна команда)
+# Установка Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# После установки перезапустить терминал, затем проверить:
+# Проверить:
 rustc --version
 cargo --version
 ```
-
-### Windows (дополнительно)
-
-- **Visual Studio Build Tools** — при установке Rust через rustup будет предложено установить. Выберите "Desktop development with C++".
-- **WebView2** — предустановлен на Windows 10/11. Если нет: https://developer.microsoft.com/en-us/microsoft-edge/webview2/
 
 ### macOS (дополнительно)
 
 ```bash
 xcode-select --install
 ```
+
+### Windows (дополнительно)
+
+- **Visual Studio Build Tools** — при установке Rust через rustup выберите "Desktop development with C++"
+- **WebView2** — предустановлен на Windows 10/11
 
 ### Linux (дополнительно)
 
@@ -63,84 +125,136 @@ sudo pacman -S webkit2gtk-4.1 base-devel curl wget file openssl \
   xdotool librsvg
 ```
 
+---
+
 ## Быстрый старт
 
 ```bash
-# 1. Перейти в проект
+git clone <repo>
 cd devconsole-hub
-
-# 2. Установить JS-зависимости
 npm install
-
-# 3. Запустить в режиме разработки
 npm run tauri dev
 ```
 
-Первый запуск займёт 3-5 минут (Rust компилирует зависимости). Далее — 5-10 секунд.
+Первый запуск: 3–5 минут (Cargo компилирует зависимости). Последующие: 5–10 секунд.
 
 ## Команды
 
 | Команда | Описание |
 |---------|----------|
-| `npm run tauri dev` | Dev-режим (hot reload фронта + Rust перекомпиляция) |
-| `npm run tauri build` | Сборка продакшн-бинарника под текущую ОС |
+| `npm run tauri dev` | Dev-режим: hot reload фронта + перекомпиляция Rust |
+| `npm run tauri build` | Продакшн-бинарник под текущую ОС |
 | `npm run dev` | Только фронтенд в браузере (без Tauri) |
-| `npm run build` | Сборка фронтенда |
+| `npm run build` | Сборка фронтенда (TypeScript + Vite) |
+
+---
 
 ## Структура проекта
 
 ```
 devconsole-hub/
-├── src/                        # Frontend (React + TypeScript)
+├── src/                            # Frontend (React + TypeScript)
 │   ├── components/
-│   │   ├── Layout.tsx              # Главный layout с 3 панелями
-│   │   ├── TreePanel.tsx           # Дерево проектов
-│   │   ├── TerminalPanel.tsx       # Терминал (вкладки)
-│   │   └── WikiPanel.tsx           # Wiki-редактор
+│   │   ├── Layout.tsx              # Трёхпанельный layout + titlebar
+│   │   ├── TreePanel.tsx           # Дерево проектов + поиск + rename
+│   │   ├── TerminalPanel.tsx       # Вкладки терминала + xterm.js
+│   │   ├── WikiPanel.tsx           # TipTap редактор + теги + поиск
+│   │   ├── WikiToolbar.tsx         # Тулбар форматирования wiki
+│   │   ├── ContextMenu.tsx         # Контекстное меню дерева
+│   │   ├── CommandPalette.tsx      # Cmd+P поиск
+│   │   ├── SettingsDialog.tsx      # Окно настроек
+│   │   ├── Toast.tsx               # Уведомления
+│   │   └── dialogs/
+│   │       ├── CreateWorkspaceDialog.tsx
+│   │       ├── CreateProjectDialog.tsx
+│   │       ├── CreateConsoleDialog.tsx
+│   │       └── EditConsoleDialog.tsx
 │   ├── stores/
-│   │   └── appStore.ts             # Zustand (состояние приложения)
+│   │   └── appStore.ts             # Zustand: дерево, сессии, настройки
 │   ├── lib/
-│   │   └── tauriCommands.ts        # Обёртки вызовов Rust-команд
+│   │   ├── tauriCommands.ts        # Обёртки invoke() для всех Rust-команд
+│   │   ├── themes.ts               # 10 тем + CSS-переменные
+│   │   └── i18n.ts                 # Конфиг i18next
+│   ├── locales/                    # Файлы переводов
+│   │   ├── ru.json                 # Русский
+│   │   ├── en.json                 # English
+│   │   ├── zh.json                 # 中文
+│   │   ├── fr.json                 # Français
+│   │   └── kk.json                 # Қазақша
 │   ├── types/
 │   │   └── index.ts                # TypeScript типы
 │   ├── styles/
-│   │   └── globals.css             # Tailwind + кастомные стили
-│   ├── App.tsx
+│   │   └── globals.css             # Tailwind + темы + xterm-стили
+│   ├── App.tsx                     # Корневой компонент, горячие клавиши
 │   └── main.tsx
-├── src-tauri/                  # Backend (Rust)
+├── src-tauri/                      # Backend (Rust)
 │   ├── src/
-│   │   ├── main.rs                 # Точка входа Tauri
-│   │   ├── commands.rs             # Tauri-команды (IPC хендлеры)
-│   │   ├── db.rs                   # SQLite: таблицы, CRUD
-│   │   └── pty_manager.rs          # PTY: запуск шеллов, I/O
+│   │   ├── main.rs                 # Точка входа (desktop)
+│   │   ├── lib.rs                  # Точка входа (mobile)
+│   │   ├── commands.rs             # Tauri-команды (#[tauri::command])
+│   │   ├── db.rs                   # SQLite: схема, CRUD, миграции
+│   │   └── pty_manager.rs          # PTY: spawn / write / resize / kill
 │   ├── Cargo.toml
-│   ├── tauri.conf.json
-│   └── build.rs
+│   └── tauri.conf.json
+├── docs/
+│   └── PLAN.md                     # Детальный план разработки
 ├── index.html
 ├── package.json
-├── tsconfig.json
 ├── vite.config.ts
-├── tailwind.config.js
-└── postcss.config.js
+└── tailwind.config.js
 ```
 
-## Текущий статус (скелет)
+---
 
-- [x] Структура Tauri 2.0 проекта
-- [x] Трёхпанельный layout с resizable сплиттерами
-- [x] Zustand store с моделью данных
-- [x] Rust-команды для CRUD (дерево проектов)
-- [x] SQLite база с миграциями
-- [x] PTY manager (каркас)
-- [x] TypeScript типы и IPC-обёртки
+## Хранилище данных
 
-## Что делать дальше (порядок)
+База SQLite: `~/Library/Application Support/devconsole-hub/data.db` (macOS).
 
-1. **Дерево** — CRUD к UI, drag-and-drop, контекстное меню
-2. **Терминал** — xterm.js ↔ PTY через Tauri events
-3. **Wiki** — TipTap редактор, сохранение в SQLite
-4. **Поиск** — FTS5, Command Palette (Ctrl+P)
-5. **Настройки** — темы, горячие клавиши, SSH-профили
+```
+workspaces
+  └── projects
+        └── consoles
+wiki_pages  (привязка к любому уровню через parent_type + parent_id)
+wiki_fts    (FTS5 — полнотекстовый поиск)
+settings    (key / value)
+env_vars
+```
+
+---
+
+## Добавление новой Tauri-команды
+
+1. Объявить `#[tauri::command]` в `src-tauri/src/commands.rs`
+2. Добавить логику в `src-tauri/src/db.rs` (если нужна БД)
+3. Зарегистрировать в `src-tauri/src/main.rs` → `invoke_handler![]`
+4. Зарегистрировать в `src-tauri/src/lib.rs` → `invoke_handler![]` ⚠️ **оба файла**
+5. Добавить TypeScript-обёртку в `src/lib/tauriCommands.ts`
+
+> **Важно:** аргументы Rust → TypeScript автоматически конвертируются через serde: Rust `snake_case` ↔ TypeScript `camelCase` (директива `#[serde(rename_all = "camelCase")]`).
+
+---
+
+## Добавление нового языка
+
+1. Создать файл `src/locales/XX.json` (скопировать структуру из `en.json`, перевести все значения)
+2. Подключить в `src/lib/i18n.ts`:
+   ```ts
+   import xx from "../locales/xx.json";
+   // в resources:
+   xx: { translation: xx },
+   ```
+3. Добавить ключ названия языка во **все** существующие локали (`ru.json`, `en.json`, `zh.json`, `fr.json`, `kk.json`):
+   ```json
+   "langXx": "🏳️ Название языка"
+   ```
+4. Добавить код языка в массив в `src/components/SettingsDialog.tsx`:
+   ```ts
+   {(["ru", "en", "zh", "fr", "kk", "xx"] as const).map(...)
+   ```
+
+Переключение применяется мгновенно, выбор сохраняется в SQLite (`ui.language`).
+
+---
 
 ## Лицензия
 

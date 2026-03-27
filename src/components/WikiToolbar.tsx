@@ -14,6 +14,7 @@ import {
   Redo,
   Minus,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface WikiToolbarProps {
   editor: Editor;
@@ -48,25 +49,26 @@ function Divider() {
 }
 
 export function WikiToolbar({ editor }: WikiToolbarProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex items-center gap-0.5 px-2 py-1 border-b border-border bg-surface-1 flex-wrap shrink-0">
-      {/* Заголовки */}
       <ToolbarButton
-        title="Заголовок 1"
+        title={t("wikiToolbar.h1")}
         isActive={editor.isActive("heading", { level: 1 })}
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
       >
         <Heading1 size={13} />
       </ToolbarButton>
       <ToolbarButton
-        title="Заголовок 2"
+        title={t("wikiToolbar.h2")}
         isActive={editor.isActive("heading", { level: 2 })}
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
       >
         <Heading2 size={13} />
       </ToolbarButton>
       <ToolbarButton
-        title="Заголовок 3"
+        title={t("wikiToolbar.h3")}
         isActive={editor.isActive("heading", { level: 3 })}
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
       >
@@ -75,23 +77,22 @@ export function WikiToolbar({ editor }: WikiToolbarProps) {
 
       <Divider />
 
-      {/* Форматирование */}
       <ToolbarButton
-        title="Жирный (Ctrl+B)"
+        title={t("wikiToolbar.bold")}
         isActive={editor.isActive("bold")}
         onClick={() => editor.chain().focus().toggleBold().run()}
       >
         <Bold size={13} />
       </ToolbarButton>
       <ToolbarButton
-        title="Курсив (Ctrl+I)"
+        title={t("wikiToolbar.italic")}
         isActive={editor.isActive("italic")}
         onClick={() => editor.chain().focus().toggleItalic().run()}
       >
         <Italic size={13} />
       </ToolbarButton>
       <ToolbarButton
-        title="Inline-код"
+        title={t("wikiToolbar.inlineCode")}
         isActive={editor.isActive("code")}
         onClick={() => editor.chain().focus().toggleCode().run()}
       >
@@ -100,23 +101,22 @@ export function WikiToolbar({ editor }: WikiToolbarProps) {
 
       <Divider />
 
-      {/* Списки */}
       <ToolbarButton
-        title="Маркированный список"
+        title={t("wikiToolbar.bulletList")}
         isActive={editor.isActive("bulletList")}
         onClick={() => editor.chain().focus().toggleBulletList().run()}
       >
         <List size={13} />
       </ToolbarButton>
       <ToolbarButton
-        title="Нумерованный список"
+        title={t("wikiToolbar.orderedList")}
         isActive={editor.isActive("orderedList")}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
       >
         <ListOrdered size={13} />
       </ToolbarButton>
       <ToolbarButton
-        title="Список задач"
+        title={t("wikiToolbar.taskList")}
         isActive={editor.isActive("taskList")}
         onClick={() => editor.chain().focus().toggleTaskList().run()}
       >
@@ -125,18 +125,16 @@ export function WikiToolbar({ editor }: WikiToolbarProps) {
 
       <Divider />
 
-      {/* Блок кода */}
       <ToolbarButton
-        title="Блок кода"
+        title={t("wikiToolbar.codeBlock")}
         isActive={editor.isActive("codeBlock")}
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
       >
         <Terminal size={13} />
       </ToolbarButton>
 
-      {/* Горизонтальная линия */}
       <ToolbarButton
-        title="Разделитель"
+        title={t("wikiToolbar.horizontalRule")}
         onClick={() => editor.chain().focus().setHorizontalRule().run()}
       >
         <Minus size={13} />
@@ -144,15 +142,14 @@ export function WikiToolbar({ editor }: WikiToolbarProps) {
 
       <Divider />
 
-      {/* История */}
       <ToolbarButton
-        title="Отменить (Ctrl+Z)"
+        title={t("wikiToolbar.undo")}
         onClick={() => editor.chain().focus().undo().run()}
       >
         <Undo size={13} />
       </ToolbarButton>
       <ToolbarButton
-        title="Повторить (Ctrl+Shift+Z)"
+        title={t("wikiToolbar.redo")}
         onClick={() => editor.chain().focus().redo().run()}
       >
         <Redo size={13} />

@@ -3,6 +3,7 @@ import { useAppStore } from "../stores/appStore";
 import { TreePanel } from "./TreePanel";
 import { TerminalPanel } from "./TerminalPanel";
 import { WikiPanel } from "./WikiPanel";
+import { useTranslation } from "react-i18next";
 
 // ══════════════════════════════════════
 // Layout — трёхпанельный layout
@@ -22,6 +23,7 @@ export function Layout({ onOpenSettings }: LayoutProps) {
     setTreePanelWidth,
     setWikiPanelWidth,
   } = useAppStore();
+  const { t } = useTranslation();
 
   const [dragging, setDragging] = useState<"tree" | "wiki" | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -94,7 +96,7 @@ export function Layout({ onOpenSettings }: LayoutProps) {
           <button
             onClick={onOpenSettings}
             className="px-2 py-1 rounded text-2xs text-text-muted hover:text-text-secondary"
-            title="Настройки (Cmd+,)"
+            title={t("layout.settingsTooltip")}
           >
             Settings
           </button>

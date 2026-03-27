@@ -4,6 +4,8 @@ import { useAppStore } from "../stores/appStore";
 import { getDbInfo, setSetting } from "../lib/tauriCommands";
 import type { DbInfo } from "../lib/tauriCommands";
 import { THEMES } from "../lib/themes";
+import { useTranslation } from "react-i18next";
+import i18n from "../lib/i18n";
 
 type Tab = "data" | "terminal" | "interface";
 
@@ -15,6 +17,7 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
   const [tab, setTab] = useState<Tab>("data");
   const { settings, setSetting: storeSetting, showToast } = useAppStore();
   const [dbInfo, setDbInfo] = useState<DbInfo | null>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     getDbInfo().then(setDbInfo).catch(() => {});
@@ -24,8 +27,11 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
     try {
       await setSetting(key, value);
       storeSetting(key, value);
+      if (key === "ui.language") {
+        i18n.changeLanguage(value);
+      }
     } catch (e) {
-      showToast("error", `Ошибка сохранения настроек: ${e}`);
+      showToast("error", t("settings.toastSaveError", { error: e }));
     }
   };
 
@@ -37,7 +43,7 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
       <div className="bg-surface-1 border border-border rounded-xl shadow-2xl w-[560px] max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
-          <h2 className="text-sm font-semibold text-text-primary">Настройки</h2>
+          <h2 className="text-sm font-semibold text-text-primary">{t("settings.title")}</h2>
           <button
             className="text-text-muted hover:text-text-primary text-base leading-none"
             onClick={onClose}
@@ -48,17 +54,17 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
 
         {/* Tabs */}
         <div className="flex border-b border-border px-5 shrink-0">
-          {(["data", "terminal", "interface"] as Tab[]).map((t) => (
+          {(["data", "terminal", "interface"] as Tab[]).map((tabKey) => (
             <button
-              key={t}
+              key={tabKey}
               className={`py-2.5 px-3 text-xs border-b-2 transition-colors ${
-                tab === t
+                tab === tabKey
                   ? "border-accent text-accent"
                   : "border-transparent text-text-secondary hover:text-text-primary"
               }`}
-              onClick={() => setTab(t)}
+              onClick={() => setTab(tabKey)}
             >
-              {t === "data" ? "Данные" : t === "terminal" ? "Терминал" : "Интерфейс"}
+              {tabKey === "data" ? t("settings.tabData") : tabKey === "terminal" ? t("settings.tabTerminal") : t("settings.tabInterface")}
             </button>
           ))}
         </div>
@@ -89,12 +95,14 @@ function DataTab({
   dbInfo: DbInfo | null;
   showToast: (type: "success" | "error" | "info", msg: string) => void;
 }) {
+  const { t } = useTranslation();
+
   const handleShowInFinder = async () => {
     if (!dbInfo) return;
     try {
       await shellOpen(dbInfo.dirPath);
     } catch (e) {
-      showToast("error", `Не удалось открыть Finder: ${e}`);
+      showToast("error", t("settings.toastFinderError", { error: e }));
     }
   };
 
@@ -102,9 +110,9 @@ function DataTab({
     if (!dbInfo) return;
     try {
       await navigator.clipboard.writeText(dbInfo.path);
-      showToast("success", "Путь скопирован");
+      showToast("success", t("settings.toastPathCopied"));
     } catch {
-      showToast("error", "Не удалось скопировать");
+      showToast("error", t("settings.toastCopyError"));
     }
   };
 
@@ -118,7 +126,7 @@ function DataTab({
     <div className="space-y-4">
       <div>
         <label className="block text-xs font-medium text-text-secondary mb-1">
-          Путь к базе данных
+          {t("settings.dbPath")}
         </label>
         <div className="bg-surface-0 border border-border rounded-lg px-3 py-2 text-xs font-mono text-text-primary break-all">
           {dbInfo?.path ?? "—"}
@@ -128,26 +136,26 @@ function DataTab({
             className="px-3 py-1.5 text-xs bg-surface-2 hover:bg-surface-3 border border-border rounded-lg text-text-primary transition-colors"
             onClick={handleShowInFinder}
           >
-            ⌂ Показать в Finder
+            {t("settings.showInFinder")}
           </button>
           <button
             className="px-3 py-1.5 text-xs bg-surface-2 hover:bg-surface-3 border border-border rounded-lg text-text-primary transition-colors"
             onClick={handleCopyPath}
           >
-            ⎘ Скопировать путь
+            {t("settings.copyPath")}
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-surface-0 border border-border rounded-lg px-3 py-2">
-          <div className="text-xs text-text-secondary mb-0.5">Размер файла</div>
+          <div className="text-xs text-text-secondary mb-0.5">{t("settings.fileSize")}</div>
           <div className="text-sm font-medium text-text-primary">
             {dbInfo ? formatSize(dbInfo.sizeBytes) : "—"}
           </div>
         </div>
         <div className="bg-surface-0 border border-border rounded-lg px-3 py-2">
-          <div className="text-xs text-text-secondary mb-0.5">Создана</div>
+          <div className="text-xs text-text-secondary mb-0.5">{t("settings.createdAt")}</div>
           <div className="text-sm font-medium text-text-primary">
             {dbInfo?.createdAt ?? "—"}
           </div>
@@ -166,6 +174,7 @@ function TerminalTab({
   settings: Record<string, string>;
   onChange: (key: string, value: string) => void;
 }) {
+  const { t } = useTranslation();
   const fontSize = parseInt(settings["terminal.fontSize"] ?? "14");
   const fontFamily = settings["terminal.fontFamily"] ?? "Menlo";
   const scrollback = parseInt(settings["terminal.scrollback"] ?? "5000");
@@ -175,7 +184,7 @@ function TerminalTab({
     <div className="space-y-4">
       <div>
         <label className="block text-xs font-medium text-text-secondary mb-2">
-          Размер шрифта: {fontSize}px
+          {t("settings.fontSize", { size: fontSize })}
         </label>
         <input
           type="range"
@@ -186,14 +195,14 @@ function TerminalTab({
           className="w-full accent-accent"
         />
         <div className="flex justify-between text-2xs text-text-muted mt-1">
-          <span>12px</span>
-          <span>20px</span>
+          <span>{t("settings.fontSizeMin")}</span>
+          <span>{t("settings.fontSizeMax")}</span>
         </div>
       </div>
 
       <div>
         <label className="block text-xs font-medium text-text-secondary mb-2">
-          Шрифт
+          {t("settings.font")}
         </label>
         <div className="grid grid-cols-2 gap-2">
           {["Menlo", "Monaco", "JetBrains Mono", "Fira Code"].map((font) => (
@@ -215,7 +224,7 @@ function TerminalTab({
 
       <div>
         <label className="block text-xs font-medium text-text-secondary mb-2">
-          Scrollback: {scrollback.toLocaleString()} строк
+          {t("settings.scrollback", { count: scrollback.toLocaleString() })}
         </label>
         <input
           type="range"
@@ -227,14 +236,14 @@ function TerminalTab({
           className="w-full accent-accent"
         />
         <div className="flex justify-between text-2xs text-text-muted mt-1">
-          <span>1 000</span>
-          <span>50 000</span>
+          <span>{t("settings.scrollbackMin")}</span>
+          <span>{t("settings.scrollbackMax")}</span>
         </div>
       </div>
 
       <div>
         <label className="block text-xs font-medium text-text-secondary mb-2">
-          Курсор
+          {t("settings.cursor")}
         </label>
         <div className="flex gap-2">
           {(["block", "underline", "bar"] as const).map((style) => (
@@ -247,7 +256,7 @@ function TerminalTab({
               }`}
               onClick={() => onChange("terminal.cursorStyle", style)}
             >
-              {style === "block" ? "Блок" : style === "underline" ? "Черта" : "Линия"}
+              {style === "block" ? t("settings.cursorBlock") : style === "underline" ? t("settings.cursorUnderline") : t("settings.cursorBar")}
             </button>
           ))}
         </div>
@@ -265,30 +274,31 @@ function InterfaceTab({
   settings: Record<string, string>;
   onChange: (key: string, value: string) => void;
 }) {
+  const { t } = useTranslation();
   const currentTheme = settings["ui.theme"] ?? "dark";
 
   return (
     <div className="space-y-5">
       <div>
         <label className="block text-xs font-medium text-text-secondary mb-3">
-          Тема
+          {t("settings.theme")}
         </label>
         <div className="grid grid-cols-2 gap-2">
-          {THEMES.map((t) => (
+          {THEMES.map((theme) => (
             <button
-              key={t.id}
+              key={theme.id}
               className={`px-3 py-2 text-xs rounded-lg border transition-colors text-left flex items-center gap-2 ${
-                currentTheme === t.id
+                currentTheme === theme.id
                   ? "bg-accent/15 border-accent text-accent"
                   : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
               }`}
-              onClick={() => onChange("ui.theme", t.id)}
+              onClick={() => onChange("ui.theme", theme.id)}
             >
               <span
                 className="w-3 h-3 rounded-full shrink-0 border border-white/20"
-                style={{ background: t.xterm.cursor }}
+                style={{ background: theme.xterm.cursor }}
               />
-              {t.label}
+              {theme.label}
             </button>
           ))}
           <button
@@ -300,38 +310,35 @@ function InterfaceTab({
             onClick={() => onChange("ui.theme", "random")}
           >
             <span className="text-base leading-none">🎲</span>
-            Случайная
+            {t("settings.themeRandom")}
           </button>
         </div>
         {currentTheme === "random" && (
           <p className="text-2xs text-text-muted mt-2">
-            При каждом запуске выбирается случайная тема из 10
+            {t("settings.themeRandomNote")}
           </p>
         )}
       </div>
 
       <div>
         <label className="block text-xs font-medium text-text-secondary mb-2">
-          Язык
+          {t("settings.language")}
         </label>
-        <div className="flex gap-2">
-          {(["ru", "en"] as const).map((lang) => (
+        <div className="flex flex-wrap gap-2">
+          {(["ru", "en", "zh", "fr", "kk"] as const).map((lang) => (
             <button
               key={lang}
-              className={`px-4 py-1.5 text-xs rounded-lg border transition-colors ${
+              className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
                 (settings["ui.language"] ?? "ru") === lang
                   ? "bg-accent/15 border-accent text-accent"
                   : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
               }`}
               onClick={() => onChange("ui.language", lang)}
             >
-              {lang === "ru" ? "🇷🇺 Русский" : "🇺🇸 English"}
+              {t(`settings.lang${lang.charAt(0).toUpperCase() + lang.slice(1)}`)}
             </button>
           ))}
         </div>
-        <p className="text-2xs text-text-muted mt-2">
-          Локализация — Этап 8
-        </p>
       </div>
     </div>
   );

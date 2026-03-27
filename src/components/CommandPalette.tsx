@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useAppStore } from "../stores/appStore";
 import type { TreeNode } from "../types";
+import { useTranslation } from "react-i18next";
 
 interface CommandPaletteProps {
   onClose: () => void;
@@ -13,6 +14,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
   const allNodes = getFlatTree();
 
@@ -71,14 +73,14 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Найти workspace, проект или консоль..."
+            placeholder={t("commandPalette.searchPlaceholder")}
             className="flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
           />
           <kbd className="text-2xs text-text-muted bg-surface-3 px-1.5 py-0.5 rounded border border-border">Esc</kbd>
         </div>
         <div ref={listRef} className="max-h-80 overflow-y-auto py-1">
           {filtered.length === 0 ? (
-            <div className="px-4 py-6 text-center text-text-muted text-xs">Ничего не найдено</div>
+            <div className="px-4 py-6 text-center text-text-muted text-xs">{t("commandPalette.nothingFound")}</div>
           ) : (
             filtered.map((node, i) => (
               <div
@@ -105,9 +107,9 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
           )}
         </div>
         <div className="px-4 py-2 border-t border-border flex items-center gap-4 text-2xs text-text-muted">
-          <span>↑↓ навигация</span>
-          <span>Enter открыть</span>
-          <span>Esc закрыть</span>
+          <span>{t("commandPalette.navHint")}</span>
+          <span>{t("commandPalette.openHint")}</span>
+          <span>{t("commandPalette.closeHint")}</span>
         </div>
       </div>
     </div>,

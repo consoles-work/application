@@ -17,6 +17,7 @@ import {
   searchWiki,
 } from "../lib/tauriCommands";
 import type { WikiPage } from "../types";
+import { useTranslation } from "react-i18next";
 
 const lowlight = createLowlight(common);
 
@@ -37,12 +38,12 @@ function newPage(parentType: WikiPage["parentType"], parentId: string): WikiPage
   };
 }
 
-function getContextLabel(parentType: WikiPage["parentType"]): string {
+function getContextLabel(parentType: WikiPage["parentType"], t: (key: string) => string): string {
   switch (parentType) {
-    case "global": return "Глобальная wiki";
-    case "workspace": return "Workspace";
-    case "project": return "Проект";
-    case "console": return "Консоль";
+    case "global": return t("wikiPanel.contextGlobal");
+    case "workspace": return t("wikiPanel.contextWorkspace");
+    case "project": return t("wikiPanel.contextProject");
+    case "console": return t("wikiPanel.contextConsole");
   }
 }
 
@@ -57,6 +58,7 @@ function TagsBar({ tags, onChange }: TagsBarProps) {
   const [inputVisible, setInputVisible] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const { t } = useTranslation();
 
   const addTag = (raw: string) => {
     const tag = raw.trim().replace(/^#/, "").replace(/,/g, "");
@@ -87,7 +89,7 @@ function TagsBar({ tags, onChange }: TagsBarProps) {
 
   return (
     <div className="flex items-center gap-1 px-4 py-1.5 border-b border-border/50 flex-wrap min-h-[28px]">
-      <span className="text-2xs text-text-muted shrink-0">Теги:</span>
+      <span className="text-2xs text-text-muted shrink-0">{t("wikiPanel.tagLabel")}</span>
       {tags.map((tag) => (
         <span
           key={tag}
@@ -109,7 +111,7 @@ function TagsBar({ tags, onChange }: TagsBarProps) {
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={onKeyDown}
           onBlur={() => { if (inputValue) addTag(inputValue); else setInputVisible(false); }}
-          placeholder="тег..."
+          placeholder={t("wikiPanel.tagPlaceholder")}
           className="text-2xs bg-surface-3 rounded px-1.5 py-0.5 outline-none text-text-primary w-20 border border-accent/50"
         />
       ) : (
@@ -117,7 +119,7 @@ function TagsBar({ tags, onChange }: TagsBarProps) {
           onClick={() => setInputVisible(true)}
           className="text-2xs px-1.5 py-0.5 rounded border border-dashed border-border text-text-muted hover:text-accent hover:border-accent"
         >
-          + тег
+          {t("wikiPanel.addTag")}
         </button>
       )}
     </div>
@@ -138,6 +140,7 @@ export function WikiPanel() {
     removeWikiPage,
     showToast,
   } = useAppStore();
+  const { t } = useTranslation();
 
   // Контекст: откуда грузить страницы
   const parentType: WikiPage["parentType"] = selectedNode?.type ?? "global";
@@ -188,7 +191,7 @@ export function WikiPanel() {
     extensions: [
       StarterKit.configure({ codeBlock: false }),
       CodeBlockLowlight.configure({ lowlight }),
-      Placeholder.configure({ placeholder: "Начните писать..." }),
+      Placeholder.configure({ placeholder: t("wikiPanel.editorPlaceholder") }),
       TaskList,
       TaskItem.configure({ nested: true }),
     ],
@@ -261,18 +264,18 @@ export function WikiPanel() {
 
   const handleDeletePage = async () => {
     if (!activePage) return;
-    if (!confirm(`Удалить страницу "${activePage.title || "Без названия"}"?`)) return;
+    if (!confirm(t("wikiPanel.deletePageConfirm", { title: activePage.title || t("wikiPanel.untitled") }))) return;
     try {
       await deleteWikiPage(activePage.id);
       removeWikiPage(activePage.id);
-      showToast("success", "Страница удалена");
+      showToast("success", t("wikiPanel.toastPageDeleted"));
     } catch (e) {
       showToast("error", String(e));
     }
   };
 
   // Заголовок контекста
-  const contextLabel = `${getContextLabel(parentType)}${selectedNode ? "" : ""}`;
+  const contextLabel = getContextLabel(parentType, t);
 
   return (
     <div className="h-full flex flex-col bg-surface-1 min-w-0">
@@ -286,7 +289,7 @@ export function WikiPanel() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Escape") setSearchActive(false); }}
-              placeholder="Поиск по wiki..."
+              placeholder={t("wikiPanel.searchPlaceholder")}
               className="flex-1 text-xs bg-transparent outline-none text-text-primary placeholder:text-text-muted"
             />
             <button onClick={() => setSearchActive(false)} className="text-text-muted hover:text-text-primary shrink-0">
@@ -305,7 +308,7 @@ export function WikiPanel() {
               <button
                 onClick={() => setSearchActive(true)}
                 className="p-1 rounded text-text-muted hover:text-text-primary transition-colors"
-                title="Поиск по wiki"
+                title={t("wikiPanel.searchTooltip")}
               >
                 <Search size={13} />
               </button>
@@ -316,14 +319,14 @@ export function WikiPanel() {
                     ? "bg-accent-subtle text-accent"
                     : "text-text-muted hover:text-text-secondary"
                 }`}
-                title="Список страниц"
+                title={t("wikiPanel.pagesTooltip")}
               >
-                Страницы ({currentWikiPages.length})
+                {t("wikiPanel.pages", { count: currentWikiPages.length })}
               </button>
               <button
                 onClick={handleNewPage}
                 className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-2xs text-accent hover:bg-accent-subtle"
-                title="Новая страница"
+                title={t("wikiPanel.newPageTooltip")}
               >
                 <Plus size={11} />
               </button>
@@ -336,7 +339,7 @@ export function WikiPanel() {
       {searchActive && searchQuery.trim() && (
         <div className="border-b border-border bg-surface-2 max-h-64 overflow-y-auto shrink-0">
           {searchResults.length === 0 ? (
-            <div className="px-3 py-3 text-2xs text-text-muted text-center">Ничего не найдено</div>
+            <div className="px-3 py-3 text-2xs text-text-muted text-center">{t("common.nothingFound")}</div>
           ) : (
             searchResults.map((page) => (
               <div
@@ -355,7 +358,7 @@ export function WikiPanel() {
                     {page.title || "Без названия"}
                   </span>
                   <span className="text-2xs text-text-muted shrink-0 capitalize">
-                    {page.parentType === "global" ? "Глобальная" : page.parentType}
+                    {page.parentType === "global" ? t("wikiPanel.contextGlobal") : page.parentType}
                   </span>
                 </div>
                 {page.tags.length > 0 && (
@@ -377,7 +380,7 @@ export function WikiPanel() {
       {showPageList && (
         <div className="border-b border-border bg-surface-2 max-h-48 overflow-y-auto shrink-0">
           {currentWikiPages.length === 0 ? (
-            <div className="px-3 py-3 text-2xs text-text-muted text-center">Нет страниц</div>
+            <div className="px-3 py-3 text-2xs text-text-muted text-center">{t("wikiPanel.noPages")}</div>
           ) : (
             currentWikiPages.map((page) => (
               <div
@@ -390,7 +393,7 @@ export function WikiPanel() {
                 }`}
               >
                 {page.pinned && <Pin size={10} className="shrink-0 text-accent" />}
-                <span className="truncate flex-1">{page.title || "Без названия"}</span>
+                <span className="truncate flex-1">{page.title || t("wikiPanel.untitled")}</span>
                 <div className="flex gap-1 shrink-0">
                   {page.tags.slice(0, 2).map((tag) => (
                     <span key={tag} className="text-2xs px-1 py-0.5 rounded bg-surface-3 text-text-muted">
@@ -409,12 +412,12 @@ export function WikiPanel() {
         <div className="flex-1 flex items-center justify-center text-text-muted">
           <div className="text-center">
             <div className="text-3xl mb-3">📖</div>
-            <div className="text-xs mb-2">Нет страниц</div>
+            <div className="text-xs mb-2">{t("wikiPanel.noPages")}</div>
             <button
               onClick={handleNewPage}
               className="text-xs px-3 py-1.5 rounded bg-accent/20 text-accent hover:bg-accent/30"
             >
-              + Создать страницу
+              {t("wikiPanel.createPage")}
             </button>
           </div>
         </div>
@@ -425,7 +428,7 @@ export function WikiPanel() {
             type="text"
             value={activePage.title}
             onChange={(e) => handleTitleChange(e.target.value)}
-            placeholder="Заголовок страницы..."
+            placeholder={t("wikiPanel.titlePlaceholder")}
             className="px-4 py-2.5 bg-transparent border-b border-border text-sm font-semibold text-text-primary outline-none placeholder:text-text-muted shrink-0"
           />
 
@@ -447,13 +450,13 @@ export function WikiPanel() {
           <div className="h-8 flex items-center justify-between px-3 border-t border-border shrink-0">
             <span className="text-2xs text-text-muted truncate">
               {activePage.updatedAt
-                ? `Сохранено: ${new Date(activePage.updatedAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`
+                ? t("wikiPanel.savedAt", { time: new Date(activePage.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })
                 : ""}
             </span>
             <button
               onClick={handleDeletePage}
               className="flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded text-text-muted hover:text-red-400 hover:bg-red-400/10"
-              title="Удалить страницу"
+              title={t("wikiPanel.deletePageTooltip")}
             >
               <Trash2 size={11} />
             </button>

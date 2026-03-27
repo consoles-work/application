@@ -10,6 +10,7 @@ import {
 } from "../lib/tauriCommands";
 import { setNodeDanger } from "../lib/tauriCommands";
 import type { TreeNode } from "../types";
+import { useTranslation } from "react-i18next";
 
 export interface ContextMenuState {
   x: number;
@@ -50,6 +51,7 @@ export function ContextMenu({
     setActiveSession,
     showToast,
   } = useAppStore();
+  const { t } = useTranslation();
 
   // Закрывать по клику снаружи или Escape
   useEffect(() => {
@@ -75,48 +77,48 @@ export function ContextMenu({
   const handleDeleteWorkspace = async () => {
     onClose();
     const confirmed = await ask(
-      `Удалить workspace «${menu.node.name}»?\nБудут удалены все проекты и консоли внутри.`,
-      { title: "Удаление workspace", kind: "warning" }
+      t("contextMenu.deleteWorkspaceConfirm", { name: menu.node.name }),
+      { title: t("contextMenu.deleteWorkspaceTitle"), kind: "warning" }
     );
     if (!confirmed) return;
     try {
       await deleteWorkspace(menu.node.id);
       removeWorkspace(menu.node.id);
-      showToast("success", `Workspace удалён`);
+      showToast("success", t("contextMenu.toastWorkspaceDeleted"));
     } catch (e) {
-      showToast("error", `Ошибка удаления: ${e}`);
+      showToast("error", t("contextMenu.toastDeleteError", { error: e }));
     }
   };
 
   const handleDeleteProject = async () => {
     onClose();
     const confirmed = await ask(
-      `Удалить проект «${menu.node.name}»?\nБудут удалены все консоли внутри.`,
-      { title: "Удаление проекта", kind: "warning" }
+      t("contextMenu.deleteProjectConfirm", { name: menu.node.name }),
+      { title: t("contextMenu.deleteProjectTitle"), kind: "warning" }
     );
     if (!confirmed) return;
     try {
       await deleteProject(menu.node.id);
       removeProject(menu.node.id);
-      showToast("success", `Проект удалён`);
+      showToast("success", t("contextMenu.toastProjectDeleted"));
     } catch (e) {
-      showToast("error", `Ошибка удаления: ${e}`);
+      showToast("error", t("contextMenu.toastDeleteError", { error: e }));
     }
   };
 
   const handleDeleteConsole = async () => {
     onClose();
     const confirmed = await ask(
-      `Удалить консоль «${menu.node.name}»?`,
-      { title: "Удаление консоли", kind: "warning" }
+      t("contextMenu.deleteConsoleConfirm", { name: menu.node.name }),
+      { title: t("contextMenu.deleteConsoleTitle"), kind: "warning" }
     );
     if (!confirmed) return;
     try {
       await deleteConsole(menu.node.id);
       removeConsole(menu.node.id);
-      showToast("success", `Консоль удалена`);
+      showToast("success", t("contextMenu.toastConsoleDeleted"));
     } catch (e) {
-      showToast("error", `Ошибка удаления: ${e}`);
+      showToast("error", t("contextMenu.toastDeleteError", { error: e }));
     }
   };
 
@@ -127,7 +129,7 @@ export function ContextMenu({
       await shellOpen(`vscode://file${proj.path}`);
     } catch {
       // Fallback: попробовать через shell
-      showToast("info", "Открытие в VS Code...");
+      showToast("info", t("contextMenu.toastOpeningVSCode"));
     }
   };
 
@@ -137,7 +139,7 @@ export function ContextMenu({
     try {
       await shellOpen(proj.path);
     } catch (e) {
-      showToast("error", `Не удалось открыть: ${e}`);
+      showToast("error", t("contextMenu.toastOpenError", { error: e }));
     }
   };
 
@@ -165,12 +167,13 @@ export function ContextMenu({
       await setNodeDanger(menu.node.id, menu.node.type, isDanger, dangerLabel);
       onToggleDanger(menu.node);
     } catch (e) {
-      showToast("error", `Ошибка: ${e}`);
+      showToast("error", t("contextMenu.toastDangerError", { error: e }));
     }
   };
 
   const items = getMenuItems({
     node: menu.node,
+    t,
     onCreateProject: () => { onClose(); onCreateProject(menu.node.id); },
     onCreateConsole: () => { onClose(); onCreateConsole(menu.node.id); },
     onRename: () => { onClose(); onRename(menu.node); },
@@ -219,6 +222,7 @@ type MenuItem =
 
 function getMenuItems(handlers: {
   node: TreeNode;
+  t: (key: string) => string;
   onCreateProject: () => void;
   onCreateConsole: () => void;
   onRename: () => void;
@@ -233,49 +237,49 @@ function getMenuItems(handlers: {
   onCloneConsole: () => void;
   onCloneProject: () => void;
 }): MenuItem[] {
-  const { node } = handlers;
+  const { node, t } = handlers;
   const data = node.data as { isDanger?: boolean };
 
   if (node.type === "workspace") {
     return [
-      { label: "Добавить проект", icon: "+", action: handlers.onCreateProject },
+      { label: t("contextMenu.addProject"), icon: "+", action: handlers.onCreateProject },
       "separator",
-      { label: "Переименовать", icon: "✎", action: handlers.onRename },
+      { label: t("contextMenu.rename"), icon: "✎", action: handlers.onRename },
       "separator",
-      { label: "Удалить workspace", icon: "✕", action: handlers.onDeleteWorkspace, danger: true },
+      { label: t("contextMenu.deleteWorkspace"), icon: "✕", action: handlers.onDeleteWorkspace, danger: true },
     ];
   }
 
   if (node.type === "project") {
     return [
-      { label: "Добавить консоль", icon: "+", action: handlers.onCreateConsole },
-      { label: "Дублировать проект", icon: "⎘", action: handlers.onCloneProject },
+      { label: t("contextMenu.addConsole"), icon: "+", action: handlers.onCreateConsole },
+      { label: t("contextMenu.cloneProject"), icon: "⎘", action: handlers.onCloneProject },
       "separator",
-      { label: "Открыть в VS Code", icon: "⎋", action: handlers.onOpenVSCode },
-      { label: "Открыть в Finder", icon: "⌂", action: handlers.onOpenFinder },
+      { label: t("contextMenu.openInVSCode"), icon: "⎋", action: handlers.onOpenVSCode },
+      { label: t("contextMenu.openInFinder"), icon: "⌂", action: handlers.onOpenFinder },
       "separator",
       data.isDanger
-        ? { label: "Снять пометку опасности", icon: "✓", action: handlers.onToggleDanger }
-        : { label: "⚠ Пометить как опасный...", icon: "⚠", action: handlers.onToggleDanger },
+        ? { label: t("contextMenu.removeDangerFlag"), icon: "✓", action: handlers.onToggleDanger }
+        : { label: t("contextMenu.markAsDangerous"), icon: "⚠", action: handlers.onToggleDanger },
       "separator",
-      { label: "Переименовать", icon: "✎", action: handlers.onRename },
+      { label: t("contextMenu.rename"), icon: "✎", action: handlers.onRename },
       "separator",
-      { label: "Удалить проект", icon: "✕", action: handlers.onDeleteProject, danger: true },
+      { label: t("contextMenu.deleteProject"), icon: "✕", action: handlers.onDeleteProject, danger: true },
     ];
   }
 
   // console
   return [
-    { label: "Запустить", icon: "▶", action: handlers.onRunConsole },
-    { label: "Настройки подключения...", icon: "⚙", action: handlers.onEditConsole },
-    { label: "Дублировать консоль", icon: "⎘", action: handlers.onCloneConsole },
+    { label: t("contextMenu.runConsole"), icon: "▶", action: handlers.onRunConsole },
+    { label: t("contextMenu.connectionSettings"), icon: "⚙", action: handlers.onEditConsole },
+    { label: t("contextMenu.cloneConsole"), icon: "⎘", action: handlers.onCloneConsole },
     "separator",
     data.isDanger
-      ? { label: "Снять пометку опасности", icon: "✓", action: handlers.onToggleDanger }
-      : { label: "⚠ Пометить как опасный...", icon: "⚠", action: handlers.onToggleDanger },
+      ? { label: t("contextMenu.removeDangerFlag"), icon: "✓", action: handlers.onToggleDanger }
+      : { label: t("contextMenu.markAsDangerous"), icon: "⚠", action: handlers.onToggleDanger },
     "separator",
-    { label: "Переименовать", icon: "✎", action: handlers.onRename },
+    { label: t("contextMenu.rename"), icon: "✎", action: handlers.onRename },
     "separator",
-    { label: "Удалить консоль", icon: "✕", action: handlers.onDeleteConsole, danger: true },
+    { label: t("contextMenu.deleteConsole"), icon: "✕", action: handlers.onDeleteConsole, danger: true },
   ];
 }

@@ -8,6 +8,7 @@ import { CreateProjectDialog } from "./dialogs/CreateProjectDialog";
 import { CreateConsoleDialog } from "./dialogs/CreateConsoleDialog";
 import { EditConsoleDialog } from "./dialogs/EditConsoleDialog";
 import type { TreeNode, ConsoleConfig } from "../types";
+import { useTranslation } from "react-i18next";
 
 // ══════════════════════════════════════
 // TreePanel — дерево проектов
@@ -32,6 +33,7 @@ export function TreePanel() {
   } = useAppStore();
 
   const nodes = getFlatTree();
+  const { t } = useTranslation();
 
   // ── Контекстное меню ──
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -135,9 +137,9 @@ export function TreePanel() {
         await updateConsole(node.id, newName);
         storeUpdateConsole(node.id, { name: newName });
       }
-      showToast("success", `Переименовано в «${newName}»`);
+      showToast("success", t("treePanel.toastRenamedTo", { name: newName }));
     } catch (e) {
-      showToast("error", `Ошибка переименования: ${e}`);
+      showToast("error", t("treePanel.toastRenameError", { error: e }));
     }
   };
 
@@ -181,7 +183,7 @@ export function TreePanel() {
   const handleToggleDanger = async (node: TreeNode) => {
     const data = node.data as { isDanger?: boolean; dangerLabel?: string };
     if (!data.isDanger) {
-      const label = window.prompt("Метка предупреждения:", data.dangerLabel || "PRODUCTION");
+      const label = window.prompt(t("treePanel.dangerLabelPrompt"), data.dangerLabel || "PRODUCTION");
       if (label === null) return; // отмена
       const finalLabel = label.trim() || "PRODUCTION";
       try {
@@ -189,7 +191,7 @@ export function TreePanel() {
         if (node.type === "project") storeUpdateProject(node.id, { isDanger: true, dangerLabel: finalLabel } as any);
         else if (node.type === "console") storeUpdateConsole(node.id, { isDanger: true, dangerLabel: finalLabel } as any);
       } catch (e) {
-        showToast("error", `Ошибка: ${e}`);
+        showToast("error", t("treePanel.toastDangerError", { error: e }));
       }
     } else {
       try {
@@ -197,7 +199,7 @@ export function TreePanel() {
         if (node.type === "project") storeUpdateProject(node.id, { isDanger: false } as any);
         else if (node.type === "console") storeUpdateConsole(node.id, { isDanger: false } as any);
       } catch (e) {
-        showToast("error", `Ошибка: ${e}`);
+        showToast("error", t("treePanel.toastDangerError", { error: e }));
       }
     }
   };
@@ -217,13 +219,13 @@ export function TreePanel() {
         if (projectId) break;
       }
       if (!projectId) {
-        showToast("error", "Не удалось найти родительский проект");
+        showToast("error", t("treePanel.toastParentProjectNotFound"));
         return;
       }
       storeAddConsole(projectId, cloned);
-      showToast("success", `Консоль «${cloned.name}» создана`);
+      showToast("success", t("treePanel.toastConsoleCloned", { name: cloned.name }));
     } catch (e) {
-      showToast("error", `Ошибка дублирования: ${e}`);
+      showToast("error", t("treePanel.toastCloneError", { error: e }));
     }
   };
 
@@ -235,13 +237,13 @@ export function TreePanel() {
         ws.projects.some((p) => p.id === node.id)
       );
       if (!parentWs) {
-        showToast("error", "Не удалось найти workspace");
+        showToast("error", t("treePanel.toastWorkspaceNotFound"));
         return;
       }
       storeAddProject(parentWs.id, cloned);
-      showToast("success", `Проект «${cloned.name}» создан`);
+      showToast("success", t("treePanel.toastProjectCloned", { name: cloned.name }));
     } catch (e) {
-      showToast("error", `Ошибка дублирования: ${e}`);
+      showToast("error", t("treePanel.toastCloneError", { error: e }));
     }
   };
 
@@ -258,7 +260,7 @@ export function TreePanel() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Escape") closeSearch(); }}
-                placeholder="Поиск..."
+                placeholder={t("treePanel.searchPlaceholder")}
                 className="flex-1 bg-transparent text-xs text-text-primary outline-none placeholder:text-text-muted"
               />
               <button onClick={closeSearch} className="text-text-muted hover:text-text-primary">
@@ -268,18 +270,18 @@ export function TreePanel() {
           ) : (
             <>
               <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider flex-1">
-                Projects
+                {t("treePanel.header")}
               </span>
               <button
                 onClick={() => setSearchActive(true)}
                 className="text-text-muted hover:text-text-primary p-0.5 rounded"
-                title="Поиск (Ctrl+F)"
+                title={t("treePanel.searchTooltip")}
               >
                 <Search size={13} />
               </button>
               <button
                 className="text-text-muted hover:text-text-primary text-lg leading-none"
-                title="Создать Workspace"
+                title={t("treePanel.createWorkspaceTooltip")}
                 onClick={() => setCreateWorkspace(true)}
               >
                 +
@@ -292,7 +294,7 @@ export function TreePanel() {
         {searchActive && searchQuery.trim() && (
           <div className="border-b border-border bg-surface-0 overflow-y-auto shrink-0" style={{ maxHeight: "60%" }}>
             {searchResults.length === 0 ? (
-              <div className="px-3 py-3 text-2xs text-text-muted text-center">Ничего не найдено</div>
+              <div className="px-3 py-3 text-2xs text-text-muted text-center">{t("common.nothingFound")}</div>
             ) : (
               searchResults.map((node) => (
                 <div
@@ -389,7 +391,7 @@ export function TreePanel() {
 
           {nodes.length === 0 && (
             <div className="px-4 py-8 text-center text-text-muted text-xs">
-              Нажмите + чтобы создать workspace
+              {t("treePanel.emptyState")}
             </div>
           )}
         </div>

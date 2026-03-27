@@ -7,6 +7,8 @@ import { useAppStore } from "../stores/appStore";
 import { spawnPty, writeToPty, resizePty, killPty } from "../lib/tauriCommands";
 import { getThemeById, resolveThemeId } from "../lib/themes";
 import type { TerminalSession, ConsoleConfig, Project } from "../types";
+import { useTranslation } from "react-i18next";
+import i18n from "../lib/i18n";
 
 // ══════════════════════════════════════
 // Вспомогательные функции поиска по дереву
@@ -40,11 +42,12 @@ function findProjectForConsole(consoleId: string): Project | undefined {
 export function TerminalPanel() {
   const { sessions, activeSessionId, setActiveSession, closeSession } =
     useAppStore();
+  const { t } = useTranslation();
 
   const handleCloseTab = async (e: React.MouseEvent, session: TerminalSession) => {
     e.stopPropagation();
-    const confirmed = await ask(`Закрыть вкладку «${session.title}»?`, {
-      title: "Закрыть вкладку",
+    const confirmed = await ask(t("terminalPanel.closeTabConfirm", { title: session.title }), {
+      title: t("terminalPanel.closeTabTitle"),
       kind: "warning",
     });
     if (confirmed) closeSession(session.id);
@@ -90,7 +93,7 @@ export function TerminalPanel() {
 
         {sessions.length === 0 && (
           <span className="px-3 text-xs text-text-muted">
-            Выберите консоль в дереве →
+            {t("terminalPanel.selectConsole")}
           </span>
         )}
       </div>
@@ -254,7 +257,7 @@ function TerminalView({
           });
         }
       } catch (e) {
-        term.write(`\x1b[31mОшибка запуска PTY: ${e}\x1b[0m\r\n`);
+        term.write(`\x1b[31m${i18n.t("terminalPanel.ptyError", { error: e })}\x1b[0m\r\n`);
       }
     })();
 
@@ -300,9 +303,7 @@ function TerminalView({
       {isDanger && (
         <div className="shrink-0 flex items-center gap-3 px-4 py-1.5 bg-red-950/60 border-b border-red-500/40">
           <span className="text-red-400 font-bold text-xs">⚠ {dangerLabel}</span>
-          <span className="text-red-400/60 text-2xs">
-            Осторожно — это продакшн-окружение. Проверяйте команды перед запуском.
-          </span>
+          <DangerWarning />
         </div>
       )}
       {/* Terminal container с красной рамкой для опасных */}
@@ -318,12 +319,22 @@ function TerminalView({
   );
 }
 
+function DangerWarning() {
+  const { t } = useTranslation();
+  return (
+    <span className="text-red-400/60 text-2xs">
+      {t("terminalPanel.dangerWarning")}
+    </span>
+  );
+}
+
 function EmptyState() {
+  const { t } = useTranslation();
   return (
     <div className="h-full flex flex-col items-center justify-center text-text-muted">
       <div className="text-4xl mb-4">💻</div>
-      <div className="text-sm font-medium mb-1">Нет открытых терминалов</div>
-      <div className="text-xs">Кликните на консоль в дереве проектов слева</div>
+      <div className="text-sm font-medium mb-1">{t("terminalPanel.noTerminals")}</div>
+      <div className="text-xs">{t("terminalPanel.clickConsole")}</div>
     </div>
   );
 }
