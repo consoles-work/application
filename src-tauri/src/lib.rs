@@ -52,6 +52,14 @@ pub fn run() {
             get_db_info,
             quit_app,
             reset_quit_dialog,
+            create_ai_session,
+            load_ai_sessions,
+            rename_ai_session,
+            delete_ai_session,
+            load_ai_messages,
+            save_ai_message,
+            update_ai_message,
+            clear_ai_session,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

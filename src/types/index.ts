@@ -99,6 +99,25 @@ export interface SelectedNode {
   id: string;
 }
 
+// ── AI чат-сессии ──
+
+export interface AiSession {
+  id: string;
+  title: string;
+  provider: string;
+  model: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiMessage {
+  id: string;
+  sessionId: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+}
+
 // ── Настройки приложения ──
 
 export interface AppSettings {

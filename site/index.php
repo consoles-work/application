@@ -193,6 +193,26 @@ function h(string $s): string { return $s; }
               <div class="mt-4"><span class="text-mint">~/projects/api</span> <span class="text-brand">main</span> <span class="text-txt-400">$</span><span class="cursor-blink"></span></div>
             </div>
           </div>
+          <!-- AI panel -->
+          <div class="w-52 border-l border-stroke shrink-0 overflow-hidden flex flex-col">
+            <div class="h-9 flex items-center border-b border-stroke px-3 shrink-0 gap-2">
+              <div class="text-[10px] uppercase tracking-widest text-brand font-mono font-semibold">AI</div>
+              <span class="w-1.5 h-1.5 rounded-full bg-brand animate-pulse"></span>
+            </div>
+            <div class="flex-1 p-3 overflow-hidden flex flex-col gap-2">
+              <div class="bg-bg-700 rounded-lg p-2 text-[11px] text-txt-300 leading-4">Why is nginx 502?</div>
+              <div class="bg-brand/10 rounded-lg p-2 text-[11px] text-txt-200 leading-4">This usually means the upstream server is down or not listening on the expected port...</div>
+              <div class="bg-bg-700 rounded-lg p-2 text-[11px] text-txt-300 leading-4">How do I restart it?</div>
+              <div class="bg-brand/10 rounded-lg p-2 text-[11px] text-txt-200 leading-4">Run <span class="text-mint font-mono">systemctl restart nginx</span> then check logs with <span class="text-mint font-mono">journalctl -u nginx</span></div>
+            </div>
+            <div class="px-3 pb-3 shrink-0">
+              <div class="flex items-center gap-1 bg-bg-700 rounded-lg px-2 py-1.5">
+                <span class="flex-1 text-[10px] text-txt-400">Ask anything...</span>
+                <span class="text-[9px] text-brand font-mono">⌘I</span>
+              </div>
+            </div>
+          </div>
+
           <div class="w-64 border-l border-stroke p-4 shrink-0 overflow-hidden">
             <div class="text-[10px] uppercase tracking-widest text-txt-400 mb-3">Wiki</div>
             <div class="text-sm font-semibold text-txt-100 mb-2">Deploy Process</div>
@@ -220,7 +240,7 @@ function h(string $s): string { return $s; }
         </h2>
         <p class="text-txt-300 text-lg max-w-xl mx-auto"><?= e($t['pillars_sub']) ?></p>
       </div>
-      <div class="grid md:grid-cols-3 gap-6">
+      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div class="feature-card rounded-2xl p-8" x-data x-intersect.once="$el.classList.add('is-visible')" style="transition-delay:0.05s">
           <div class="w-12 h-12 rounded-xl bg-brand/10 flex items-center justify-center mb-5"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6c8aff" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 16h2"/><path d="M11 12h2"/><path d="M15 8h2"/></svg></div>
           <h3 class="font-display font-semibold text-xl text-txt-100 mb-3"><?= e($t['card1_title']) ?></h3>
@@ -254,6 +274,17 @@ function h(string $s): string { return $s; }
             <div class="flex items-center gap-2"><span class="text-amber">→</span> <?= e($t['card3_f4']) ?></div>
           </div>
         </div>
+        <div class="feature-card rounded-2xl p-8" x-data x-intersect.once="$el.classList.add('is-visible')" style="transition-delay:0.35s">
+          <div class="w-12 h-12 rounded-xl bg-brand/10 flex items-center justify-center mb-5"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6c8aff" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg></div>
+          <h3 class="font-display font-semibold text-xl text-txt-100 mb-3"><?= e($t['card4_title']) ?></h3>
+          <p class="text-txt-300 text-sm leading-relaxed mb-4"><?= e($t['card4_desc']) ?></p>
+          <div class="text-sm text-txt-400 space-y-1.5">
+            <div class="flex items-center gap-2"><span class="text-brand">→</span> <?= e($t['card4_f1']) ?></div>
+            <div class="flex items-center gap-2"><span class="text-brand">→</span> <?= e($t['card4_f2']) ?></div>
+            <div class="flex items-center gap-2"><span class="text-brand">→</span> <?= e($t['card4_f3']) ?></div>
+            <div class="flex items-center gap-2"><span class="text-brand">→</span> <?= h($t['card4_f4']) ?></div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -272,6 +303,8 @@ function h(string $s): string { return $s; }
         <div><div class="text-mint font-mono text-sm mb-2"><?= e($t['fix2_label']) ?></div><h3 class="font-display font-semibold text-lg text-txt-100 mb-2"><?= e($t['fix2_title']) ?></h3><p class="text-txt-300 text-sm leading-relaxed"><?= e($t['fix2_desc']) ?></p></div>
         <div><div class="text-coral font-mono text-sm mb-2"><?= e($t['prob3_label']) ?></div><h3 class="font-display font-semibold text-lg text-txt-100 mb-2"><?= e($t['prob3_title']) ?></h3><p class="text-txt-300 text-sm leading-relaxed"><?= e($t['prob3_desc']) ?></p></div>
         <div><div class="text-mint font-mono text-sm mb-2"><?= e($t['fix3_label']) ?></div><h3 class="font-display font-semibold text-lg text-txt-100 mb-2"><?= e($t['fix3_title']) ?></h3><p class="text-txt-300 text-sm leading-relaxed"><?= e($t['fix3_desc']) ?></p></div>
+        <div><div class="text-coral font-mono text-sm mb-2"><?= e($t['prob4_label']) ?></div><h3 class="font-display font-semibold text-lg text-txt-100 mb-2"><?= e($t['prob4_title']) ?></h3><p class="text-txt-300 text-sm leading-relaxed"><?= e($t['prob4_desc']) ?></p></div>
+        <div><div class="text-mint font-mono text-sm mb-2"><?= e($t['fix4_label']) ?></div><h3 class="font-display font-semibold text-lg text-txt-100 mb-2"><?= e($t['fix4_title']) ?></h3><p class="text-txt-300 text-sm leading-relaxed"><?= h($t['fix4_desc']) ?></p></div>
       </div>
     </div>
   </section>
@@ -288,7 +321,7 @@ function h(string $s): string { return $s; }
         <div class="feature-card rounded-xl p-5 text-center"><div class="text-3xl font-display font-bold text-brand mb-1">~20 MB</div><div class="text-xs text-txt-400"><?= e($t['stat1']) ?></div></div>
         <div class="feature-card rounded-xl p-5 text-center"><div class="text-3xl font-display font-bold text-mint mb-1">~80 MB</div><div class="text-xs text-txt-400"><?= e($t['stat2']) ?></div></div>
         <div class="feature-card rounded-xl p-5 text-center"><div class="text-3xl font-display font-bold text-amber mb-1">&lt;2s</div><div class="text-xs text-txt-400"><?= e($t['stat3']) ?></div></div>
-        <div class="feature-card rounded-xl p-5 text-center"><div class="text-3xl font-display font-bold text-coral mb-1">0</div><div class="text-xs text-txt-400"><?= e($t['stat4']) ?></div></div>
+        <div class="feature-card rounded-xl p-5 text-center"><div class="text-3xl font-display font-bold text-coral mb-1">AES-256</div><div class="text-xs text-txt-400"><?= e($t['stat4']) ?></div></div>
       </div>
       <div class="mt-10 flex flex-wrap justify-center gap-3 text-xs text-txt-400">
         <span class="px-3 py-1.5 rounded-full border border-stroke">Tauri 2.0</span>
@@ -296,8 +329,10 @@ function h(string $s): string { return $s; }
         <span class="px-3 py-1.5 rounded-full border border-stroke">React</span>
         <span class="px-3 py-1.5 rounded-full border border-stroke">TypeScript</span>
         <span class="px-3 py-1.5 rounded-full border border-stroke">SQLite</span>
+        <span class="px-3 py-1.5 rounded-full border border-stroke">SQLCipher</span>
         <span class="px-3 py-1.5 rounded-full border border-stroke">xterm.js</span>
         <span class="px-3 py-1.5 rounded-full border border-stroke">TipTap</span>
+        <span class="px-3 py-1.5 rounded-full border border-stroke">Zustand</span>
       </div>
     </div>
   </section>

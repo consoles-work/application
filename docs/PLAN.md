@@ -301,76 +301,53 @@
 
 ---
 
-## Этап 10.7: Чат-сессии AI (группы вопросов) — ПЛАН
+## Этап 10.7: Чат-сессии AI — ВЫПОЛНЕН
 
-По аналогии с wiki: вместо одного общего чата — именованные сессии, которые можно создавать, переключать, удалять. История каждой сессии сохраняется в SQLite.
+По аналогии с wiki: именованные сессии, которые можно создавать, переключать, переименовывать, удалять. История каждой сессии сохраняется в зашифрованной SQLite.
 
-### Концепция UX
+### Что реализовано
 
-```
-┌─────────────────────────────────────┐
-│ AI Ассистент   [+] [▼ Отладка nginx]│  ← дропдаун сессий + кнопка создать
-├─────────────────────────────────────┤
-│  Сессии:                            │
-│  ● Отладка nginx          [×]       │  ← активная
-│    Разбор docker-compose  [×]       │
-│    Объяснение ошибки CI   [×]       │
-└─────────────────────────────────────┘
-```
+**Backend (Rust + SQLite):**
+- Две новые таблицы: `ai_sessions` и `ai_messages` (CASCADE delete)
+- 8 Tauri-команд: `create_ai_session`, `load_ai_sessions`, `rename_ai_session`, `delete_ai_session`, `load_ai_messages`, `save_ai_message`, `update_ai_message`, `clear_ai_session`
+- Зарегистрированы в обоих `main.rs` и `lib.rs`
 
-Список сессий — небольшой дропдаун или боковая панель (как список страниц в wiki).
+**TypeScript:**
+- `AiSession`, `AiMessage` интерфейсы в `types/index.ts`
+- Полные IPC-обёртки в `tauriCommands.ts`
+- Store: `aiSessions[]`, `activeAiSessionId`, `aiStreamingMsgId`, CRUD-экшены
+- `App.tsx`: загружает сессии при старте, создаёт дефолтную если список пуст
 
-### Схема данных (SQLite)
-
-```sql
-CREATE TABLE ai_sessions (
-    id          TEXT PRIMARY KEY,
-    title       TEXT NOT NULL DEFAULT 'Новый чат',
-    provider    TEXT NOT NULL,           -- "openai" / "anthropic"
-    model       TEXT NOT NULL,
-    created_at  TEXT NOT NULL,
-    updated_at  TEXT NOT NULL
-);
-
-CREATE TABLE ai_messages (
-    id          TEXT PRIMARY KEY,
-    session_id  TEXT NOT NULL REFERENCES ai_sessions(id) ON DELETE CASCADE,
-    role        TEXT NOT NULL,           -- "user" / "assistant" / "system"
-    content     TEXT NOT NULL,
-    created_at  TEXT NOT NULL
-);
-
-CREATE INDEX idx_ai_messages_session ON ai_messages(session_id);
-```
-
-Сессия сохраняется в зашифрованной SQLite — история чатов защищена вместе с остальными данными.
-
-### Новые Tauri-команды (checklist)
-
-По стандартному чеклисту (commands.rs → db.rs → main.rs → lib.rs → tauriCommands.ts):
-
-1. `create_ai_session(title, provider, model)` → `AiSession`
-2. `load_ai_sessions()` → `AiSession[]`
-3. `rename_ai_session(id, title)` → `void`
-4. `delete_ai_session(id)` → `void`
-5. `load_ai_messages(session_id)` → `AiMessage[]`
-6. `save_ai_message(session_id, role, content)` → `AiMessage`
-7. `clear_ai_session(session_id)` → `void` (удалить все сообщения, оставить сессию)
-
-### Изменения фронтенда
-
-- **`src/types/index.ts`** — добавить `AiSession`, `AiMessage`
-- **`src/stores/appStore.ts`** — добавить `aiSessions[]`, `activeAiSessionId`, CRUD-экшены
-- **`src/components/AiPanel.tsx`** — переработать: список сессий (дропдаун), кнопка "+" создать, переключение между сессиями, история из SQLite
-- Сообщения загружаются из БД при выборе сессии, отправленные — сохраняются сразу
-
-### Автозаголовок сессии
-
-При создании сессии — заголовок "Новый чат". После первого ответа AI — автоматически генерировать заголовок: отправить `messages[0].content.slice(0, 100)` в отдельный запрос с промптом `"Дай краткий заголовок (до 5 слов) для этого вопроса:"`. Результат сохранить через `rename_ai_session`.
+**UX в AiPanel:**
+- Дропдаун сессий по клику на заголовок панели
+- Кнопка "+" — новая сессия
+- Inline-переименование (иконка карандаша → input → Enter/blur)
+- Удаление сессии (последняя — только очищает сообщения, не удаляет)
+- При смене сессии — история загружается из SQLite
+- Каждое сообщение сохраняется в БД сразу при отправке
+- После завершения стриминга — финализация content через `update_ai_message`
+- Автозаголовок: первые 40 символов ответа AI становятся именем сессии
 
 ### Привязка к контексту (опционально, Post-MVP)
 
-Аналогично wiki: сессии можно привязывать к workspace/project/console. Тогда при выборе консоли в дереве — AI панель показывает сессии именно для этого контекста.
+Аналогично wiki: сессии можно привязывать к workspace/project/console.
+
+---
+
+## Этап 10.8: Баг-фиксы AI панели — ВЫПОЛНЕН
+
+### 10.8.1 Убрана дублирующая AI-кнопка из таббара терминала — ВЫПОЛНЕНО
+- Кнопка `Bot` в правом углу таббара была избыточной — AI панель уже открывается через кнопку в title bar и через `Cmd+I`
+- Оставлен только индикатор-точка (`.accent`) при наличии выделенного текста в терминале — он не занимает места и сигнализирует что есть контекст для AI
+
+### 10.8.2 Подтверждение перед удалением чата — ВЫПОЛНЕНО
+- `handleDeleteSession`: добавлен `window.confirm("Удалить чат «...»? ...")` перед удалением сессии
+- `handleClearChat`: добавлен `window.confirm(...)` перед очисткой истории текущего чата
+- Без подтверждения история удалялась случайным кликом без возможности отмены
+
+### 10.8.3 Потеря текста стриминга при смене позиции панели — ВЫПОЛНЕНО
+- **Причина**: при смене позиции right ↔ bottom компонент `AiPanel` ремонтируется; `useEffect([activeAiSessionId])` запускался снова и перезагружал сообщения из БД — а там ответ ассистента ещё был пустым (финализация происходит после окончания стриминга)
+- **Решение**: добавлена модульная переменная `_loadedSessionId`. `useEffect` пропускает загрузку если та же сессия уже была загружена (`_loadedSessionId === activeAiSessionId`). Загрузка из БД происходит только при реальной смене сессии, не при ремонте компонента
 
 ---
 
@@ -384,17 +361,20 @@ CREATE INDEX idx_ai_messages_session ON ai_messages(session_id);
 - Экспорт/импорт workspace (zip + Markdown)
 - Интеграции: Git (текущая ветка), Docker (статус)
 - Wiki: блоки кода с кнопками "Копировать" и "Вставить в терминал" (TipTap NodeView)
+- AI панель: drag-and-drop смены позиции (мышью)
+- AI панель: Ollama (локальные модели без API-ключа)
+- AI панель: привязка сессий к контексту дерева (workspace/project/console)
+- OS Keychain для API-ключей
 
 ---
 
 ## Следующий порядок работы
 
 ```
-10.7 AI чат-сессии (SQLite-история + группы вопросов)
-10.x AI панель: drag-and-drop позиции
-10.x AI панель: Ollama
 11.x GlobalSearch (Cmd+Shift+K)
 11.x Горячие клавиши: Cmd+T/W/Tab/1-9/Delete
+11.x AI панель: Ollama
+11.x AI панель: drag-and-drop позиции
 ```
 
-**MVP + AI прототип завершён.**
+**MVP + AI (с историей в SQLite) завершён.**

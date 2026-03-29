@@ -10,7 +10,7 @@
 // Возврат: Promise с результатом из Rust
 
 import { invoke } from "@tauri-apps/api/core";
-import type { Workspace, Project, ConsoleConfig, WikiPage } from "../types";
+import type { Workspace, Project, ConsoleConfig, WikiPage, AiSession, AiMessage } from "../types";
 
 export interface DbInfo {
   path: string;
@@ -223,4 +223,47 @@ export async function quitApp(): Promise<void> {
 
 export async function resetQuitDialog(): Promise<void> {
   return invoke("reset_quit_dialog");
+}
+
+// ── AI чат-сессии ──
+
+export async function createAiSession(
+  title: string,
+  provider: string,
+  model: string
+): Promise<AiSession> {
+  return invoke<AiSession>("create_ai_session", { title, provider, model });
+}
+
+export async function loadAiSessions(): Promise<AiSession[]> {
+  return invoke<AiSession[]>("load_ai_sessions");
+}
+
+export async function renameAiSession(id: string, title: string): Promise<void> {
+  return invoke("rename_ai_session", { id, title });
+}
+
+export async function deleteAiSession(id: string): Promise<void> {
+  return invoke("delete_ai_session", { id });
+}
+
+export async function loadAiMessages(sessionId: string): Promise<AiMessage[]> {
+  return invoke<AiMessage[]>("load_ai_messages", { sessionId });
+}
+
+export async function saveAiMessage(
+  id: string,
+  sessionId: string,
+  role: string,
+  content: string
+): Promise<AiMessage> {
+  return invoke<AiMessage>("save_ai_message", { id, sessionId, role, content });
+}
+
+export async function updateAiMessage(id: string, content: string): Promise<void> {
+  return invoke("update_ai_message", { id, content });
+}
+
+export async function clearAiSession(sessionId: string): Promise<void> {
+  return invoke("clear_ai_session", { sessionId });
 }

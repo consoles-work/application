@@ -4,7 +4,7 @@ import { ToastContainer } from "./components/Toast";
 import { CommandPalette } from "./components/CommandPalette";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { useAppStore } from "./stores/appStore";
-import { loadAllWorkspaces, getSettings } from "./lib/tauriCommands";
+import { loadAllWorkspaces, getSettings, loadAiSessions, createAiSession } from "./lib/tauriCommands";
 import { applyTheme } from "./lib/themes";
 import { useTranslation } from "react-i18next";
 import i18n from "./lib/i18n";
@@ -14,7 +14,7 @@ import i18n from "./lib/i18n";
 // ══════════════════════════════════════
 
 function App() {
-  const { setWorkspaces, setSettings, toggleTreePanel, toggleWikiPanel, setShowTreePanel, setShowWikiPanel, showToast, toggleAiPanel, setShowAiPanel, setAiPanelPosition } = useAppStore();
+  const { setWorkspaces, setSettings, toggleTreePanel, toggleWikiPanel, setShowTreePanel, setShowWikiPanel, showToast, toggleAiPanel, setShowAiPanel, setAiPanelPosition, setAiSessions, setActiveAiSessionId } = useAppStore();
   const { t } = useTranslation();
   const [showPalette, setShowPalette] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -24,6 +24,20 @@ function App() {
     loadAllWorkspaces()
       .then(setWorkspaces)
       .catch((e) => showToast("error", t("app.toastLoadError", { error: e })));
+
+    // Загружаем AI сессии; если нет — создаём первую
+    loadAiSessions().then(async (sessions) => {
+      if (sessions.length === 0) {
+        const first = await createAiSession("Новый чат", "openai", "").catch(() => null);
+        if (first) {
+          setAiSessions([first]);
+          setActiveAiSessionId(first.id);
+        }
+      } else {
+        setAiSessions(sessions);
+        setActiveAiSessionId(sessions[0].id);
+      }
+    }).catch(() => {});
 
     getSettings().then((s) => {
       setSettings(s);

@@ -10,6 +10,7 @@ import type {
   TreeNode,
 } from "../types";
 import type { ChatMessage } from "../lib/aiProviders";
+import type { AiSession } from "../types";
 
 export interface Toast {
   id: string;
@@ -52,9 +53,20 @@ interface AppState {
   setAiPanelWidth: (w: number) => void;
   aiPanelHeight: number;
   setAiPanelHeight: (h: number) => void;
+  // Сессии чата
+  aiSessions: AiSession[];
+  setAiSessions: (sessions: AiSession[]) => void;
+  addAiSession: (session: AiSession) => void;
+  updateAiSessionTitle: (id: string, title: string) => void;
+  removeAiSession: (id: string) => void;
+  activeAiSessionId: string | null;
+  setActiveAiSessionId: (id: string | null) => void;
   // Сообщения чата — в store, чтобы не терялись при смене позиции панели
   aiMessages: ChatMessage[];
   setAiMessages: (updater: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => void;
+  // Маппинг id сессии → id сообщения ассистента (для финализации стриминга)
+  aiStreamingMsgId: string | null;
+  setAiStreamingMsgId: (id: string | null) => void;
   aiInput: string;
   setAiInput: (input: string) => void;
   aiIsStreaming: boolean;
@@ -128,7 +140,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   aiPanelPosition: "right",
   aiPanelWidth: 360,
   aiPanelHeight: 300,
+  aiSessions: [],
+  activeAiSessionId: null,
   aiMessages: [],
+  aiStreamingMsgId: null,
   aiInput: "",
   aiIsStreaming: false,
   toasts: [],
@@ -312,10 +327,26 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   setAiPanelWidth: (w) => set({ aiPanelWidth: w }),
   setAiPanelHeight: (h) => set({ aiPanelHeight: h }),
+  setAiSessions: (sessions) => set({ aiSessions: sessions }),
+  addAiSession: (session) =>
+    set((state) => ({ aiSessions: [session, ...state.aiSessions] })),
+  updateAiSessionTitle: (id, title) =>
+    set((state) => ({
+      aiSessions: state.aiSessions.map((s) => s.id === id ? { ...s, title } : s),
+    })),
+  removeAiSession: (id) =>
+    set((state) => ({
+      aiSessions: state.aiSessions.filter((s) => s.id !== id),
+      activeAiSessionId: state.activeAiSessionId === id
+        ? (state.aiSessions.find((s) => s.id !== id)?.id ?? null)
+        : state.activeAiSessionId,
+    })),
+  setActiveAiSessionId: (id) => set({ activeAiSessionId: id }),
   setAiMessages: (updater) =>
     set((state) => ({
       aiMessages: typeof updater === "function" ? updater(state.aiMessages) : updater,
     })),
+  setAiStreamingMsgId: (id) => set({ aiStreamingMsgId: id }),
   setAiInput: (input) => set({ aiInput: input }),
   setAiIsStreaming: (v) => set({ aiIsStreaming: v }),
 
@@ -370,7 +401,7 @@ export const useAppStore = create<AppState>((set, get) => ({
                 id: con.id,
                 type: "console",
                 name: con.name,
-                icon: "terminal",
+                icon: ">_",
                 color: proj.color,
                 depth: 2,
                 is_expanded: false,

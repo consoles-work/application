@@ -15,7 +15,7 @@ use rusqlite::{Connection, params};
 use std::sync::Mutex;
 use std::collections::HashMap;
 
-use crate::commands::{Workspace, Project, ConsoleConfig, WikiPage, DbInfo};
+use crate::commands::{Workspace, Project, ConsoleConfig, WikiPage, DbInfo, AiSession, AiMessage};
 
 /// Ключ шифрования БД — встроен в бинарник при компиляции.
 /// Задать до сборки: export DB_ENCRYPTION_KEY="random-64-char-string"
@@ -159,6 +159,27 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
             key   TEXT PRIMARY KEY,
             value TEXT NOT NULL
         );
+
+        -- AI чат-сессии
+        CREATE TABLE IF NOT EXISTS ai_sessions (
+            id         TEXT PRIMARY KEY,
+            title      TEXT NOT NULL DEFAULT 'Новый чат',
+            provider   TEXT NOT NULL DEFAULT 'openai',
+            model      TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+
+        -- AI сообщения (привязаны к сессии)
+        CREATE TABLE IF NOT EXISTS ai_messages (
+            id         TEXT PRIMARY KEY,
+            session_id TEXT NOT NULL REFERENCES ai_sessions(id) ON DELETE CASCADE,
+            role       TEXT NOT NULL,
+            content    TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_ai_messages_session ON ai_messages(session_id);
     ")?;
 
     DB.set(Mutex::new(conn))
@@ -602,6 +623,120 @@ pub fn get_db_info_data() -> DbInfo {
         })
         .unwrap_or_else(|_| "—".to_string());
     DbInfo { path: path_str, dir_path, size_bytes, created_at }
+}
+
+// ══════════════════════════════════════════════
+// CRUD: AI Sessions & Messages
+// ══════════════════════════════════════════════
+
+pub fn create_ai_session(id: &str, title: &str, provider: &str, model: &str) -> Result<AiSession, String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+    db.execute(
+        "INSERT INTO ai_sessions (id, title, provider, model, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)",
+        params![id, title, provider, model, now],
+    ).map_err(|e| e.to_string())?;
+    Ok(AiSession {
+        id: id.to_string(),
+        title: title.to_string(),
+        provider: provider.to_string(),
+        model: model.to_string(),
+        created_at: now.clone(),
+        updated_at: now,
+    })
+}
+
+pub fn load_ai_sessions() -> Result<Vec<AiSession>, String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    let mut stmt = db.prepare(
+        "SELECT id, title, provider, model, created_at, updated_at FROM ai_sessions ORDER BY updated_at DESC"
+    ).map_err(|e| e.to_string())?;
+    let sessions = stmt.query_map([], |row| {
+        Ok(AiSession {
+            id: row.get(0)?,
+            title: row.get(1)?,
+            provider: row.get(2)?,
+            model: row.get(3)?,
+            created_at: row.get(4)?,
+            updated_at: row.get(5)?,
+        })
+    }).map_err(|e| e.to_string())?
+    .filter_map(|r| r.ok())
+    .collect();
+    Ok(sessions)
+}
+
+pub fn rename_ai_session(id: &str, title: &str) -> Result<(), String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+    db.execute(
+        "UPDATE ai_sessions SET title = ?1, updated_at = ?2 WHERE id = ?3",
+        params![title, now, id],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn delete_ai_session(id: &str) -> Result<(), String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    db.execute("DELETE FROM ai_sessions WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn load_ai_messages(session_id: &str) -> Result<Vec<AiMessage>, String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    let mut stmt = db.prepare(
+        "SELECT id, session_id, role, content, created_at FROM ai_messages WHERE session_id = ?1 ORDER BY created_at ASC"
+    ).map_err(|e| e.to_string())?;
+    let messages = stmt.query_map(params![session_id], |row| {
+        Ok(AiMessage {
+            id: row.get(0)?,
+            session_id: row.get(1)?,
+            role: row.get(2)?,
+            content: row.get(3)?,
+            created_at: row.get(4)?,
+        })
+    }).map_err(|e| e.to_string())?
+    .filter_map(|r| r.ok())
+    .collect();
+    Ok(messages)
+}
+
+pub fn save_ai_message(id: &str, session_id: &str, role: &str, content: &str) -> Result<AiMessage, String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f").to_string();
+    db.execute(
+        "INSERT INTO ai_messages (id, session_id, role, content, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![id, session_id, role, content, now],
+    ).map_err(|e| e.to_string())?;
+    // Обновляем updated_at сессии
+    db.execute(
+        "UPDATE ai_sessions SET updated_at = ?1 WHERE id = ?2",
+        params![now, session_id],
+    ).map_err(|e| e.to_string())?;
+    Ok(AiMessage {
+        id: id.to_string(),
+        session_id: session_id.to_string(),
+        role: role.to_string(),
+        content: content.to_string(),
+        created_at: now,
+    })
+}
+
+pub fn update_ai_message_content(id: &str, content: &str) -> Result<(), String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    db.execute(
+        "UPDATE ai_messages SET content = ?1 WHERE id = ?2",
+        params![content, id],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn clear_ai_session_messages(session_id: &str) -> Result<(), String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    db.execute("DELETE FROM ai_messages WHERE session_id = ?1", params![session_id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 pub fn search_wiki_fts(query: &str) -> Result<Vec<WikiPage>, String> {

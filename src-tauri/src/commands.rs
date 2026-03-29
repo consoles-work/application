@@ -21,6 +21,27 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct AiSession {
+    pub id: String,
+    pub title: String,
+    pub provider: String,
+    pub model: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AiMessage {
+    pub id: String,
+    pub session_id: String,
+    pub role: String,
+    pub content: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Workspace {
     pub id: String,
     pub name: String,
@@ -359,4 +380,57 @@ pub fn quit_app(app: tauri::AppHandle) {
 #[tauri::command]
 pub fn reset_quit_dialog() {
     crate::QUIT_DIALOG_ACTIVE.store(false, std::sync::atomic::Ordering::SeqCst);
+}
+
+// ══════════════════════════════════════════════
+// Команды: AI чат-сессии
+// ══════════════════════════════════════════════
+
+/// Создать новую AI чат-сессию
+#[tauri::command]
+pub fn create_ai_session(title: String, provider: String, model: String) -> Result<AiSession, String> {
+    let id = uuid::Uuid::new_v4().to_string();
+    crate::db::create_ai_session(&id, &title, &provider, &model)
+}
+
+/// Загрузить список всех AI сессий (без сообщений)
+#[tauri::command]
+pub fn load_ai_sessions() -> Result<Vec<AiSession>, String> {
+    crate::db::load_ai_sessions()
+}
+
+/// Переименовать AI сессию
+#[tauri::command]
+pub fn rename_ai_session(id: String, title: String) -> Result<(), String> {
+    crate::db::rename_ai_session(&id, &title)
+}
+
+/// Удалить AI сессию и все её сообщения
+#[tauri::command]
+pub fn delete_ai_session(id: String) -> Result<(), String> {
+    crate::db::delete_ai_session(&id)
+}
+
+/// Загрузить историю сообщений сессии
+#[tauri::command]
+pub fn load_ai_messages(session_id: String) -> Result<Vec<AiMessage>, String> {
+    crate::db::load_ai_messages(&session_id)
+}
+
+/// Сохранить сообщение в сессию
+#[tauri::command]
+pub fn save_ai_message(id: String, session_id: String, role: String, content: String) -> Result<AiMessage, String> {
+    crate::db::save_ai_message(&id, &session_id, &role, &content)
+}
+
+/// Обновить содержимое сообщения (для финализации стриминга)
+#[tauri::command]
+pub fn update_ai_message(id: String, content: String) -> Result<(), String> {
+    crate::db::update_ai_message_content(&id, &content)
+}
+
+/// Очистить все сообщения сессии
+#[tauri::command]
+pub fn clear_ai_session(session_id: String) -> Result<(), String> {
+    crate::db::clear_ai_session_messages(&session_id)
 }

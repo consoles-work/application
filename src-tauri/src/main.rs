@@ -94,6 +94,16 @@ pub fn run() {
             get_db_info,
             quit_app,
             reset_quit_dialog,
+
+            // AI чат-сессии
+            create_ai_session,
+            load_ai_sessions,
+            rename_ai_session,
+            delete_ai_session,
+            load_ai_messages,
+            save_ai_message,
+            update_ai_message,
+            clear_ai_session,
         ])
 
         // Перехватываем закрытие окна: всегда отменяем и просим фронт показать диалог
