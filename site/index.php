@@ -440,7 +440,7 @@ function h(string $s): string { return $s; }
         <span class="text-txt-400 text-xs">— consoles.work</span>
       </div>
       <div class="flex items-center gap-6 text-sm text-txt-400">
-        <a href="#" class="hover:text-txt-200 transition-colors">GitHub</a>
+        <a href="https://github.com/consoles-work" target="_blank" class="hover:text-txt-200 transition-colors">GitHub</a>
         <a href="#" class="hover:text-txt-200 transition-colors"><?= e($t['footer_docs']) ?></a>
         <a href="#" class="hover:text-txt-200 transition-colors"><?= e($t['footer_changelog']) ?></a>
         <span class="text-txt-400/50"><?= e($t['footer_license']) ?></span>
