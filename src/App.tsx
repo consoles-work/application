@@ -14,7 +14,7 @@ import i18n from "./lib/i18n";
 // ══════════════════════════════════════
 
 function App() {
-  const { setWorkspaces, setSettings, toggleTreePanel, toggleWikiPanel, setShowTreePanel, setShowWikiPanel, showToast } = useAppStore();
+  const { setWorkspaces, setSettings, toggleTreePanel, toggleWikiPanel, setShowTreePanel, setShowWikiPanel, showToast, toggleAiPanel, setShowAiPanel, setAiPanelPosition } = useAppStore();
   const { t } = useTranslation();
   const [showPalette, setShowPalette] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -32,6 +32,8 @@ function App() {
       // Восстанавливаем видимость панелей (по умолчанию — показывать)
       if (s["ui.showTreePanel"] !== undefined) setShowTreePanel(s["ui.showTreePanel"] !== "false");
       if (s["ui.showWikiPanel"] !== undefined) setShowWikiPanel(s["ui.showWikiPanel"] !== "false");
+      if (s["ui.showAiPanel"] !== undefined) setShowAiPanel(s["ui.showAiPanel"] === "true");
+      if (s["ui.aiPanelPosition"] !== undefined) setAiPanelPosition(s["ui.aiPanelPosition"] as "right" | "bottom");
     }).catch(() => {});
   }, [setWorkspaces, setSettings, showToast]);
 
@@ -62,11 +64,15 @@ function App() {
         e.preventDefault();
         setShowSettings(true);
       }
+      if (mod && e.key === "i") {
+        e.preventDefault();
+        toggleAiPanel();
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [toggleTreePanel, toggleWikiPanel]);
+  }, [toggleTreePanel, toggleWikiPanel, toggleAiPanel]);
 
   return (
     <>

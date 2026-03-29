@@ -17,6 +17,10 @@ use std::collections::HashMap;
 
 use crate::commands::{Workspace, Project, ConsoleConfig, WikiPage, DbInfo};
 
+/// Ключ шифрования БД — встроен в бинарник при компиляции.
+/// Задать до сборки: export DB_ENCRYPTION_KEY="random-64-char-string"
+const DB_KEY: &str = env!("DB_ENCRYPTION_KEY");
+
 // Глобальное подключение к БД, защищённое Mutex
 // lazy_static нам не нужен — используем std::sync::OnceLock
 static DB: std::sync::OnceLock<Mutex<Connection>> = std::sync::OnceLock::new();
@@ -55,6 +59,24 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
     println!("📂 Database path: {:?}", path);
 
     let conn = Connection::open(&path)?;
+
+    // SQLCipher: ключ ОБЯЗАН быть первым PRAGMA до любых других операций.
+    conn.execute_batch(&format!("PRAGMA key='{}';", DB_KEY))?;
+
+    // Проверяем что БД расшифровалась корректно (если это старый plain-text файл — упадёт)
+    let db_ok: bool = conn
+        .query_row("SELECT count(*) FROM sqlite_master", [], |r| r.get::<_, i64>(0))
+        .is_ok();
+
+    if !db_ok {
+        // Старая plain-text БД — делаем backup и пересоздаём
+        drop(conn);
+        let backup_path = path.with_extension("db.plaintext_backup");
+        std::fs::rename(&path, &backup_path).ok();
+        println!("⚠️  Old plain-text DB moved to: {:?}", backup_path);
+        println!("⚠️  Creating new encrypted database.");
+        return init(); // рекурсивный вызов — теперь файла нет, создастся новый
+    }
 
     // Включаем WAL mode и foreign keys
     conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;
@@ -139,11 +161,10 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
         );
     ")?;
 
-    // Сохраняем подключение в глобальную переменную
     DB.set(Mutex::new(conn))
         .map_err(|_| "Database already initialized")?;
 
-    println!("✅ Database initialized");
+    println!("✅ Database initialized (encrypted)");
     Ok(())
 }
 

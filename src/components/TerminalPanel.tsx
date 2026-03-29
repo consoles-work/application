@@ -9,6 +9,7 @@ import { getThemeById, resolveThemeId } from "../lib/themes";
 import type { TerminalSession, ConsoleConfig, Project } from "../types";
 import { useTranslation } from "react-i18next";
 import i18n from "../lib/i18n";
+import { Bot } from "lucide-react";
 
 // ══════════════════════════════════════
 // Вспомогательные функции поиска по дереву
@@ -40,7 +41,7 @@ function findProjectForConsole(consoleId: string): Project | undefined {
 // ══════════════════════════════════════
 
 export function TerminalPanel() {
-  const { sessions, activeSessionId, setActiveSession, closeSession } =
+  const { sessions, activeSessionId, setActiveSession, closeSession, terminalSelection, toggleAiPanel, showAiPanel } =
     useAppStore();
   const { t } = useTranslation();
 
@@ -96,6 +97,25 @@ export function TerminalPanel() {
             {t("terminalPanel.selectConsole")}
           </span>
         )}
+
+        <div className="ml-auto flex items-center gap-1 px-2 shrink-0">
+          <button
+            onClick={toggleAiPanel}
+            className={`flex items-center gap-1 px-2 py-1 rounded text-2xs transition-colors ${
+              showAiPanel
+                ? "bg-accent/20 text-accent"
+                : terminalSelection
+                ? "text-accent hover:bg-accent/10"
+                : "text-text-muted hover:text-text-secondary"
+            }`}
+            title="AI Ассистент (Cmd+I)"
+          >
+            <Bot className="w-3.5 h-3.5" />
+            {terminalSelection && !showAiPanel && (
+              <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* ── Терминальные инстансы (все рендерятся, только активный виден) ── */}
@@ -190,6 +210,11 @@ function TerminalView({
 
     termRef.current = term;
     fitAddonRef.current = fitAddon;
+
+    // Отслеживаем выделение текста для AI панели
+    term.onSelectionChange(() => {
+      useAppStore.getState().setTerminalSelection(term.getSelection());
+    });
 
     // Находим консоль и проект для определения шелла и рабочей директории
     const consoleConfig = findConsoleById(session.console_id);

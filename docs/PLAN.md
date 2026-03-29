@@ -1,6 +1,6 @@
 # DevConsole Hub — План разработки
 
-> Последнее обновление: 2026-03-27 (баг-фиксы + подтверждение выхода)
+> Последнее обновление: 2026-03-29
 
 ---
 
@@ -243,7 +243,138 @@
 
 ---
 
-## Этап 9: Post-MVP
+## Этап 9: Шифрование БД — ВЫПОЛНЕН
+
+### 9.1 SQLCipher — ВЫПОЛНЕНО
+- `Cargo.toml`: `bundled` → `bundled-sqlcipher` (AES-256 шифрование всего файла)
+- `build.rs`: читает `.env` из корня проекта; встраивает `DB_ENCRYPTION_KEY` в бинарник через `env!()`
+- `db.rs`: `PRAGMA key='...'` как первая операция после открытия соединения
+- Автомиграция: если найдена plain-text БД → backup + пересоздание зашифрованной
+
+### 9.2 Переменные окружения — ВЫПОЛНЕНО
+- `.env` — локальный файл с ключом (в `.gitignore`)
+- `.env.example` — шаблон для новых разработчиков
+- Для продакшн: `export DB_ENCRYPTION_KEY="$(openssl rand -hex 32)" && npm run tauri build`
+
+---
+
+## Этап 10: AI Ассистент — ПРОТОТИП ВЫПОЛНЕН
+
+### 10.1 Провайдеры AI — ВЫПОЛНЕНО
+- `src/lib/aiProviders.ts` — абстракция `AiProvider`: OpenAI + Anthropic
+- Стриминг SSE через `fetch()` + `ReadableStream` (без новых Rust-команд)
+- CSP в `tauri.conf.json` разрешает `connect-src` для AI-эндпоинтов
+
+### 10.2 AiPanel.tsx — ВЫПОЛНЕНО
+- Чат с историей сообщений (только в памяти — для прототипа)
+- Стриминг ответа в реальном времени (эффект "печатающего текста")
+- Контекст из выделения терминала: блок с превью и кнопкой убрать
+- Кнопки позиции Right/Bottom в заголовке (мгновенное переключение)
+- Стоп-кнопка для прерывания стриминга (`AbortController`)
+- Быстрый выбор провайдера если не настроен
+
+### 10.3 Layout — ВЫПОЛНЕНО
+- Позиция "справа": панель между терминалом и wiki, resizable-сплиттер
+- Позиция "снизу": панель под терминалом, горизонтальный resizable-сплиттер
+- Кнопка AI в title bar с индикатором-точкой при наличии выделения
+
+### 10.4 TerminalPanel — ВЫПОЛНЕНО
+- `terminal.onSelectionChange` → `terminalSelection` в Zustand store
+- Кнопка `Bot` в баре вкладок: открывает AI панель, индикатор при выделении
+
+### 10.5 Settings → вкладка "Агенты" — ВЫПОЛНЕНО
+- Выбор провайдера (OpenAI / Anthropic)
+- API-ключ с show/hide
+- Выбор модели (кнопки, список зависит от провайдера)
+- Позиция панели (Right / Bottom)
+- Кнопка "Проверить подключение" → Toast с результатом
+
+### 10.6 Горячая клавиша — ВЫПОЛНЕНО
+- `Cmd/Ctrl+I` — toggle AI панели
+- Состояние сохраняется в SQLite, восстанавливается при старте
+
+### 10.x Остаток (Post-prototype)
+- Drag-and-drop смены позиции панели (мышью)
+- Ollama: локальные модели без API-ключа
+- Локализация AI-ключей для zh/fr/kk
+- OS Keychain для API-ключей (сейчас в зашифрованной SQLite)
+
+---
+
+## Этап 10.7: Чат-сессии AI (группы вопросов) — ПЛАН
+
+По аналогии с wiki: вместо одного общего чата — именованные сессии, которые можно создавать, переключать, удалять. История каждой сессии сохраняется в SQLite.
+
+### Концепция UX
+
+```
+┌─────────────────────────────────────┐
+│ AI Ассистент   [+] [▼ Отладка nginx]│  ← дропдаун сессий + кнопка создать
+├─────────────────────────────────────┤
+│  Сессии:                            │
+│  ● Отладка nginx          [×]       │  ← активная
+│    Разбор docker-compose  [×]       │
+│    Объяснение ошибки CI   [×]       │
+└─────────────────────────────────────┘
+```
+
+Список сессий — небольшой дропдаун или боковая панель (как список страниц в wiki).
+
+### Схема данных (SQLite)
+
+```sql
+CREATE TABLE ai_sessions (
+    id          TEXT PRIMARY KEY,
+    title       TEXT NOT NULL DEFAULT 'Новый чат',
+    provider    TEXT NOT NULL,           -- "openai" / "anthropic"
+    model       TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
+
+CREATE TABLE ai_messages (
+    id          TEXT PRIMARY KEY,
+    session_id  TEXT NOT NULL REFERENCES ai_sessions(id) ON DELETE CASCADE,
+    role        TEXT NOT NULL,           -- "user" / "assistant" / "system"
+    content     TEXT NOT NULL,
+    created_at  TEXT NOT NULL
+);
+
+CREATE INDEX idx_ai_messages_session ON ai_messages(session_id);
+```
+
+Сессия сохраняется в зашифрованной SQLite — история чатов защищена вместе с остальными данными.
+
+### Новые Tauri-команды (checklist)
+
+По стандартному чеклисту (commands.rs → db.rs → main.rs → lib.rs → tauriCommands.ts):
+
+1. `create_ai_session(title, provider, model)` → `AiSession`
+2. `load_ai_sessions()` → `AiSession[]`
+3. `rename_ai_session(id, title)` → `void`
+4. `delete_ai_session(id)` → `void`
+5. `load_ai_messages(session_id)` → `AiMessage[]`
+6. `save_ai_message(session_id, role, content)` → `AiMessage`
+7. `clear_ai_session(session_id)` → `void` (удалить все сообщения, оставить сессию)
+
+### Изменения фронтенда
+
+- **`src/types/index.ts`** — добавить `AiSession`, `AiMessage`
+- **`src/stores/appStore.ts`** — добавить `aiSessions[]`, `activeAiSessionId`, CRUD-экшены
+- **`src/components/AiPanel.tsx`** — переработать: список сессий (дропдаун), кнопка "+" создать, переключение между сессиями, история из SQLite
+- Сообщения загружаются из БД при выборе сессии, отправленные — сохраняются сразу
+
+### Автозаголовок сессии
+
+При создании сессии — заголовок "Новый чат". После первого ответа AI — автоматически генерировать заголовок: отправить `messages[0].content.slice(0, 100)` в отдельный запрос с промптом `"Дай краткий заголовок (до 5 слов) для этого вопроса:"`. Результат сохранить через `rename_ai_session`.
+
+### Привязка к контексту (опционально, Post-MVP)
+
+Аналогично wiki: сессии можно привязывать к workspace/project/console. Тогда при выборе консоли в дереве — AI панель показывает сессии именно для этого контекста.
+
+---
+
+## Этап 11: Post-MVP
 
 - GlobalSearch (Cmd+Shift+K) — FTS5 по wiki с подсветкой
 - Горячие клавиши: Cmd+T/W/Tab/1-9/Delete
@@ -259,9 +390,11 @@
 ## Следующий порядок работы
 
 ```
-8.x Локализация (ru + en) — i18next
-9.x GlobalSearch (Cmd+Shift+K) — глобальный модал с подсветкой
-9.x Горячие клавиши: Cmd+T/W/Tab/1-9/Delete
+10.7 AI чат-сессии (SQLite-история + группы вопросов)
+10.x AI панель: drag-and-drop позиции
+10.x AI панель: Ollama
+11.x GlobalSearch (Cmd+Shift+K)
+11.x Горячие клавиши: Cmd+T/W/Tab/1-9/Delete
 ```
 
-**MVP завершён.** Все основные функции реализованы и работают.
+**MVP + AI прототип завершён.**

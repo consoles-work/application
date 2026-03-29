@@ -9,6 +9,7 @@ import type {
   SelectedNode,
   TreeNode,
 } from "../types";
+import type { ChatMessage } from "../lib/aiProviders";
 
 export interface Toast {
   id: string;
@@ -38,6 +39,26 @@ interface AppState {
   showWikiPanel: boolean;
   treePanelWidth: number;
   wikiPanelWidth: number;
+
+  // ── AI Panel ──
+  terminalSelection: string;
+  setTerminalSelection: (sel: string) => void;
+  showAiPanel: boolean;
+  toggleAiPanel: () => void;
+  setShowAiPanel: (visible: boolean) => void;
+  aiPanelPosition: "right" | "bottom";
+  setAiPanelPosition: (pos: "right" | "bottom") => void;
+  aiPanelWidth: number;
+  setAiPanelWidth: (w: number) => void;
+  aiPanelHeight: number;
+  setAiPanelHeight: (h: number) => void;
+  // Сообщения чата — в store, чтобы не терялись при смене позиции панели
+  aiMessages: ChatMessage[];
+  setAiMessages: (updater: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => void;
+  aiInput: string;
+  setAiInput: (input: string) => void;
+  aiIsStreaming: boolean;
+  setAiIsStreaming: (v: boolean) => void;
 
   // ── Actions: дерево ──
   setWorkspaces: (workspaces: Workspace[]) => void;
@@ -102,6 +123,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   showWikiPanel: true,
   treePanelWidth: 250,
   wikiPanelWidth: 350,
+  terminalSelection: "",
+  showAiPanel: false,
+  aiPanelPosition: "right",
+  aiPanelWidth: 360,
+  aiPanelHeight: 300,
+  aiMessages: [],
+  aiInput: "",
+  aiIsStreaming: false,
   toasts: [],
   settings: {},
 
@@ -268,6 +297,27 @@ export const useAppStore = create<AppState>((set, get) => ({
   setShowWikiPanel: (visible) => set({ showWikiPanel: visible }),
   setTreePanelWidth: (width) => set({ treePanelWidth: width }),
   setWikiPanelWidth: (width) => set({ wikiPanelWidth: width }),
+
+  // ── AI Panel ──
+  setTerminalSelection: (sel) => set({ terminalSelection: sel }),
+  toggleAiPanel: () => {
+    const next = !get().showAiPanel;
+    set({ showAiPanel: next });
+    persistSetting("ui.showAiPanel", next ? "true" : "false").catch(() => {});
+  },
+  setShowAiPanel: (visible) => set({ showAiPanel: visible }),
+  setAiPanelPosition: (pos) => {
+    set({ aiPanelPosition: pos });
+    persistSetting("ui.aiPanelPosition", pos).catch(() => {});
+  },
+  setAiPanelWidth: (w) => set({ aiPanelWidth: w }),
+  setAiPanelHeight: (h) => set({ aiPanelHeight: h }),
+  setAiMessages: (updater) =>
+    set((state) => ({
+      aiMessages: typeof updater === "function" ? updater(state.aiMessages) : updater,
+    })),
+  setAiInput: (input) => set({ aiInput: input }),
+  setAiIsStreaming: (v) => set({ aiIsStreaming: v }),
 
   // ── Toast ──
   showToast: (type, message) =>

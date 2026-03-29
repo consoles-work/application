@@ -1,6 +1,6 @@
 # DevConsole Hub — Статус проекта
 
-> Последнее обновление: 2026-03-27 (сессия 2)
+> Последнее обновление: 2026-03-29
 
 ---
 
@@ -44,8 +44,18 @@
 | `src-tauri/src/main.rs` | ✅ Готово | 25 IPC-команд (clone_console/project, get_settings, set_setting, get_db_info) |
 | `src-tauri/src/lib.rs` | ✅ Готово | Дубликат для мобильных/библиотечной сборки — синхронизирован с main.rs |
 | `src-tauri/src/commands.rs` | ✅ Готово | CRUD дерева, PTY, wiki, danger, clone, settings; DbInfo struct |
-| `src-tauri/src/db.rs` | ✅ Готово | Полный CRUD + FTS5 + клонирование + settings-таблица + get_db_info_data + миграции v1-v3 |
+| `src-tauri/src/db.rs` | ✅ Готово | Полный CRUD + FTS5 + клонирование + settings-таблица + SQLCipher (AES-256) + автомиграция plain-text БД |
 | `src-tauri/src/pty_manager.rs` | ✅ Готово | portable-pty: spawn/write/resize/kill; `sh -c` для команд с пробелами; явная установка `LANG`/`LC_CTYPE`/`TERM` для поддержки UTF-8 (кириллица) |
+| `src-tauri/build.rs` | ✅ Готово | Читает `.env` из корня проекта; встраивает `DB_ENCRYPTION_KEY` в бинарник через `env!()` |
+
+### Frontend — AI панель
+
+| Файл | Статус | Примечания |
+|------|--------|------------|
+| `src/lib/aiProviders.ts` | ✅ Готово | OpenAI + Anthropic; стриминг SSE; единый интерфейс `AiProvider` |
+| `src/components/AiPanel.tsx` | ✅ Готово | Чат с историей; стриминг; контекст из терминала; кнопки позиции Right/Bottom; стоп |
+| `src/components/Layout.tsx` | ✅ Готово | AI панель в двух позициях (right/bottom) с resizable-сплиттером |
+| `src/styles/globals.css` | ✅ Готово | `.panel-resizer-horizontal` для нижней позиции AI панели |
 
 ---
 
@@ -58,6 +68,7 @@
 | F2 (переименовать) | ✅ Готово |
 | Cmd+P (Command Palette) | ✅ Готово |
 | Cmd+, (настройки) | ✅ Готово |
+| Cmd+I (toggle AI панели) | ✅ Готово |
 | Cmd+Shift+K (глобальный поиск wiki) | ❌ TODO |
 | Cmd+T (новая вкладка) | ❌ TODO |
 | Cmd+W (закрыть вкладку) | ❌ TODO |
@@ -71,9 +82,12 @@
 
 | Задача | Приоритет | Примечания |
 |--------|-----------|------------|
-| Локализация (i18next, ru+en) | Высокий | Этап 8; заготовка кнопок в Settings уже есть |
+| AI панель: drag-and-drop смены позиции | Средний | Сейчас кнопки Right/Bottom в заголовке; drag — Post-prototype |
+| AI панель: история чатов в SQLite | Низкий | Сейчас только в памяти (очищается при закрытии) |
+| AI панель: Ollama (локальные модели) | Низкий | Без API-ключа, localhost:11434 |
+| AI панель: локализация (zh/fr/kk) | Низкий | ru/en добавлены; остальные — fallback |
 | Горячие клавиши (Cmd+T/W/Tab/1-9/Delete) | Средний | Post-MVP |
-| `GlobalSearch.tsx` (Cmd+Shift+K) | Низкий | Глобальный модал поиска с подсветкой; поиск внутри WikiPanel уже есть |
+| `GlobalSearch.tsx` (Cmd+Shift+K) | Низкий | Глобальный модал поиска с подсветкой |
 | Wiki: блоки кода с кнопками | Низкий | TipTap NodeView: "Копировать" + "Вставить в терминал" |
 | Drag-and-drop в дереве | Отменено | — |
 
@@ -87,6 +101,24 @@
 ---
 
 ## История изменений
+
+### 2026-03-29
+
+**SQLCipher — шифрование базы данных**
+- `Cargo.toml`: `bundled` → `bundled-sqlcipher` (AES-256-CBC шифрование всего файла `.db`)
+- `build.rs`: читает `DB_ENCRYPTION_KEY` из `.env` или окружения при компиляции; встраивает в бинарник через `env!()`; в рантайме переменная не нужна
+- `db.rs`: `PRAGMA key='...'` — первая операция после `Connection::open`; если найдена старая plain-text БД — делает `.plaintext_backup` и пересоздаёт
+- Добавлены `.env`, `.env.example`, `.gitignore` обновлён
+
+**AI панель — прототип**
+- `src/lib/aiProviders.ts` — абстракция провайдеров: OpenAI (`gpt-4o` и др.) + Anthropic (`claude-sonnet-4-6` и др.); стриминг SSE через `fetch()` + `ReadableStream`
+- `src/components/AiPanel.tsx` — чат-панель: история сообщений, стриминг в реальном времени, контекст из выделения терминала, кнопки позиции Right/Bottom, стоп-кнопка, быстрый выбор провайдера
+- `src/components/Layout.tsx` — AI панель интегрирована в layout: позиция "справа" (между терминалом и wiki) и "снизу" (под терминалом); resizable-сплиттеры
+- `src/components/TerminalPanel.tsx` — кнопка `Bot` в баре вкладок; `terminal.onSelectionChange` → `terminalSelection` в Zustand store; индикатор-точка при наличии выделения
+- `src/components/SettingsDialog.tsx` — вкладка "Агенты": провайдер, API-ключ (show/hide), модель, позиция панели, кнопка проверки подключения
+- `src/App.tsx` — `Cmd+I` toggle AI панели; восстановление `showAiPanel`/`aiPanelPosition` из SQLite при старте
+- `tauri.conf.json` — CSP разрешает `connect-src` для `api.openai.com`, `api.anthropic.com`, `localhost:11434`
+- Локализация: добавлены ключи `tabAgents` и `agents*` в `ru.json` и `en.json`
 
 ### 2026-03-27
 
@@ -108,6 +140,8 @@
 
 | Область | Готовность |
 |---------|-----------|
+| Область | Готовность |
+|---------|-----------|
 | Инфраструктура / сборка | 100% |
 | TypeScript типы и store | 100% |
 | Layout и дерево (CRUD + danger + SSH + клонирование + UX + поиск) | 100% |
@@ -117,8 +151,10 @@
 | Wiki / TipTap (редактор + теги + поиск) | 100% |
 | Настройки (Settings + темы) | 100% |
 | Система тем (10 тем + random) | 100% |
+| Шифрование БД (SQLCipher + compile-time key) | 100% |
+| AI панель — прототип (OpenAI + Anthropic, стриминг) | 85% (drag-and-drop позиции, история в SQLite — Post-prototype) |
 | Поиск и навигация (дерево + wiki) | 85% (GlobalSearch-модал отсутствует) |
-| Локализация | 5% (заготовка кнопок, логика не реализована) |
+| Локализация | 70% (ru/en полностью; zh/fr/kk — без AI-ключей) |
 | Post-MVP функции | 0% |
 
-**Общая готовность MVP: ~99%**
+**Общая готовность: ~95%** (MVP + AI прототип)

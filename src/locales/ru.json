@@ -146,7 +146,19 @@
     "toastFinderError": "Не удалось открыть Finder: {{error}}",
     "toastPathCopied": "Путь скопирован",
     "toastCopyError": "Не удалось скопировать",
-    "toastSaveError": "Ошибка сохранения настроек: {{error}}"
+    "toastSaveError": "Ошибка сохранения настроек: {{error}}",
+    "tabAgents": "Агенты",
+    "agentsProvider": "Провайдер",
+    "agentsApiKey": "API-ключ",
+    "agentsModel": "Модель",
+    "agentsPanelPosition": "Позиция панели",
+    "agentsPositionRight": "Справа",
+    "agentsPositionBottom": "Снизу",
+    "agentsTestConnection": "Проверить подключение",
+    "agentsTestSuccess": "Подключение успешно",
+    "agentsTestError": "Ошибка подключения: {{error}}",
+    "agentsShowKey": "Показать",
+    "agentsHideKey": "Скрыть"
   },
   "dialogs": {
     "newWorkspace": "Новый Workspace",

@@ -146,7 +146,19 @@
     "toastFinderError": "Could not open Finder: {{error}}",
     "toastPathCopied": "Path copied",
     "toastCopyError": "Could not copy",
-    "toastSaveError": "Settings save error: {{error}}"
+    "toastSaveError": "Settings save error: {{error}}",
+    "tabAgents": "Agents",
+    "agentsProvider": "Provider",
+    "agentsApiKey": "API Key",
+    "agentsModel": "Model",
+    "agentsPanelPosition": "Panel Position",
+    "agentsPositionRight": "Right",
+    "agentsPositionBottom": "Bottom",
+    "agentsTestConnection": "Test Connection",
+    "agentsTestSuccess": "Connection successful",
+    "agentsTestError": "Connection error: {{error}}",
+    "agentsShowKey": "Show",
+    "agentsHideKey": "Hide"
   },
   "dialogs": {
     "newWorkspace": "New Workspace",

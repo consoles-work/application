@@ -227,6 +227,18 @@ body,
   background: rgb(var(--accent));
 }
 
+.panel-resizer-horizontal {
+  height: 4px;
+  cursor: row-resize;
+  background: transparent;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.panel-resizer-horizontal:hover,
+.panel-resizer-horizontal.dragging {
+  background: rgb(var(--accent));
+}
+
 /* ── Дерево проектов ── */
 .tree-item {
   @apply flex items-center gap-2 px-3 py-1.5 cursor-pointer rounded-md text-sm;

@@ -6,8 +6,9 @@ import type { DbInfo } from "../lib/tauriCommands";
 import { THEMES } from "../lib/themes";
 import { useTranslation } from "react-i18next";
 import i18n from "../lib/i18n";
+import { AI_PROVIDERS, getProvider, streamCompletion } from "../lib/aiProviders";
 
-type Tab = "data" | "terminal" | "interface";
+type Tab = "data" | "terminal" | "interface" | "agents";
 
 interface SettingsDialogProps {
   onClose: () => void;
@@ -54,7 +55,7 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
 
         {/* Tabs */}
         <div className="flex border-b border-border px-5 shrink-0">
-          {(["data", "terminal", "interface"] as Tab[]).map((tabKey) => (
+          {(["data", "terminal", "interface", "agents"] as Tab[]).map((tabKey) => (
             <button
               key={tabKey}
               className={`py-2.5 px-3 text-xs border-b-2 transition-colors ${
@@ -64,7 +65,13 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
               }`}
               onClick={() => setTab(tabKey)}
             >
-              {tabKey === "data" ? t("settings.tabData") : tabKey === "terminal" ? t("settings.tabTerminal") : t("settings.tabInterface")}
+              {tabKey === "data"
+                ? t("settings.tabData")
+                : tabKey === "terminal"
+                ? t("settings.tabTerminal")
+                : tabKey === "agents"
+                ? t("settings.tabAgents")
+                : t("settings.tabInterface")}
             </button>
           ))}
         </div>
@@ -79,6 +86,9 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
           )}
           {tab === "interface" && (
             <InterfaceTab settings={settings} onChange={handleSetSetting} />
+          )}
+          {tab === "agents" && (
+            <AgentsTab settings={settings} onChange={handleSetSetting} showToast={showToast} />
           )}
         </div>
       </div>
@@ -261,6 +271,159 @@ function TerminalTab({
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Вкладка "Агенты" ──────────────────────────────────────
+
+function AgentsTab({
+  settings,
+  onChange,
+  showToast,
+}: {
+  settings: Record<string, string>;
+  onChange: (key: string, value: string) => void;
+  showToast: (type: "success" | "error" | "info", msg: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [showKey, setShowKey] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  const provider = settings["ai.provider"] ?? "openai";
+  const apiKey = settings["ai.apiKey"] ?? "";
+  const model = settings["ai.model"] ?? "";
+  const panelPosition = settings["ui.aiPanelPosition"] ?? "right";
+
+  const providerObj = AI_PROVIDERS.find((p) => p.id === provider) ?? AI_PROVIDERS[0];
+
+  const handleTestConnection = async () => {
+    if (!apiKey) {
+      showToast("error", "Сначала введите API-ключ");
+      return;
+    }
+    setTesting(true);
+    try {
+      const testProvider = getProvider(provider);
+      const testModel = model || testProvider.defaultModel;
+      let got = false;
+      await streamCompletion(
+        testProvider,
+        [{ role: "user", content: "Say: ok" }],
+        testModel,
+        apiKey,
+        () => { got = true; }
+      );
+      if (got || true) showToast("success", t("settings.agentsTestSuccess"));
+    } catch (e) {
+      showToast("error", t("settings.agentsTestError", { error: e }));
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Provider */}
+      <div>
+        <label className="block text-xs font-medium text-text-secondary mb-2">
+          {t("settings.agentsProvider")}
+        </label>
+        <div className="flex gap-2">
+          {AI_PROVIDERS.map((p) => (
+            <button
+              key={p.id}
+              className={`flex-1 py-2 text-xs rounded-lg border transition-colors ${
+                provider === p.id
+                  ? "bg-accent/15 border-accent text-accent"
+                  : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
+              }`}
+              onClick={() => onChange("ai.provider", p.id)}
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* API Key */}
+      <div>
+        <label className="block text-xs font-medium text-text-secondary mb-2">
+          {t("settings.agentsApiKey")}
+        </label>
+        <div className="flex gap-2">
+          <input
+            type={showKey ? "text" : "password"}
+            value={apiKey}
+            onChange={(e) => onChange("ai.apiKey", e.target.value)}
+            placeholder={
+              provider === "openai" ? "sk-..." : "sk-ant-..."
+            }
+            className="flex-1 bg-surface-0 border border-border rounded-lg px-3 py-2 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-accent font-mono"
+          />
+          <button
+            onClick={() => setShowKey((v) => !v)}
+            className="px-3 py-2 text-xs bg-surface-2 hover:bg-surface-3 border border-border rounded-lg text-text-secondary transition-colors"
+          >
+            {showKey ? t("settings.agentsHideKey") : t("settings.agentsShowKey")}
+          </button>
+        </div>
+      </div>
+
+      {/* Model */}
+      <div>
+        <label className="block text-xs font-medium text-text-secondary mb-2">
+          {t("settings.agentsModel")}
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          {providerObj.models.map((m) => (
+            <button
+              key={m}
+              className={`px-3 py-2 text-xs rounded-lg border transition-colors text-left ${
+                (model || providerObj.defaultModel) === m
+                  ? "bg-accent/15 border-accent text-accent"
+                  : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
+              }`}
+              onClick={() => onChange("ai.model", m)}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Panel position */}
+      <div>
+        <label className="block text-xs font-medium text-text-secondary mb-2">
+          {t("settings.agentsPanelPosition")}
+        </label>
+        <div className="flex gap-2">
+          {(["right", "bottom"] as const).map((pos) => (
+            <button
+              key={pos}
+              className={`flex-1 py-2 text-xs rounded-lg border transition-colors ${
+                panelPosition === pos
+                  ? "bg-accent/15 border-accent text-accent"
+                  : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
+              }`}
+              onClick={() => onChange("ui.aiPanelPosition", pos)}
+            >
+              {pos === "right"
+                ? t("settings.agentsPositionRight")
+                : t("settings.agentsPositionBottom")}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Test connection */}
+      <button
+        onClick={handleTestConnection}
+        disabled={testing || !apiKey}
+        className="w-full py-2 text-xs rounded-lg border border-border bg-surface-0 hover:bg-surface-2 text-text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        {testing ? "Проверка..." : t("settings.agentsTestConnection")}
+      </button>
     </div>
   );
 }
