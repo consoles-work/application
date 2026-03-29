@@ -39,137 +39,336 @@
   <!-- Alpine.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
+  <script>
+    const _i18n = {
+      en: {
+        nav_features: 'Features', nav_interface: 'Interface', nav_tech: 'Tech',
+        nav_download: 'Download', nav_cta: 'Download Free',
+        hero_badge: 'v0.1 Beta — Open Source',
+        hero_h1_1: 'All your terminals.', hero_h1_2: 'One workspace.',
+        hero_sub: 'Stop drowning in terminal windows. <strong class="text-txt-100">Consoles</strong> organizes every project, every shell session, and every piece of tribal knowledge into a single app.',
+        hero_cta: 'Download for Free', hero_github: 'View on GitHub',
+        pillars_h2_1: 'Three panels.', pillars_h2_2: 'Zero chaos.',
+        pillars_sub: 'Everything a multi-project developer needs, organized the way your brain works.',
+        card1_title: 'Project Tree',
+        card1_desc: 'Hierarchical tree you configure yourself. Group by client, team, or however you think.',
+        card1_f1: 'Workspace → Project → Console', card1_f2: 'Drag-and-drop reordering',
+        card1_f3: 'Colors & emoji icons', card1_f4: '<kbd>Ctrl+P</kbd> fuzzy search',
+        card2_title: 'Real Terminals',
+        card2_desc: 'Full PTY sessions — not a toy. Your shell, your config, your tools. Just organized.',
+        card2_f1: 'bash, zsh, fish, PowerShell', card2_f2: 'Auto-run startup commands',
+        card2_f3: 'Tabbed & split views', card2_f4: 'SSH profiles built-in',
+        card3_title: 'Built-in Wiki',
+        card3_desc: 'Stop losing tribal knowledge. Ports, configs, deploy steps — all next to your terminal.',
+        card3_f1: 'Markdown + code blocks', card3_f2: 'Paste-to-terminal snippets',
+        card3_f3: 'Tags & full-text search', card3_f4: 'Per-project pages',
+        pain_h2_1: 'Built for developers who', pain_h2_2: 'juggle too much',
+        prob1_label: 'The problem', prob1_title: '27 open terminal tabs',
+        prob1_desc: "You're ssh'd into prod somewhere in tab 19 but can't find it. Sound familiar?",
+        fix1_label: 'Consoles fix', fix1_title: 'Named, organized, instant',
+        fix1_desc: 'Every console has a name, belongs to a project, and opens with one click. <kbd>Ctrl+P</kbd> to find anything.',
+        prob2_label: 'The problem', prob2_title: '"Where was that config again?"',
+        prob2_desc: 'Scattered notes in Notion, Slack bookmarks, sticky notes. None are near your terminal when you need them.',
+        fix2_label: 'Consoles fix', fix2_title: 'Wiki right there',
+        fix2_desc: 'Per-project wiki panel. Write deploy steps, paste them directly into terminal. No context switching.',
+        prob3_label: 'The problem', prob3_title: 'Context switching hell',
+        prob3_desc: 'Switching from Project A to Project B means finding windows, remembering paths, environment variables.',
+        fix3_label: 'Consoles fix', fix3_title: 'One click, full context',
+        fix3_desc: 'Click a project — terminal opens in the right directory, with the right env vars, running the right command.',
+        tech_h2: 'Lean, fast,', tech_h2_grad: 'native',
+        tech_sub: 'Built with Tauri 2.0 — not another Electron memory hog.',
+        stat1: 'App size', stat2: 'RAM usage', stat3: 'Cold start', stat4: 'Cloud dependencies',
+        dl_h2: 'Ready to try?',
+        dl_sub: 'Free, open-source, no account required. Your data stays on your machine.',
+        dl_mac: 'Download for macOS', dl_win: 'Download for Windows', dl_linux: 'Download for Linux',
+        footer_docs: 'Docs', footer_changelog: 'Changelog', footer_license: 'MIT License',
+        not_used_label: 'proud to announce',
+        not_used_h2_1: 'Not used by', not_used_h2_2: 'anyone important',
+        not_used_sub: 'These industry leaders have absolutely zero interest in our product. We checked.',
+      },
+      ru: {
+        nav_features: 'Возможности', nav_interface: 'Интерфейс', nav_tech: 'Технологии',
+        nav_download: 'Скачать', nav_cta: 'Скачать бесплатно',
+        hero_badge: 'v0.1 Beta — Open Source',
+        hero_h1_1: 'Все терминалы.', hero_h1_2: 'Один workspace.',
+        hero_sub: 'Хватит тонуть в окнах терминала. <strong class="text-txt-100">Consoles</strong> организует каждый проект, каждую сессию и все накопленные знания в одном приложении.',
+        hero_cta: 'Скачать бесплатно', hero_github: 'Смотреть на GitHub',
+        pillars_h2_1: 'Три панели.', pillars_h2_2: 'Никакого хаоса.',
+        pillars_sub: 'Всё, что нужно разработчику с несколькими проектами — организовано так, как думает голова.',
+        card1_title: 'Дерево проектов',
+        card1_desc: 'Иерархическое дерево, которое вы настраиваете сами. Группируйте по клиенту, команде или как угодно.',
+        card1_f1: 'Workspace → Project → Console', card1_f2: 'Перетаскивание элементов',
+        card1_f3: 'Цвета и emoji-иконки', card1_f4: '<kbd>Ctrl+P</kbd> быстрый поиск',
+        card2_title: 'Настоящие терминалы',
+        card2_desc: 'Полноценные PTY-сессии — не игрушка. Ваш шелл, ваш конфиг, ваши инструменты. Просто организованные.',
+        card2_f1: 'bash, zsh, fish, PowerShell', card2_f2: 'Автозапуск команд при открытии',
+        card2_f3: 'Вкладки и разделённый вид', card2_f4: 'SSH-профили встроены',
+        card3_title: 'Встроенная Wiki',
+        card3_desc: 'Хватит терять знания. Порты, конфиги, шаги деплоя — всё рядом с терминалом.',
+        card3_f1: 'Markdown + блоки кода', card3_f2: 'Вставка сниппетов прямо в терминал',
+        card3_f3: 'Теги и полнотекстовый поиск', card3_f4: 'Отдельные страницы для каждого проекта',
+        pain_h2_1: 'Для разработчиков, которые', pain_h2_2: 'всегда жонглируют проектами',
+        prob1_label: 'Проблема', prob1_title: '27 открытых вкладок терминала',
+        prob1_desc: 'Вы сидите по SSH в проде где-то на вкладке 19, но не можете найти. Знакомо?',
+        fix1_label: 'Решение Consoles', fix1_title: 'Названные, упорядоченные, мгновенные',
+        fix1_desc: 'У каждой консоли есть имя, она принадлежит проекту, открывается одним кликом. <kbd>Ctrl+P</kbd> — найти что угодно.',
+        prob2_label: 'Проблема', prob2_title: '"Где был тот конфиг?"',
+        prob2_desc: 'Заметки в Notion, закладки в Slack, стикеры. Ничего нет рядом с терминалом в нужный момент.',
+        fix2_label: 'Решение Consoles', fix2_title: 'Wiki прямо здесь',
+        fix2_desc: 'Wiki-панель для каждого проекта. Пишите шаги деплоя, вставляйте их прямо в терминал. Никакого переключения контекста.',
+        prob3_label: 'Проблема', prob3_title: 'Ад переключения контекста',
+        prob3_desc: 'Переход с Проекта А на Проект Б — это поиск окон, запоминание путей, переменных окружения.',
+        fix3_label: 'Решение Consoles', fix3_title: 'Один клик — весь контекст',
+        fix3_desc: 'Кликни на проект — терминал откроется в нужной директории, с нужными env-переменными, с нужной командой.',
+        tech_h2: 'Лёгкий, быстрый,', tech_h2_grad: 'нативный',
+        tech_sub: 'Построен на Tauri 2.0 — не очередной тяжёлый Electron.',
+        stat1: 'Размер приложения', stat2: 'Потребление RAM', stat3: 'Холодный старт', stat4: 'Зависимостей от облака',
+        dl_h2: 'Готовы попробовать?',
+        dl_sub: 'Бесплатно, открытый код, без регистрации. Ваши данные остаются на вашей машине.',
+        dl_mac: 'Скачать для macOS', dl_win: 'Скачать для Windows', dl_linux: 'Скачать для Linux',
+        footer_docs: 'Документация', footer_changelog: 'Changelog', footer_license: 'MIT Лицензия',
+        not_used_label: 'с гордостью сообщаем',
+        not_used_h2_1: 'Не используется', not_used_h2_2: 'никем важным',
+        not_used_sub: 'Эти отраслевые лидеры абсолютно не заинтересованы в нашем продукте. Мы проверили.',
+      },
+      zh: {
+        nav_features: '功能', nav_interface: '界面', nav_tech: '技术',
+        nav_download: '下载', nav_cta: '免费下载',
+        hero_badge: 'v0.1 Beta — 开源',
+        hero_h1_1: '所有终端。', hero_h1_2: '一个工作空间。',
+        hero_sub: '告别混乱的终端窗口。<strong class="text-txt-100">Consoles</strong> 将每个项目、每个会话和每份知识整合到一个应用中。',
+        hero_cta: '免费下载', hero_github: '在 GitHub 上查看',
+        pillars_h2_1: '三个面板。', pillars_h2_2: '零混乱。',
+        pillars_sub: '多项目开发者所需的一切，按照您的思维方式组织。',
+        card1_title: '项目树',
+        card1_desc: '自定义层级树，按客户、团队或任意方式分组。',
+        card1_f1: 'Workspace → Project → Console', card1_f2: '拖拽排序',
+        card1_f3: '颜色和 emoji 图标', card1_f4: '<kbd>Ctrl+P</kbd> 模糊搜索',
+        card2_title: '真实终端',
+        card2_desc: '完整的 PTY 会话——不是玩具。您的 shell、配置、工具，只是有了组织。',
+        card2_f1: 'bash, zsh, fish, PowerShell', card2_f2: '自动运行启动命令',
+        card2_f3: '标签页和分屏视图', card2_f4: '内置 SSH 配置',
+        card3_title: '内置 Wiki',
+        card3_desc: '停止丢失知识。端口、配置、部署步骤——全在终端旁边。',
+        card3_f1: 'Markdown + 代码块', card3_f2: '直接粘贴到终端',
+        card3_f3: '标签和全文搜索', card3_f4: '每个项目独立页面',
+        pain_h2_1: '为同时管理多项目的', pain_h2_2: '开发者而生',
+        prob1_label: '问题', prob1_title: '27个打开的终端标签',
+        prob1_desc: '您在第19个标签里 SSH 到生产环境，但找不到了。听起来熟悉吗？',
+        fix1_label: 'Consoles 解决方案', fix1_title: '命名、有序、即时',
+        fix1_desc: '每个控制台都有名字，属于某个项目，一键打开。<kbd>Ctrl+P</kbd> 查找任何内容。',
+        prob2_label: '问题', prob2_title: '"那个配置在哪里？"',
+        prob2_desc: 'Notion 笔记、Slack 书签、便利贴。需要时没有一个在终端旁边。',
+        fix2_label: 'Consoles 解决方案', fix2_title: 'Wiki 就在旁边',
+        fix2_desc: '每个项目的 wiki 面板。写下部署步骤，直接粘贴到终端。无需切换上下文。',
+        prob3_label: '问题', prob3_title: '上下文切换地狱',
+        prob3_desc: '从项目A切换到项目B意味着找窗口、记路径、记环境变量。',
+        fix3_label: 'Consoles 解决方案', fix3_title: '一键，完整上下文',
+        fix3_desc: '点击项目——终端在正确目录打开，带有正确的环境变量，运行正确的命令。',
+        tech_h2: '轻量、快速、', tech_h2_grad: '原生',
+        tech_sub: '基于 Tauri 2.0 构建——不是又一个臃肿的 Electron。',
+        stat1: '应用大小', stat2: 'RAM 使用', stat3: '冷启动', stat4: '云依赖',
+        dl_h2: '准备好试试了吗？',
+        dl_sub: '免费、开源、无需账号。您的数据保留在您的机器上。',
+        dl_mac: '下载 macOS 版', dl_win: '下载 Windows 版', dl_linux: '下载 Linux 版',
+        footer_docs: '文档', footer_changelog: '更新日志', footer_license: 'MIT 许可证',
+        not_used_label: '自豪地宣布',
+        not_used_h2_1: '没有任何重要人物', not_used_h2_2: '在使用我们的产品',
+        not_used_sub: '这些行业领袖对我们的产品完全没有兴趣。我们确认过了。',
+      },
+      fr: {
+        nav_features: 'Fonctionnalités', nav_interface: 'Interface', nav_tech: 'Tech',
+        nav_download: 'Télécharger', nav_cta: 'Télécharger gratuitement',
+        hero_badge: 'v0.1 Beta — Open Source',
+        hero_h1_1: 'Tous vos terminaux.', hero_h1_2: 'Un seul espace.',
+        hero_sub: 'Arrêtez de vous noyer dans les fenêtres de terminal. <strong class="text-txt-100">Consoles</strong> organise chaque projet, chaque session et chaque connaissance dans une seule app.',
+        hero_cta: 'Télécharger gratuitement', hero_github: 'Voir sur GitHub',
+        pillars_h2_1: 'Trois panneaux.', pillars_h2_2: 'Zéro chaos.',
+        pillars_sub: 'Tout ce dont un développeur multi-projets a besoin, organisé comme votre cerveau fonctionne.',
+        card1_title: 'Arborescence',
+        card1_desc: 'Arborescence hiérarchique que vous configurez vous-même. Groupez par client, équipe ou comme vous pensez.',
+        card1_f1: 'Workspace → Project → Console', card1_f2: 'Réorganisation par glisser-déposer',
+        card1_f3: 'Couleurs et icônes emoji', card1_f4: 'Recherche floue <kbd>Ctrl+P</kbd>',
+        card2_title: 'Vrais terminaux',
+        card2_desc: 'Sessions PTY complètes — pas un jouet. Votre shell, votre config, vos outils. Juste organisés.',
+        card2_f1: 'bash, zsh, fish, PowerShell', card2_f2: 'Commandes de démarrage automatiques',
+        card2_f3: 'Vues en onglets et divisées', card2_f4: 'Profils SSH intégrés',
+        card3_title: 'Wiki intégré',
+        card3_desc: 'Arrêtez de perdre les connaissances. Ports, configs, étapes de déploiement — tout à côté de votre terminal.',
+        card3_f1: 'Markdown + blocs de code', card3_f2: 'Snippets à coller dans le terminal',
+        card3_f3: 'Tags et recherche plein texte', card3_f4: 'Pages par projet',
+        pain_h2_1: 'Conçu pour les développeurs qui', pain_h2_2: 'jonglent trop',
+        prob1_label: 'Le problème', prob1_title: '27 onglets de terminal ouverts',
+        prob1_desc: "Vous êtes connecté en SSH à la prod quelque part dans l'onglet 19 mais vous ne le trouvez pas.",
+        fix1_label: 'Solution Consoles', fix1_title: 'Nommé, organisé, instantané',
+        fix1_desc: "Chaque console a un nom, appartient à un projet, et s'ouvre en un clic. <kbd>Ctrl+P</kbd> pour tout trouver.",
+        prob2_label: 'Le problème', prob2_title: '"Où était cette config ?"',
+        prob2_desc: "Notes éparpillées dans Notion, marque-pages Slack, post-its. Aucun n'est près de votre terminal quand vous en avez besoin.",
+        fix2_label: 'Solution Consoles', fix2_title: 'Wiki juste là',
+        fix2_desc: 'Panneau wiki par projet. Écrivez les étapes de déploiement, collez-les directement dans le terminal. Pas de changement de contexte.',
+        prob3_label: 'Le problème', prob3_title: "L'enfer du changement de contexte",
+        prob3_desc: "Passer du Projet A au Projet B signifie trouver des fenêtres, se souvenir des chemins, des variables d'environnement.",
+        fix3_label: 'Solution Consoles', fix3_title: 'Un clic, contexte complet',
+        fix3_desc: "Cliquez sur un projet — le terminal s'ouvre dans le bon répertoire, avec les bonnes vars d'env, en exécutant la bonne commande.",
+        tech_h2: 'Léger, rapide,', tech_h2_grad: 'natif',
+        tech_sub: "Construit avec Tauri 2.0 — pas encore un Electron gourmand en mémoire.",
+        stat1: "Taille de l'app", stat2: 'Utilisation RAM', stat3: 'Démarrage à froid', stat4: 'Dépendances cloud',
+        dl_h2: 'Prêt à essayer ?',
+        dl_sub: 'Gratuit, open-source, sans compte requis. Vos données restent sur votre machine.',
+        dl_mac: 'Télécharger pour macOS', dl_win: 'Télécharger pour Windows', dl_linux: 'Télécharger pour Linux',
+        footer_docs: 'Docs', footer_changelog: 'Changelog', footer_license: 'Licence MIT',
+        not_used_label: "fier d'annoncer",
+        not_used_h2_1: 'Non utilisé par', not_used_h2_2: "personne d'important",
+        not_used_sub: "Ces leaders de l'industrie n'ont absolument aucun intérêt pour notre produit. On a vérifié.",
+      },
+      kk: {
+        nav_features: 'Мүмкіндіктер', nav_interface: 'Интерфейс', nav_tech: 'Технологиялар',
+        nav_download: 'Жүктеу', nav_cta: 'Тегін жүктеу',
+        hero_badge: 'v0.1 Beta — Ашық бастапқы код',
+        hero_h1_1: 'Барлық терминалдар.', hero_h1_2: 'Бір жұмыс кеңістігі.',
+        hero_sub: 'Терминал терезелерінде батып кетуді тоқтатыңыз. <strong class="text-txt-100">Consoles</strong> әрбір жобаны, сессияны және білімді бір қосымшада ұйымдастырады.',
+        hero_cta: 'Тегін жүктеу', hero_github: 'GitHub-та қарау',
+        pillars_h2_1: 'Үш панель.', pillars_h2_2: 'Нөл хаос.',
+        pillars_sub: 'Көп жобалы әзірлеушіге қажет нәрсенің бәрі миыңыз жұмыс істейтіндей ұйымдастырылған.',
+        card1_title: 'Жоба ағашы',
+        card1_desc: 'Өзіңіз конфигурациялайтын иерархиялық ағаш. Клиент, команда немесе қалаған тәртіпте топтаңыз.',
+        card1_f1: 'Workspace → Project → Console', card1_f2: 'Апарып тастау арқылы сұрыптау',
+        card1_f3: 'Түстер мен emoji белгішелері', card1_f4: '<kbd>Ctrl+P</kbd> жылдам іздеу',
+        card2_title: 'Нақты терминалдар',
+        card2_desc: 'Толық PTY сессиялары — ойыншық емес. Сіздің shell, конфиг, құралдар. Тек ұйымдастырылған.',
+        card2_f1: 'bash, zsh, fish, PowerShell', card2_f2: 'Іске қосу командаларын автоматты орындау',
+        card2_f3: 'Қойындылар мен бөлінген көрініс', card2_f4: 'SSH профильдері кіріктірілген',
+        card3_title: 'Кіріктірілген Wiki',
+        card3_desc: 'Білімді жоғалтуды тоқтатыңыз. Порттар, конфигтер, деплой қадамдары — барлығы терминалдың жанында.',
+        card3_f1: 'Markdown + код блоктары', card3_f2: 'Терминалға тікелей қою',
+        card3_f3: 'Тегтер және толық мәтінді іздеу', card3_f4: 'Әр жоба үшін жеке беттер',
+        pain_h2_1: 'Тым көп нәрсемен жонглерлейтін', pain_h2_2: 'әзірлеушілер үшін жасалған',
+        prob1_label: 'Мәселе', prob1_title: '27 ашық терминал қойындысы',
+        prob1_desc: '19-шы қойындыда продтан SSH арқылы кіргенсіз, бірақ таба алмайсыз. Таныс па?',
+        fix1_label: 'Consoles шешімі', fix1_title: 'Аталған, ұйымдастырылған, лезде',
+        fix1_desc: 'Әр консольдің аты бар, жобаға тиесілі, бір шертумен ашылады. <kbd>Ctrl+P</kbd> — кез келгенді табу.',
+        prob2_label: 'Мәселе', prob2_title: '"Ол конфиг қайда болды?"',
+        prob2_desc: 'Notion-дағы жазбалар, Slack бетбелгілері, стикерлер. Қажет кезде ешқайсысы терминалдың жанында жоқ.',
+        fix2_label: 'Consoles шешімі', fix2_title: 'Wiki осында',
+        fix2_desc: 'Әр жоба үшін wiki панелі. Деплой қадамдарын жазыңыз, тікелей терминалға қойыңыз. Контекст ауыстыру жоқ.',
+        prob3_label: 'Мәселе', prob3_title: 'Контекст ауыстырудың тозағы',
+        prob3_desc: 'А жобасынан Б жобасына ауысу — терезелерді іздеу, жолдарды, орта айнымалыларды есте сақтау.',
+        fix3_label: 'Consoles шешімі', fix3_title: 'Бір шерту — толық контекст',
+        fix3_desc: 'Жобаны шертіңіз — терминал дұрыс каталогта, дұрыс env айнымалыларымен, дұрыс командамен ашылады.',
+        tech_h2: 'Жеңіл, жылдам,', tech_h2_grad: 'нативті',
+        tech_sub: 'Tauri 2.0 негізінде жасалған — тағы бір ауыр Electron емес.',
+        stat1: 'Қосымша өлшемі', stat2: 'RAM тұтыну', stat3: 'Суық іске қосу', stat4: 'Бұлт тәуелділіктері',
+        dl_h2: 'Байқап көруге дайынсыз ба?',
+        dl_sub: 'Тегін, ашық бастапқы код, тіркеусіз. Деректеріңіз машинаңызда қалады.',
+        dl_mac: 'macOS үшін жүктеу', dl_win: 'Windows үшін жүктеу', dl_linux: 'Linux үшін жүктеу',
+        footer_docs: 'Құжаттама', footer_changelog: 'Changelog', footer_license: 'MIT Лицензиясы',
+        not_used_label: 'мақтанышпен хабарлаймыз',
+        not_used_h2_1: 'Ешкім маңызды', not_used_h2_2: 'пайдаланбайды',
+        not_used_sub: 'Бұл сала көшбасшылары біздің өнімге мүлдем қызығушылық танытпайды. Біз тексердік.',
+      },
+    };
+
+    document.addEventListener('alpine:init', () => {
+      const saved = localStorage.getItem('site_lang') || 'en';
+      Alpine.store('i18n', {
+        lang: saved,
+        t(key) {
+          return _i18n[this.lang]?.[key] ?? _i18n['en'][key] ?? key;
+        },
+        set(l) {
+          this.lang = l;
+          localStorage.setItem('site_lang', l);
+          document.documentElement.lang = l;
+        }
+      });
+      document.documentElement.lang = saved;
+    });
+  </script>
+
   <style>
-    /* ── Base ── */
     body { background: #08090d; color: #f0f2f8; }
     ::selection { background: rgba(108,138,255,0.3); }
 
-    /* ── Glow effects ── */
     .hero-glow {
-      position: absolute;
-      width: 800px; height: 600px;
-      border-radius: 50%;
-      filter: blur(120px);
-      opacity: 0.12;
-      pointer-events: none;
+      position: absolute; width: 800px; height: 600px;
+      border-radius: 50%; filter: blur(120px); opacity: 0.12; pointer-events: none;
     }
     .glow-blue { background: #6c8aff; left: 10%; top: -10%; }
     .glow-mint { background: #5eebc2; right: 5%; top: 20%; opacity: 0.07; }
 
-    /* ── Terminal mockup ── */
     .terminal-line::before {
-      content: attr(data-prefix);
-      color: #5eebc2;
-      margin-right: 0.5rem;
+      content: attr(data-prefix); color: #5eebc2; margin-right: 0.5rem;
     }
     .cursor-blink {
-      display: inline-block;
-      width: 8px; height: 18px;
-      background: #6c8aff;
-      animation: blink 1s step-end infinite;
-      vertical-align: text-bottom;
-      margin-left: 2px;
+      display: inline-block; width: 8px; height: 18px; background: #6c8aff;
+      animation: blink 1s step-end infinite; vertical-align: text-bottom; margin-left: 2px;
     }
     @keyframes blink { 50% { opacity: 0; } }
 
-    /* ── App mockup frame ── */
     .app-frame {
       background: linear-gradient(135deg, #0e1019 0%, #151723 100%);
-      border: 1px solid #1e2235;
-      border-radius: 12px;
-      box-shadow:
-        0 0 0 1px rgba(108,138,255,0.05),
-        0 25px 80px rgba(0,0,0,0.5),
-        0 0 120px rgba(108,138,255,0.04);
+      border: 1px solid #1e2235; border-radius: 12px;
+      box-shadow: 0 0 0 1px rgba(108,138,255,0.05), 0 25px 80px rgba(0,0,0,0.5), 0 0 120px rgba(108,138,255,0.04);
     }
     .app-frame-bar {
-      height: 38px;
-      background: #0e1019;
-      border-bottom: 1px solid #1e2235;
+      height: 38px; background: #0e1019; border-bottom: 1px solid #1e2235;
       border-radius: 12px 12px 0 0;
     }
     .dot { width: 12px; height: 12px; border-radius: 50%; }
 
-    /* ── Feature card hover ── */
     .feature-card {
       background: linear-gradient(135deg, rgba(14,16,25,0.8), rgba(21,23,35,0.6));
-      border: 1px solid #1e2235;
-      transition: all 0.3s ease;
+      border: 1px solid #1e2235; transition: all 0.3s ease;
     }
-    .feature-card:hover {
-      border-color: #2a2f47;
-      box-shadow: 0 0 40px rgba(108,138,255,0.06);
-      transform: translateY(-2px);
-    }
+    .feature-card:hover { border-color: #2a2f47; box-shadow: 0 0 40px rgba(108,138,255,0.06); transform: translateY(-2px); }
 
-    /* ── Scroll animations ── */
     [x-intersect] { opacity: 0; transform: translateY(24px); transition: all 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
     .is-visible { opacity: 1 !important; transform: translateY(0) !important; }
 
-    /* ── Gradient text ── */
     .text-gradient {
       background: linear-gradient(135deg, #6c8aff 0%, #96b0ff 40%, #5eebc2 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
     .text-gradient-warm {
       background: linear-gradient(135deg, #ffc26e 0%, #ff7a8a 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
 
-    /* ── Keyboard shortcut badges ── */
     kbd {
-      display: inline-block;
-      padding: 2px 7px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      background: #151723;
-      border: 1px solid #2a2f47;
-      border-radius: 4px;
-      color: #b4b9ce;
-      line-height: 1.6;
+      display: inline-block; padding: 2px 7px; font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; background: #151723; border: 1px solid #2a2f47;
+      border-radius: 4px; color: #b4b9ce; line-height: 1.6;
     }
 
-    /* ── Smooth nav background ── */
     .nav-blur { backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
 
-    /* ── Platform pills ── */
     .platform-pill {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 6px 14px;
-      border: 1px solid #1e2235;
-      border-radius: 999px;
-      font-size: 13px;
-      color: #b4b9ce;
-      transition: all 0.2s;
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
+      border: 1px solid #1e2235; border-radius: 999px; font-size: 13px; color: #b4b9ce; transition: all 0.2s;
     }
     .platform-pill:hover { border-color: #6c8aff; color: #f0f2f8; }
 
-    /* ── CTA button shine ── */
-    .btn-primary {
-      position: relative;
-      overflow: hidden;
-    }
+    .btn-primary { position: relative; overflow: hidden; }
     .btn-primary::after {
-      content: '';
-      position: absolute;
-      inset: 0;
+      content: ''; position: absolute; inset: 0;
       background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.1) 45%, transparent 50%);
-      transform: translateX(-100%);
-      transition: transform 0.6s;
+      transform: translateX(-100%); transition: transform 0.6s;
     }
     .btn-primary:hover::after { transform: translateX(100%); }
+
+    .lang-btn {
+      padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em;
+      transition: all 0.15s; cursor: pointer; border: none; background: transparent; color: #4e5370;
+    }
+    .lang-btn:hover { color: #b4b9ce; }
+    .lang-btn-active { color: #6c8aff !important; background: rgba(108,138,255,0.12); }
   </style>
 </head>
 
-<body class="font-body antialiased overflow-x-hidden">
+<body class="font-body antialiased overflow-x-hidden" x-data>
 
-  <!-- ════════════════════════════════════════ -->
   <!-- NAV -->
-  <!-- ════════════════════════════════════════ -->
   <nav
     class="fixed top-0 inset-x-0 z-50 nav-blur"
     x-data="{ scrolled: false }"
@@ -177,7 +376,6 @@
     :class="scrolled ? 'bg-bg-900/80 border-b border-stroke' : 'bg-transparent'"
   >
     <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-      <!-- Logo -->
       <a href="#" class="flex items-center gap-2.5">
         <div class="w-8 h-8 rounded-lg bg-brand flex items-center justify-center">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg>
@@ -185,60 +383,57 @@
         <span class="font-display font-semibold text-lg text-txt-100 tracking-tight">Consoles</span>
       </a>
 
-      <!-- Links -->
-      <div class="hidden md:flex items-center gap-8 text-sm text-txt-300">
-        <a href="#features" class="hover:text-txt-100 transition-colors">Features</a>
-        <a href="#interface" class="hover:text-txt-100 transition-colors">Interface</a>
-        <a href="#stack" class="hover:text-txt-100 transition-colors">Tech</a>
-        <a href="#download" class="hover:text-txt-100 transition-colors">Download</a>
+      <div class="hidden md:flex items-center gap-6 text-sm text-txt-300">
+        <a href="#features" class="hover:text-txt-100 transition-colors" x-text="$store.i18n.t('nav_features')">Features</a>
+        <a href="#interface" class="hover:text-txt-100 transition-colors" x-text="$store.i18n.t('nav_interface')">Interface</a>
+        <a href="#stack" class="hover:text-txt-100 transition-colors" x-text="$store.i18n.t('nav_tech')">Tech</a>
+        <a href="#download" class="hover:text-txt-100 transition-colors" x-text="$store.i18n.t('nav_download')">Download</a>
+
+        <!-- Lang switcher -->
+        <div class="flex items-center gap-0.5 border-l border-stroke pl-4 ml-2">
+          <template x-for="l in ['en','ru','zh','fr','kk']" :key="l">
+            <button
+              @click="$store.i18n.set(l)"
+              :class="$store.i18n.lang === l ? 'lang-btn lang-btn-active' : 'lang-btn'"
+              x-text="l"
+            ></button>
+          </template>
+        </div>
       </div>
 
-      <!-- CTA -->
-      <a href="#download" class="btn-primary bg-brand hover:bg-brand-dark text-white font-medium text-sm px-5 py-2 rounded-lg transition-colors">
-        Download Free
-      </a>
+      <a href="#download" class="btn-primary bg-brand hover:bg-brand-dark text-white font-medium text-sm px-5 py-2 rounded-lg transition-colors" x-text="$store.i18n.t('nav_cta')">Download Free</a>
     </div>
   </nav>
 
 
-  <!-- ════════════════════════════════════════ -->
   <!-- HERO -->
-  <!-- ════════════════════════════════════════ -->
   <section class="relative pt-40 pb-24 px-6">
-    <!-- Background glows -->
     <div class="hero-glow glow-blue"></div>
     <div class="hero-glow glow-mint"></div>
 
     <div class="max-w-5xl mx-auto text-center relative z-10">
-      <!-- Badge -->
       <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-stroke text-xs text-txt-300 mb-8">
         <span class="w-1.5 h-1.5 rounded-full bg-mint animate-pulse"></span>
-        v0.1 Beta — Open Source
+        <span x-text="$store.i18n.t('hero_badge')">v0.1 Beta — Open Source</span>
       </div>
 
-      <!-- Headline -->
       <h1 class="font-display font-bold text-5xl md:text-7xl lg:text-[5.2rem] tracking-tight leading-[1.05] mb-6">
-        All your terminals.<br/>
-        <span class="text-gradient">One workspace.</span>
+        <span x-text="$store.i18n.t('hero_h1_1')">All your terminals.</span><br/>
+        <span class="text-gradient" x-text="$store.i18n.t('hero_h1_2')">One workspace.</span>
       </h1>
 
-      <!-- Sub -->
-      <p class="text-txt-200 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed mb-10">
+      <p class="text-txt-200 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed mb-10" x-html="$store.i18n.t('hero_sub')">
         Stop drowning in terminal windows. <strong class="text-txt-100">Consoles</strong> organizes every project, every shell session, and every piece of tribal knowledge into a single app.
       </p>
 
-      <!-- CTA row -->
       <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
-        <a href="#download" class="btn-primary bg-brand hover:bg-brand-dark text-white font-semibold text-base px-8 py-3.5 rounded-xl transition-colors">
-          Download for Free
-        </a>
+        <a href="#download" class="btn-primary bg-brand hover:bg-brand-dark text-white font-semibold text-base px-8 py-3.5 rounded-xl transition-colors" x-text="$store.i18n.t('hero_cta')">Download for Free</a>
         <a href="https://github.com/" target="_blank" class="flex items-center gap-2 text-txt-300 hover:text-txt-100 text-sm transition-colors">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-          View on GitHub
+          <span x-text="$store.i18n.t('hero_github')">View on GitHub</span>
         </a>
       </div>
 
-      <!-- Platforms -->
       <div class="flex flex-wrap items-center justify-center gap-3">
         <span class="platform-pill">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M22 17.607c-.786 2.28-3.139 6.317-5.563 6.361-1.608.031-2.125-.953-3.963-.953-1.837 0-2.412.923-3.932.983-2.572.099-6.542-5.827-6.542-10.995 0-4.747 3.308-7.1 6.198-7.143 1.55-.028 3.014 1.045 3.959 1.045.949 0 2.727-1.29 4.596-1.101.782.033 2.979.315 4.389 2.377-3.741 2.442-3.158 7.549.858 9.426zm-5.222-17.607c-2.826.114-5.132 3.079-4.81 5.531 2.612.203 5.118-2.725 4.81-5.531z"/></svg>
@@ -257,16 +452,13 @@
   </section>
 
 
-  <!-- ════════════════════════════════════════ -->
   <!-- APP MOCKUP -->
-  <!-- ════════════════════════════════════════ -->
   <section id="interface" class="relative px-6 pb-32">
     <div class="max-w-6xl mx-auto"
          x-data
          x-intersect.once="$el.classList.add('is-visible')"
     >
       <div class="app-frame overflow-hidden">
-        <!-- Title bar -->
         <div class="app-frame-bar flex items-center px-4 gap-2">
           <div class="dot bg-[#ff5f57]"></div>
           <div class="dot bg-[#febc2e]"></div>
@@ -274,88 +466,52 @@
           <span class="ml-3 text-xs text-txt-400 font-mono">Consoles — ~/projects</span>
         </div>
 
-        <!-- Content: 3-panel layout -->
         <div class="flex" style="height: 420px;">
-
           <!-- Tree panel -->
           <div class="w-56 border-r border-stroke p-3 shrink-0 overflow-hidden">
             <div class="text-[10px] uppercase tracking-widest text-txt-400 mb-3 px-1">Projects</div>
-
             <div class="space-y-0.5 text-[13px]">
-              <!-- Workspace 1 -->
               <div class="flex items-center gap-2 px-2 py-1.5 text-txt-200">
-                <span class="text-txt-400 text-xs">▾</span>
-                <span>💼</span>
-                <span class="font-medium">Production</span>
+                <span class="text-txt-400 text-xs">▾</span><span>💼</span><span class="font-medium">Production</span>
               </div>
-              <!-- Project -->
               <div class="flex items-center gap-2 px-2 py-1.5 ml-4 text-txt-200">
-                <span class="text-txt-400 text-xs">▾</span>
-                <span>🔧</span>
-                <span>Backend API</span>
+                <span class="text-txt-400 text-xs">▾</span><span>🔧</span><span>Backend API</span>
               </div>
-              <!-- Console - active -->
               <div class="flex items-center gap-2 px-2 py-1.5 ml-8 rounded-md bg-brand/10 text-brand-light">
-                <span class="text-xs">›</span>
-                <span class="text-xs">💻</span>
-                <span>dev-server</span>
+                <span class="text-xs">›</span><span class="text-xs">💻</span><span>dev-server</span>
               </div>
               <div class="flex items-center gap-2 px-2 py-1.5 ml-8 text-txt-300">
-                <span class="text-xs">›</span>
-                <span class="text-xs">💻</span>
-                <span>docker-logs</span>
+                <span class="text-xs">›</span><span class="text-xs">💻</span><span>docker-logs</span>
               </div>
               <div class="flex items-center gap-2 px-2 py-1.5 ml-8 text-txt-300">
-                <span class="text-xs">›</span>
-                <span class="text-xs">💻</span>
-                <span>ssh prod</span>
+                <span class="text-xs">›</span><span class="text-xs">💻</span><span>ssh prod</span>
               </div>
-              <!-- Project 2 -->
               <div class="flex items-center gap-2 px-2 py-1.5 ml-4 text-txt-300">
-                <span class="text-txt-400 text-xs">▸</span>
-                <span>🎨</span>
-                <span>Frontend App</span>
+                <span class="text-txt-400 text-xs">▸</span><span>🎨</span><span>Frontend App</span>
               </div>
-              <!-- Workspace 2 -->
               <div class="flex items-center gap-2 px-2 py-1.5 text-txt-300 mt-2">
-                <span class="text-txt-400 text-xs">▸</span>
-                <span>🌙</span>
-                <span class="font-medium">Freelance</span>
+                <span class="text-txt-400 text-xs">▸</span><span>🌙</span><span class="font-medium">Freelance</span>
               </div>
               <div class="flex items-center gap-2 px-2 py-1.5 text-txt-300">
-                <span class="text-txt-400 text-xs">▸</span>
-                <span>🚀</span>
-                <span class="font-medium">Side Projects</span>
+                <span class="text-txt-400 text-xs">▸</span><span>🚀</span><span class="font-medium">Side Projects</span>
               </div>
             </div>
           </div>
 
           <!-- Terminal panel -->
           <div class="flex-1 flex flex-col overflow-hidden">
-            <!-- Tabs -->
             <div class="h-9 flex items-center border-b border-stroke px-2 gap-1 shrink-0">
               <div class="px-3 py-1 text-xs text-brand-light border-b-2 border-brand bg-brand/5 rounded-t">dev-server</div>
               <div class="px-3 py-1 text-xs text-txt-400 hover:text-txt-200">docker-logs</div>
               <div class="px-3 py-1 text-xs text-txt-400 hover:text-txt-200">ssh prod</div>
             </div>
-            <!-- Terminal content -->
             <div class="flex-1 p-4 font-mono text-[13px] leading-6 overflow-hidden bg-bg-900">
               <div class="terminal-line text-txt-200" data-prefix="$">npm run dev</div>
-              <div class="text-txt-400 mt-1">
-                <span class="text-mint">✓</span> ready in 847ms
-              </div>
-              <div class="text-txt-400 mt-2">
-                <span class="text-txt-300">➜</span> Local: &nbsp; <span class="text-brand-light">http://localhost:3000/</span>
-              </div>
-              <div class="text-txt-400">
-                <span class="text-txt-300">➜</span> Network: <span class="text-brand-light">http://192.168.1.42:3000/</span>
-              </div>
-              <div class="text-txt-400 mt-2">
-                <span class="text-mint">✓</span> 14 modules transformed.
-              </div>
-              <div class="text-txt-400">
-                <span class="text-mint">✓</span> watching for file changes...
-              </div>
+              <div class="text-txt-400 mt-1"><span class="text-mint">✓</span> ready in 847ms</div>
+              <div class="text-txt-400 mt-2"><span class="text-txt-300">➜</span> Local: &nbsp; <span class="text-brand-light">http://localhost:3000/</span></div>
+              <div class="text-txt-400"><span class="text-txt-300">➜</span> Network: <span class="text-brand-light">http://192.168.1.42:3000/</span></div>
+              <div class="text-txt-400 mt-2"><span class="text-mint">✓</span> 14 modules transformed.</div>
+              <div class="text-txt-400"><span class="text-mint">✓</span> watching for file changes...</div>
               <div class="mt-4">
                 <span class="text-mint">~/projects/api</span> <span class="text-brand">main</span> <span class="text-txt-400">$</span>
                 <span class="cursor-blink"></span>
@@ -374,36 +530,30 @@
             <div class="text-xs text-txt-300 leading-5 space-y-2">
               <p><span class="font-medium text-txt-200">1.</span> Pull latest from main</p>
               <p><span class="font-medium text-txt-200">2.</span> Run migrations</p>
-              <div class="bg-bg-900 rounded-md p-2 font-mono text-[11px] text-mint">
-                npm run db:migrate
-              </div>
+              <div class="bg-bg-900 rounded-md p-2 font-mono text-[11px] text-mint">npm run db:migrate</div>
               <p><span class="font-medium text-txt-200">3.</span> Deploy via CI</p>
-              <div class="bg-bg-900 rounded-md p-2 font-mono text-[11px] text-amber">
-                gh workflow run deploy
-              </div>
+              <div class="bg-bg-900 rounded-md p-2 font-mono text-[11px] text-amber">gh workflow run deploy</div>
               <p class="text-txt-400 mt-2">Port: <span class="text-txt-200">8443</span></p>
               <p class="text-txt-400">Config: <span class="text-txt-200">/etc/app/prod.env</span></p>
             </div>
           </div>
-
         </div>
       </div>
     </div>
   </section>
 
 
-  <!-- ════════════════════════════════════════ -->
   <!-- THREE PILLARS -->
-  <!-- ════════════════════════════════════════ -->
   <section id="features" class="px-6 pb-32">
     <div class="max-w-6xl mx-auto">
 
       <div class="text-center mb-16"
            x-data x-intersect.once="$el.classList.add('is-visible')">
         <h2 class="font-display font-bold text-3xl md:text-5xl tracking-tight mb-4">
-          Three panels. <span class="text-gradient">Zero chaos.</span>
+          <span x-text="$store.i18n.t('pillars_h2_1')">Three panels.</span>
+          <span class="text-gradient" x-text="$store.i18n.t('pillars_h2_2')">Zero chaos.</span>
         </h2>
-        <p class="text-txt-300 text-lg max-w-xl mx-auto">
+        <p class="text-txt-300 text-lg max-w-xl mx-auto" x-text="$store.i18n.t('pillars_sub')">
           Everything a multi-project developer needs, organized the way your brain works.
         </p>
       </div>
@@ -416,15 +566,15 @@
           <div class="w-12 h-12 rounded-xl bg-brand/10 flex items-center justify-center mb-5">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6c8aff" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 16h2"/><path d="M11 12h2"/><path d="M15 8h2"/></svg>
           </div>
-          <h3 class="font-display font-semibold text-xl text-txt-100 mb-3">Project Tree</h3>
-          <p class="text-txt-300 text-sm leading-relaxed mb-4">
-            Hierarchical tree you configure yourself. Group by client, team, or however you think.
+          <h3 class="font-display font-semibold text-xl text-txt-100 mb-3" x-text="$store.i18n.t('card1_title')">Project Tree</h3>
+          <p class="text-txt-300 text-sm leading-relaxed mb-4" x-text="$store.i18n.t('card1_desc')">
+            Hierarchical tree you configure yourself.
           </p>
           <div class="text-sm text-txt-400 space-y-1.5">
-            <div class="flex items-center gap-2"><span class="text-brand">→</span> Workspace → Project → Console</div>
-            <div class="flex items-center gap-2"><span class="text-brand">→</span> Drag-and-drop reordering</div>
-            <div class="flex items-center gap-2"><span class="text-brand">→</span> Colors & emoji icons</div>
-            <div class="flex items-center gap-2"><span class="text-brand">→</span> <kbd>Ctrl+P</kbd> fuzzy search</div>
+            <div class="flex items-center gap-2"><span class="text-brand">→</span> <span x-text="$store.i18n.t('card1_f1')">Workspace → Project → Console</span></div>
+            <div class="flex items-center gap-2"><span class="text-brand">→</span> <span x-text="$store.i18n.t('card1_f2')">Drag-and-drop reordering</span></div>
+            <div class="flex items-center gap-2"><span class="text-brand">→</span> <span x-text="$store.i18n.t('card1_f3')">Colors & emoji icons</span></div>
+            <div class="flex items-center gap-2"><span class="text-brand">→</span> <span x-html="$store.i18n.t('card1_f4')"><kbd>Ctrl+P</kbd> fuzzy search</span></div>
           </div>
         </div>
 
@@ -434,15 +584,15 @@
           <div class="w-12 h-12 rounded-xl bg-mint/10 flex items-center justify-center mb-5">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5eebc2" stroke-width="2" stroke-linecap="round"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg>
           </div>
-          <h3 class="font-display font-semibold text-xl text-txt-100 mb-3">Real Terminals</h3>
-          <p class="text-txt-300 text-sm leading-relaxed mb-4">
-            Full PTY sessions — not a toy. Your shell, your config, your tools. Just organized.
+          <h3 class="font-display font-semibold text-xl text-txt-100 mb-3" x-text="$store.i18n.t('card2_title')">Real Terminals</h3>
+          <p class="text-txt-300 text-sm leading-relaxed mb-4" x-text="$store.i18n.t('card2_desc')">
+            Full PTY sessions — not a toy.
           </p>
           <div class="text-sm text-txt-400 space-y-1.5">
-            <div class="flex items-center gap-2"><span class="text-mint">→</span> bash, zsh, fish, PowerShell</div>
-            <div class="flex items-center gap-2"><span class="text-mint">→</span> Auto-run startup commands</div>
-            <div class="flex items-center gap-2"><span class="text-mint">→</span> Tabbed & split views</div>
-            <div class="flex items-center gap-2"><span class="text-mint">→</span> SSH profiles built-in</div>
+            <div class="flex items-center gap-2"><span class="text-mint">→</span> <span x-text="$store.i18n.t('card2_f1')">bash, zsh, fish, PowerShell</span></div>
+            <div class="flex items-center gap-2"><span class="text-mint">→</span> <span x-text="$store.i18n.t('card2_f2')">Auto-run startup commands</span></div>
+            <div class="flex items-center gap-2"><span class="text-mint">→</span> <span x-text="$store.i18n.t('card2_f3')">Tabbed & split views</span></div>
+            <div class="flex items-center gap-2"><span class="text-mint">→</span> <span x-text="$store.i18n.t('card2_f4')">SSH profiles built-in</span></div>
           </div>
         </div>
 
@@ -452,15 +602,15 @@
           <div class="w-12 h-12 rounded-xl bg-amber/10 flex items-center justify-center mb-5">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffc26e" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M8 7h8"/><path d="M8 11h6"/></svg>
           </div>
-          <h3 class="font-display font-semibold text-xl text-txt-100 mb-3">Built-in Wiki</h3>
-          <p class="text-txt-300 text-sm leading-relaxed mb-4">
-            Stop losing tribal knowledge. Ports, configs, deploy steps — all next to your terminal.
+          <h3 class="font-display font-semibold text-xl text-txt-100 mb-3" x-text="$store.i18n.t('card3_title')">Built-in Wiki</h3>
+          <p class="text-txt-300 text-sm leading-relaxed mb-4" x-text="$store.i18n.t('card3_desc')">
+            Stop losing tribal knowledge.
           </p>
           <div class="text-sm text-txt-400 space-y-1.5">
-            <div class="flex items-center gap-2"><span class="text-amber">→</span> Markdown + code blocks</div>
-            <div class="flex items-center gap-2"><span class="text-amber">→</span> Paste-to-terminal snippets</div>
-            <div class="flex items-center gap-2"><span class="text-amber">→</span> Tags & full-text search</div>
-            <div class="flex items-center gap-2"><span class="text-amber">→</span> Per-project pages</div>
+            <div class="flex items-center gap-2"><span class="text-amber">→</span> <span x-text="$store.i18n.t('card3_f1')">Markdown + code blocks</span></div>
+            <div class="flex items-center gap-2"><span class="text-amber">→</span> <span x-text="$store.i18n.t('card3_f2')">Paste-to-terminal snippets</span></div>
+            <div class="flex items-center gap-2"><span class="text-amber">→</span> <span x-text="$store.i18n.t('card3_f3')">Tags & full-text search</span></div>
+            <div class="flex items-center gap-2"><span class="text-amber">→</span> <span x-text="$store.i18n.t('card3_f4')">Per-project pages</span></div>
           </div>
         </div>
 
@@ -469,85 +619,149 @@
   </section>
 
 
-  <!-- ════════════════════════════════════════ -->
   <!-- WHY / PAIN POINTS -->
-  <!-- ════════════════════════════════════════ -->
   <section class="px-6 pb-32">
     <div class="max-w-4xl mx-auto"
          x-data x-intersect.once="$el.classList.add('is-visible')">
 
       <h2 class="font-display font-bold text-3xl md:text-4xl tracking-tight text-center mb-16">
-        Built for developers who <span class="text-gradient-warm">juggle too much</span>
+        <span x-text="$store.i18n.t('pain_h2_1')">Built for developers who</span>
+        <span class="text-gradient-warm" x-text="$store.i18n.t('pain_h2_2')">juggle too much</span>
       </h2>
 
       <div class="grid md:grid-cols-2 gap-x-16 gap-y-10">
         <div>
-          <div class="text-coral font-mono text-sm mb-2">The problem</div>
-          <h3 class="font-display font-semibold text-lg text-txt-100 mb-2">27 open terminal tabs</h3>
-          <p class="text-txt-300 text-sm leading-relaxed">You're ssh'd into prod somewhere in tab 19 but can't find it. Sound familiar?</p>
+          <div class="text-coral font-mono text-sm mb-2" x-text="$store.i18n.t('prob1_label')">The problem</div>
+          <h3 class="font-display font-semibold text-lg text-txt-100 mb-2" x-text="$store.i18n.t('prob1_title')">27 open terminal tabs</h3>
+          <p class="text-txt-300 text-sm leading-relaxed" x-text="$store.i18n.t('prob1_desc')">You're ssh'd into prod somewhere in tab 19 but can't find it.</p>
         </div>
         <div>
-          <div class="text-mint font-mono text-sm mb-2">Consoles fix</div>
-          <h3 class="font-display font-semibold text-lg text-txt-100 mb-2">Named, organized, instant</h3>
-          <p class="text-txt-300 text-sm leading-relaxed">Every console has a name, belongs to a project, and opens with one click. <kbd>Ctrl+P</kbd> to find anything.</p>
-        </div>
-
-        <div>
-          <div class="text-coral font-mono text-sm mb-2">The problem</div>
-          <h3 class="font-display font-semibold text-lg text-txt-100 mb-2">"Where was that config again?"</h3>
-          <p class="text-txt-300 text-sm leading-relaxed">Scattered notes in Notion, Slack bookmarks, sticky notes. None are near your terminal when you need them.</p>
-        </div>
-        <div>
-          <div class="text-mint font-mono text-sm mb-2">Consoles fix</div>
-          <h3 class="font-display font-semibold text-lg text-txt-100 mb-2">Wiki right there</h3>
-          <p class="text-txt-300 text-sm leading-relaxed">Per-project wiki panel. Write deploy steps, paste them directly into terminal. No context switching.</p>
+          <div class="text-mint font-mono text-sm mb-2" x-text="$store.i18n.t('fix1_label')">Consoles fix</div>
+          <h3 class="font-display font-semibold text-lg text-txt-100 mb-2" x-text="$store.i18n.t('fix1_title')">Named, organized, instant</h3>
+          <p class="text-txt-300 text-sm leading-relaxed" x-html="$store.i18n.t('fix1_desc')">Every console has a name, belongs to a project, and opens with one click.</p>
         </div>
 
         <div>
-          <div class="text-coral font-mono text-sm mb-2">The problem</div>
-          <h3 class="font-display font-semibold text-lg text-txt-100 mb-2">Context switching hell</h3>
-          <p class="text-txt-300 text-sm leading-relaxed">Switching from Project A to Project B means finding windows, remembering paths, environment variables.</p>
+          <div class="text-coral font-mono text-sm mb-2" x-text="$store.i18n.t('prob2_label')">The problem</div>
+          <h3 class="font-display font-semibold text-lg text-txt-100 mb-2" x-text="$store.i18n.t('prob2_title')">"Where was that config again?"</h3>
+          <p class="text-txt-300 text-sm leading-relaxed" x-text="$store.i18n.t('prob2_desc')">Scattered notes in Notion, Slack bookmarks, sticky notes.</p>
         </div>
         <div>
-          <div class="text-mint font-mono text-sm mb-2">Consoles fix</div>
-          <h3 class="font-display font-semibold text-lg text-txt-100 mb-2">One click, full context</h3>
-          <p class="text-txt-300 text-sm leading-relaxed">Click a project — terminal opens in the right directory, with the right env vars, running the right command.</p>
+          <div class="text-mint font-mono text-sm mb-2" x-text="$store.i18n.t('fix2_label')">Consoles fix</div>
+          <h3 class="font-display font-semibold text-lg text-txt-100 mb-2" x-text="$store.i18n.t('fix2_title')">Wiki right there</h3>
+          <p class="text-txt-300 text-sm leading-relaxed" x-text="$store.i18n.t('fix2_desc')">Per-project wiki panel. Write deploy steps, paste them directly into terminal.</p>
+        </div>
+
+        <div>
+          <div class="text-coral font-mono text-sm mb-2" x-text="$store.i18n.t('prob3_label')">The problem</div>
+          <h3 class="font-display font-semibold text-lg text-txt-100 mb-2" x-text="$store.i18n.t('prob3_title')">Context switching hell</h3>
+          <p class="text-txt-300 text-sm leading-relaxed" x-text="$store.i18n.t('prob3_desc')">Switching from Project A to Project B means finding windows, remembering paths.</p>
+        </div>
+        <div>
+          <div class="text-mint font-mono text-sm mb-2" x-text="$store.i18n.t('fix3_label')">Consoles fix</div>
+          <h3 class="font-display font-semibold text-lg text-txt-100 mb-2" x-text="$store.i18n.t('fix3_title')">One click, full context</h3>
+          <p class="text-txt-300 text-sm leading-relaxed" x-text="$store.i18n.t('fix3_desc')">Click a project — terminal opens in the right directory, with the right env vars.</p>
         </div>
       </div>
     </div>
   </section>
 
 
-  <!-- ════════════════════════════════════════ -->
+  <!-- NOT USED BY (joke section) -->
+  <section class="px-6 pb-32">
+    <div class="max-w-5xl mx-auto text-center"
+         x-data x-intersect.once="$el.classList.add('is-visible')">
+      <p class="text-txt-400 text-xs uppercase tracking-widest mb-4 font-mono" x-text="$store.i18n.t('not_used_label')">proud to announce</p>
+      <h2 class="font-display font-bold text-3xl md:text-4xl tracking-tight mb-3">
+        <span x-text="$store.i18n.t('not_used_h2_1')">Not used by</span>
+        <span class="text-gradient-warm" x-text="$store.i18n.t('not_used_h2_2')">anyone important</span>
+      </h2>
+      <p class="text-txt-400 text-sm mb-12 max-w-lg mx-auto" x-text="$store.i18n.t('not_used_sub')">These industry leaders have absolutely zero interest in our product. We checked.</p>
+
+      <div class="flex flex-wrap items-center justify-center gap-10 md:gap-16">
+
+        <!-- Apple -->
+        <div style="opacity:0.35;filter:grayscale(1);transition:all 0.3s" onmouseover="this.style.opacity='0.6';this.style.filter='grayscale(0.5)'" onmouseout="this.style.opacity='0.35';this.style.filter='grayscale(1)'" class="flex flex-col items-center gap-2">
+          <svg width="36" height="44" viewBox="0 0 814 1000" fill="#f0f2f8"><path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 790.7 0 663 0 541.8c0-207.5 135.4-317.3 269-317.3 70.1 0 128.4 46.4 172.5 46.4 42.8 0 109.6-49 192.7-49 31.2 0 108.2 2.6 168.7 76.4zm-120.7-235.4c-33.4 39.5-87.5 70.1-140.1 70.1-6.4 0-12.9-.6-19.3-1.9-1.3-6.4-1.9-12.9-1.9-19.3 0-39.5 17.9-81 48.4-110.8 30.5-29.9 87.5-52.5 132.8-56.5.6 6.4 1.9 13.5 1.9 20.5 0 39.5-17.3 80.4-21.8 97.9z"/></svg>
+          <span class="text-txt-400 text-xs font-mono">Apple</span>
+        </div>
+
+        <!-- Microsoft -->
+        <div style="opacity:0.35;filter:grayscale(1);transition:all 0.3s" onmouseover="this.style.opacity='0.6';this.style.filter='grayscale(0.5)'" onmouseout="this.style.opacity='0.35';this.style.filter='grayscale(1)'" class="flex flex-col items-center gap-2">
+          <svg width="40" height="40" viewBox="0 0 23 23" fill="#f0f2f8"><path d="M0 0h11v11H0zm12 0h11v11H12zM0 12h11v11H0zm12 0h11v11H12z"/></svg>
+          <span class="text-txt-400 text-xs font-mono">Microsoft</span>
+        </div>
+
+        <!-- Google -->
+        <div style="opacity:0.35;filter:grayscale(1);transition:all 0.3s" onmouseover="this.style.opacity='0.6';this.style.filter='grayscale(0.5)'" onmouseout="this.style.opacity='0.35';this.style.filter='grayscale(1)'" class="flex flex-col items-center gap-2">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="#f0f2f8"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          <span class="text-txt-400 text-xs font-mono">Google</span>
+        </div>
+
+        <!-- NVIDIA -->
+        <div style="opacity:0.35;filter:grayscale(1);transition:all 0.3s" onmouseover="this.style.opacity='0.6';this.style.filter='grayscale(0.5)'" onmouseout="this.style.opacity='0.35';this.style.filter='grayscale(1)'" class="flex flex-col items-center gap-2">
+          <svg width="50" height="30" viewBox="0 0 220 100" fill="none"><path d="M18 74V26h10v48H18zm12-48h30c11 0 18 7 18 18s-7 18-18 18H30V26zm10 27h18c5 0 9-4 9-9s-4-9-9-9H40v18z" fill="#f0f2f8"/><path d="M90 26h20l14 35 14-35h20L132 74h-20L90 26z" fill="#f0f2f8"/><path d="M160 26h10v48h-10V26z" fill="#f0f2f8"/><path d="M175 26h12l26 35V26h10v48h-12l-26-35v35h-10V26z" fill="#f0f2f8"/><path d="M3 30C8 18 20 10 34 10V0C14 0 0 14 0 34h3V30z" fill="#76b900"/><path d="M34 20v10c-6 0-12 5-12 12H12c0-12 10-22 22-22z" fill="#76b900"/></svg>
+          <span class="text-txt-400 text-xs font-mono">NVIDIA</span>
+        </div>
+
+        <!-- Meta -->
+        <div style="opacity:0.35;filter:grayscale(1);transition:all 0.3s" onmouseover="this.style.opacity='0.6';this.style.filter='grayscale(0.5)'" onmouseout="this.style.opacity='0.35';this.style.filter='grayscale(1)'" class="flex flex-col items-center gap-2">
+          <svg width="44" height="24" viewBox="0 0 640 320" fill="#f0f2f8"><path d="M64 160c0-53 22-96 49-96 14 0 29 12 44 37L96 224c-20-19-32-40-32-64zm94 96l-32-56 31-54c19-32 38-50 58-50 38 0 69 56 69 124 0 35-7 63-18 83l-36-66c5-9 8-22 8-37 0-44-18-82-39-82-13 0-27 11-41 38zm72-14c15-16 28-41 35-70l39 68c-18 31-44 50-73 50-19 0-38-9-53-26l52-22zm96-168c20 0 39 16 54 44l-40 70c-14-29-29-45-44-45-7 0-15 4-22 10l-18-31c15-31 35-48 70-48zm61 48c20 38 31 82 31 118 0 26-5 47-14 62l-43-74 31-55c-5-19-13-37-21-53l16-28c-1 10 0 20 0 30z"/></svg>
+          <span class="text-txt-400 text-xs font-mono">Meta</span>
+        </div>
+
+        <!-- Amazon -->
+        <div style="opacity:0.35;filter:grayscale(1);transition:all 0.3s" onmouseover="this.style.opacity='0.6';this.style.filter='grayscale(0.5)'" onmouseout="this.style.opacity='0.35';this.style.filter='grayscale(1)'" class="flex flex-col items-center gap-2">
+          <svg width="50" height="22" viewBox="0 0 500 150" fill="#f0f2f8"><text x="0" y="120" font-family="Arial,sans-serif" font-weight="bold" font-size="120">amazon</text><path d="M390 125c-36 24-88 30-133 30-63 0-120-23-163-61-3-3 0-7 4-5 48 28 106 45 167 45 41 0 86-9 127-26 6-2 11 4 5 8z" fill="#f0f2f8"/><path d="M406 107c-5-6-31-3-43-1-4 0-4-3-1-5 21-15 56-10 60-5 4 5-1 40-21 56-3 3-6 1-5-2 5-12 15-37 10-43z" fill="#f0f2f8"/></svg>
+          <span class="text-txt-400 text-xs font-mono">Amazon</span>
+        </div>
+
+        <!-- Tesla -->
+        <div style="opacity:0.35;filter:grayscale(1);transition:all 0.3s" onmouseover="this.style.opacity='0.6';this.style.filter='grayscale(0.5)'" onmouseout="this.style.opacity='0.35';this.style.filter='grayscale(1)'" class="flex flex-col items-center gap-2">
+          <svg width="32" height="44" viewBox="0 0 342 512" fill="#f0f2f8"><path d="M171 512L0 100c28 9 62 15 100 17L171 512zm0 0l71-395c38-2 72-8 100-17L171 512zM0 100C0 44 77 0 171 0s171 44 171 100H0zm171-64C97 36 38 62 24 92h294c-14-30-73-56-147-56z"/></svg>
+          <span class="text-txt-400 text-xs font-mono">Tesla</span>
+        </div>
+
+        <!-- Netflix -->
+        <div style="opacity:0.35;filter:grayscale(1);transition:all 0.3s" onmouseover="this.style.opacity='0.6';this.style.filter='grayscale(0.5)'" onmouseout="this.style.opacity='0.35';this.style.filter='grayscale(1)'" class="flex flex-col items-center gap-2">
+          <svg width="28" height="44" viewBox="0 0 111 190" fill="#f0f2f8"><path d="M0 0h30v190H0z"/><path d="M40 0l31 95L40 190h30l31-95-31-95z"/><path d="M81 0h30v190H81z"/></svg>
+          <span class="text-txt-400 text-xs font-mono">Netflix</span>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
   <!-- TECH STACK -->
-  <!-- ════════════════════════════════════════ -->
   <section id="stack" class="px-6 pb-32">
     <div class="max-w-4xl mx-auto text-center"
          x-data x-intersect.once="$el.classList.add('is-visible')">
 
       <h2 class="font-display font-bold text-3xl md:text-4xl tracking-tight mb-4">
-        Lean, fast, <span class="text-gradient">native</span>
+        <span x-text="$store.i18n.t('tech_h2')">Lean, fast,</span>
+        <span class="text-gradient" x-text="$store.i18n.t('tech_h2_grad')">native</span>
       </h2>
-      <p class="text-txt-300 text-lg mb-12">
+      <p class="text-txt-300 text-lg mb-12" x-text="$store.i18n.t('tech_sub')">
         Built with Tauri 2.0 — not another Electron memory hog.
       </p>
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="feature-card rounded-xl p-5 text-center">
           <div class="text-3xl font-display font-bold text-brand mb-1">~20 MB</div>
-          <div class="text-xs text-txt-400">App size</div>
+          <div class="text-xs text-txt-400" x-text="$store.i18n.t('stat1')">App size</div>
         </div>
         <div class="feature-card rounded-xl p-5 text-center">
           <div class="text-3xl font-display font-bold text-mint mb-1">~80 MB</div>
-          <div class="text-xs text-txt-400">RAM usage</div>
+          <div class="text-xs text-txt-400" x-text="$store.i18n.t('stat2')">RAM usage</div>
         </div>
         <div class="feature-card rounded-xl p-5 text-center">
           <div class="text-3xl font-display font-bold text-amber mb-1">&lt;2s</div>
-          <div class="text-xs text-txt-400">Cold start</div>
+          <div class="text-xs text-txt-400" x-text="$store.i18n.t('stat3')">Cold start</div>
         </div>
         <div class="feature-card rounded-xl p-5 text-center">
           <div class="text-3xl font-display font-bold text-coral mb-1">0</div>
-          <div class="text-xs text-txt-400">Cloud dependencies</div>
+          <div class="text-xs text-txt-400" x-text="$store.i18n.t('stat4')">Cloud dependencies</div>
         </div>
       </div>
 
@@ -564,28 +778,22 @@
   </section>
 
 
-  <!-- ════════════════════════════════════════ -->
   <!-- DOWNLOAD / CTA -->
-  <!-- ════════════════════════════════════════ -->
   <section id="download" class="px-6 pb-32">
     <div class="max-w-3xl mx-auto text-center"
          x-data="{ os: navigator.platform.toLowerCase().includes('mac') ? 'mac' : navigator.platform.toLowerCase().includes('win') ? 'win' : 'linux' }"
          x-intersect.once="$el.classList.add('is-visible')"
     >
-      <h2 class="font-display font-bold text-3xl md:text-5xl tracking-tight mb-4">
-        Ready to try?
-      </h2>
-      <p class="text-txt-300 text-lg mb-10">Free, open-source, no account required. Your data stays on your machine.</p>
+      <h2 class="font-display font-bold text-3xl md:text-5xl tracking-tight mb-4" x-text="$store.i18n.t('dl_h2')">Ready to try?</h2>
+      <p class="text-txt-300 text-lg mb-10" x-text="$store.i18n.t('dl_sub')">Free, open-source, no account required. Your data stays on your machine.</p>
 
-      <!-- Download buttons -->
       <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
         <a href="#" class="btn-primary bg-brand hover:bg-brand-dark text-white font-semibold text-base px-8 py-4 rounded-xl transition-colors flex items-center gap-3 w-full sm:w-auto justify-center">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
-          <span x-text="os === 'mac' ? 'Download for macOS' : os === 'win' ? 'Download for Windows' : 'Download for Linux'">Download</span>
+          <span x-text="os === 'mac' ? $store.i18n.t('dl_mac') : os === 'win' ? $store.i18n.t('dl_win') : $store.i18n.t('dl_linux')">Download</span>
         </a>
       </div>
 
-      <!-- All platforms -->
       <div class="flex flex-wrap justify-center gap-3 text-sm">
         <a href="#" class="platform-pill">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M22 17.607c-.786 2.28-3.139 6.317-5.563 6.361-1.608.031-2.125-.953-3.963-.953-1.837 0-2.412.923-3.932.983-2.572.099-6.542-5.827-6.542-10.995 0-4.747 3.308-7.1 6.198-7.143 1.55-.028 3.014 1.045 3.959 1.045.949 0 2.727-1.29 4.596-1.101.782.033 2.979.315 4.389 2.377-3.741 2.442-3.158 7.549.858 9.426zm-5.222-17.607c-2.826.114-5.132 3.079-4.81 5.531 2.612.203 5.118-2.725 4.81-5.531z"/></svg>
@@ -608,9 +816,7 @@
   </section>
 
 
-  <!-- ════════════════════════════════════════ -->
   <!-- FOOTER -->
-  <!-- ════════════════════════════════════════ -->
   <footer class="border-t border-stroke px-6 py-12">
     <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
       <div class="flex items-center gap-2.5">
@@ -623,9 +829,9 @@
 
       <div class="flex items-center gap-6 text-sm text-txt-400">
         <a href="#" class="hover:text-txt-200 transition-colors">GitHub</a>
-        <a href="#" class="hover:text-txt-200 transition-colors">Docs</a>
-        <a href="#" class="hover:text-txt-200 transition-colors">Changelog</a>
-        <span class="text-txt-400/50">MIT License</span>
+        <a href="#" class="hover:text-txt-200 transition-colors" x-text="$store.i18n.t('footer_docs')">Docs</a>
+        <a href="#" class="hover:text-txt-200 transition-colors" x-text="$store.i18n.t('footer_changelog')">Changelog</a>
+        <span class="text-txt-400/50" x-text="$store.i18n.t('footer_license')">MIT License</span>
       </div>
     </div>
   </footer>
