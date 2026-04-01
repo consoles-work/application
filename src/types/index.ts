@@ -48,6 +48,7 @@ export interface ConsoleConfig {
   sshUser: string;
   sshKeyPath: string;
   sshExtraArgs: string;
+  sshPassphrase: string;
 }
 
 // ── Wiki ──

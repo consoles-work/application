@@ -291,7 +291,7 @@ function AgentsTab({
   const [testing, setTesting] = useState(false);
 
   const provider = settings["ai.provider"] ?? "openai";
-  const apiKey = settings["ai.apiKey"] ?? "";
+  const apiKey = settings[`ai.apiKey.${provider}`] ?? settings["ai.apiKey"] ?? "";
   const model = settings["ai.model"] ?? "";
   const panelPosition = settings["ui.aiPanelPosition"] ?? "right";
 
@@ -349,13 +349,13 @@ function AgentsTab({
       {/* API Key */}
       <div>
         <label className="block text-xs font-medium text-text-secondary mb-2">
-          {t("settings.agentsApiKey")}
+          {t("settings.agentsApiKey")} <span className="text-text-muted font-mono text-2xs">({providerObj.name})</span>
         </label>
         <div className="flex gap-2">
           <input
             type={showKey ? "text" : "password"}
             value={apiKey}
-            onChange={(e) => onChange("ai.apiKey", e.target.value)}
+            onChange={(e) => onChange(`ai.apiKey.${provider}`, e.target.value)}
             placeholder={
               provider === "openai" ? "sk-..." : "sk-ant-..."
             }

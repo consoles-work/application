@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { useAppStore } from "../stores/appStore";
+import { setSetting } from "../lib/tauriCommands";
 import { TreePanel } from "./TreePanel";
 import { TerminalPanel } from "./TerminalPanel";
 import { WikiPanel } from "./WikiPanel";
@@ -65,6 +66,11 @@ export function Layout({ onOpenSettings }: LayoutProps) {
         setDragging(null);
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
+        // Сохраняем ширину дерева при завершении перетаскивания
+        if (panel === "tree") {
+          const { treePanelWidth } = useAppStore.getState();
+          setSetting("ui.treePanelWidth", String(treePanelWidth)).catch(() => {});
+        }
       };
 
       document.addEventListener("mousemove", handleMouseMove);

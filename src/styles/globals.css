@@ -179,6 +179,59 @@
   --resizer: #504945;
 }
 
+/* ── Светлые темы ── */
+
+[data-theme="solarized-light"] {
+  --surface-0: #fdf6e3;
+  --surface-1: #eee8d5;
+  --surface-2: #e4dcc8;
+  --surface-3: #d0c9b5;
+  --border: #c5baa4;
+  --text-primary: #073642;
+  --text-secondary: #657b83;
+  --text-muted: #93a1a1;
+  --accent: 38 139 210;
+  --accent-hover: 42 161 152;
+  --accent-subtle: #d4eefb;
+  --scrollbar: #c5baa4;
+  --scrollbar-hover: #93a1a1;
+  --resizer: #c5baa4;
+}
+
+[data-theme="catppuccin-latte"] {
+  --surface-0: #eff1f5;
+  --surface-1: #e6e9ef;
+  --surface-2: #dce0e8;
+  --surface-3: #ccd0da;
+  --border: #bcc0cc;
+  --text-primary: #4c4f69;
+  --text-secondary: #6c6f85;
+  --text-muted: #9ca0b0;
+  --accent: 30 102 245;
+  --accent-hover: 136 57 239;
+  --accent-subtle: #ccd7ff;
+  --scrollbar: #bcc0cc;
+  --scrollbar-hover: #9ca0b0;
+  --resizer: #bcc0cc;
+}
+
+[data-theme="one-light"] {
+  --surface-0: #fafafa;
+  --surface-1: #f0f0f0;
+  --surface-2: #e5e5e5;
+  --surface-3: #d4d4d4;
+  --border: #c8c8c8;
+  --text-primary: #383a42;
+  --text-secondary: #696c77;
+  --text-muted: #a0a1a7;
+  --accent: 64 120 242;
+  --accent-hover: 0 132 188;
+  --accent-subtle: #e4eaff;
+  --scrollbar: #d4d4d4;
+  --scrollbar-hover: #a0a1a7;
+  --resizer: #d4d4d4;
+}
+
 /* ── Базовые стили ── */
 * {
   margin: 0;

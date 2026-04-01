@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { ChevronRight, ChevronDown, Search, X } from "lucide-react";
+import { ChevronRight, ChevronDown, Search, X, Upload, Download } from "lucide-react";
 import { useAppStore } from "../stores/appStore";
 import { updateWorkspace, updateProject, updateConsole, setNodeDanger, cloneConsole, cloneProject } from "../lib/tauriCommands";
 import { ContextMenu, type ContextMenuState } from "./ContextMenu";
@@ -7,6 +7,8 @@ import { CreateWorkspaceDialog } from "./dialogs/CreateWorkspaceDialog";
 import { CreateProjectDialog } from "./dialogs/CreateProjectDialog";
 import { CreateConsoleDialog } from "./dialogs/CreateConsoleDialog";
 import { EditConsoleDialog } from "./dialogs/EditConsoleDialog";
+import { ExportDialog } from "./dialogs/ExportDialog";
+import { ImportDialog } from "./dialogs/ImportDialog";
 import type { TreeNode, ConsoleConfig } from "../types";
 import { useTranslation } from "react-i18next";
 
@@ -43,6 +45,8 @@ export function TreePanel() {
   const [createProjectFor, setCreateProjectFor] = useState<string | null>(null);   // workspaceId
   const [createConsoleFor, setCreateConsoleFor] = useState<string | null>(null);   // projectId
   const [editConsole, setEditConsole] = useState<ConsoleConfig | null>(null);
+  const [showExport, setShowExport] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   // ── Поиск по дереву ──
   const [searchQuery, setSearchQuery] = useState("");
@@ -62,7 +66,8 @@ export function TreePanel() {
       for (const proj of ws.projects) {
         result.push({ id: proj.id, type: "project", name: proj.name, icon: proj.icon, color: proj.color, breadcrumb: ws.name, data: proj });
         for (const con of proj.consoles) {
-          result.push({ id: con.id, type: "console", name: con.name, icon: "▶", color: proj.color, breadcrumb: `${ws.name} › ${proj.name}`, data: con });
+          const conData = con as { connectionType?: string };
+          result.push({ id: con.id, type: "console", name: con.name, icon: conData.connectionType === "ssh" ? "S" : "L", color: proj.color, breadcrumb: `${ws.name} › ${proj.name}`, data: con });
         }
       }
     }
@@ -280,6 +285,20 @@ export function TreePanel() {
                 <Search size={13} />
               </button>
               <button
+                onClick={() => setShowImport(true)}
+                className="text-text-muted hover:text-text-primary p-0.5 rounded"
+                title="Импортировать (.dchub)"
+              >
+                <Download size={13} />
+              </button>
+              <button
+                onClick={() => setShowExport(true)}
+                className="text-text-muted hover:text-text-primary p-0.5 rounded"
+                title="Экспортировать (.dchub)"
+              >
+                <Upload size={13} />
+              </button>
+              <button
                 className="text-text-muted hover:text-text-primary text-lg leading-none"
                 title={t("treePanel.createWorkspaceTooltip")}
                 onClick={() => setCreateWorkspace(true)}
@@ -351,8 +370,17 @@ export function TreePanel() {
                 )}
               </span>
 
-              {/* Icon */}
-              <span className="text-sm">{node.icon}</span>
+              {/* Icon — только для workspace и project */}
+              {node.type !== "console" && (
+                <span className="text-sm">{node.icon}</span>
+              )}
+
+              {/* SSH badge перед именем */}
+              {node.type === "console" && (node.data as { connectionType?: string }).connectionType === "ssh" && (
+                <span className="shrink-0 text-2xs px-1 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/25 font-mono">
+                  ssh
+                </span>
+              )}
 
               {/* Name — или input при переименовании */}
               {renamingId === node.id ? (
@@ -371,13 +399,6 @@ export function TreePanel() {
                 />
               ) : (
                 <span className="truncate flex-1 text-xs">{node.name}</span>
-              )}
-
-              {/* SSH badge */}
-              {node.type === "console" && (node.data as { connectionType?: string }).connectionType === "ssh" && (
-                <span className="shrink-0 text-2xs px-1 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/25 font-mono">
-                  ssh
-                </span>
               )}
 
               {/* Danger badge */}
@@ -434,6 +455,8 @@ export function TreePanel() {
           onClose={() => setEditConsole(null)}
         />
       )}
+      {showExport && <ExportDialog onClose={() => setShowExport(false)} />}
+      {showImport && <ImportDialog onClose={() => setShowImport(false)} />}
     </>
   );
 }

@@ -1,6 +1,6 @@
 # DevConsole Hub — План разработки
 
-> Последнее обновление: 2026-03-29
+> Последнее обновление: 2026-04-02
 
 ---
 
@@ -351,6 +351,92 @@
 
 ---
 
+## Этап 10.9: UX-улучшения — ВЫПОЛНЕН
+
+### Иконка типа консоли в дереве — ВЫПОЛНЕНО
+- `appStore.ts` `getFlatTree()`: `icon: con.connectionType === "ssh" ? "S" : "L"` вместо `">_"`
+- `TreePanel.tsx`: иконка консоли рендерится как цветной бейдж (синий для SSH, серый для Local)
+- В поиске по дереву (`allNodes`) иконки обновлены аналогично
+
+### Раздельные API-ключи для AI-провайдеров — ВЫПОЛНЕНО
+- Ключи хранятся в SQLite как `ai.apiKey.openai` и `ai.apiKey.anthropic`
+- `SettingsDialog.tsx` (AgentsTab): одно поле, значение переключается при смене провайдера
+- `AiPanel.tsx`: читает ключ по `ai.apiKey.<provider>`, fallback на `ai.apiKey`
+
+### Сохранение состояния раскрытия дерева — ВЫПОЛНЕНО
+- Новая функция `set_node_expanded` в db.rs + команда `set_node_expanded` в commands.rs
+- Зарегистрирована в main.rs и lib.rs
+- `appStore.ts` `toggleNodeExpanded` вызывает `persistNodeExpanded` при каждом переключении
+
+### SSH passphrase — сохранение и автоподстановка — ВЫПОЛНЕНО
+- Новая колонка `ssh_passphrase` в таблице `consoles` (automigration)
+- Поля passphrase в `CreateConsoleDialog` и `EditConsoleDialog` (маска + show/hide)
+- `pty_manager.rs`: `add_key_to_agent()` — SSH_ASKPASS trick для автодобавления ключа в ssh-agent без ввода пароля вручную
+
+---
+
+---
+
+## Этап 10.10: Светлые темы + UX-fix — ВЫПОЛНЕН
+
+### Светлые темы — ВЫПОЛНЕНО
+- `themes.ts`: `Solarized Light`, `Catppuccin Latte`, `One Light` с полными xterm-палитрами
+- `globals.css`: CSS-переменные для каждой новой темы
+- Итого тем: 13 (10 тёмных + 3 светлых)
+
+### UX-фиксы консолей в дереве — ВЫПОЛНЕНО
+- `TreePanel.tsx`: убран буквенный badge S/L; SSH-badge перенесён **перед** именем; emoji-иконка у консолей скрыта
+- Структура строки консоли: `ssh` (badge) → имя → `⚠ LABEL`
+
+### Сохранение ширины панели дерева — ВЫПОЛНЕНО
+- Дефолтная ширина увеличена 250 → 280px
+- `Layout.tsx`: при mouseup после ресайза сохраняет `ui.treePanelWidth` в SQLite
+- `App.tsx`: восстанавливает ширину из настроек при старте
+
+---
+
+## Этап 10.11: Экспорт/импорт (.dchub) — ВЫПОЛНЕН
+
+### Цели
+Возможность сделать резервную копию данных в портативный зашифрованный файл и восстановить их на другой машине.
+
+### Что реализовано
+
+**Rust — новый модуль `export.rs`:**
+- Бинарный формат `.dchub`: magic `DCHUB1` (6 байт) + flags (1 байт) + salt (32 байта) + nonce (12 байт) + len (4 байта) + AES-256-GCM ciphertext
+- Шифрование: всегда через внутренний app-секрет; опциональный пользовательский пароль добавляет второй слой (PBKDF2-HMAC-SHA256, 100 000 итераций)
+- Валидация при импорте: поле `"_verify": "dchub-v1-ok"` в JSON-payload; неверный пароль → ошибка аутентификации GCM
+- Функции: `build_export_payload`, `encrypt_export`, `decrypt_export`, `parse_preview`, `apply_import`
+
+**Rust — три новые Tauri-команды:**
+- `export_data(file_path, include_tree, include_wiki, include_ai, user_password)` — собирает данные, шифрует, пишет файл
+- `preview_import(file_path, user_password)` → `ImportPreview` — расшифровывает, возвращает статистику без изменения БД
+- `apply_import(file_path, user_password, include_*, mode)` — применяет импорт (merge / replace)
+
+**Rust — новые функции в `db.rs`:**
+- `load_all_wiki_pages()` — все wiki-страницы без фильтрации
+- `delete_all_workspaces/wiki_pages/ai_sessions()` — для режима replace
+- `get_workspace_names()` — HashSet имён для определения конфликтов
+
+**Cargo.toml — новые зависимости:**
+- `aes-gcm = "0.10"`, `pbkdf2 = "0.12"`, `sha2 = "0.10"`, `hmac = "0.12"`, `rand = "0.8"`
+
+**Frontend:**
+- `tauriCommands.ts`: обёртки `exportData`, `previewImport`, `applyImport` + интерфейс `ImportPreview`
+- `ExportDialog.tsx`: чекбоксы (дерево обязательно, wiki/AI опционально), поле пароля (show/hide)
+- `ImportDialog.tsx`: 3-шаговый UI — выбор файла → ввод пароля (если защищён) → превью со статистикой + опции режима + чекбоксы что импортировать
+- `TreePanel.tsx`: кнопки Upload (↑ экспорт) и Download (↓ импорт) в header рядом с поиском
+
+### Логика при импорте конфликтов
+- Режим **merge**: при совпадении имени workspace добавляет суффикс `(import)`; всем записям назначаются новые UUID
+- Режим **replace**: удаляет выбранные данные из БД, затем вставляет из файла
+- Wiki, привязанная к конкретным workspace/project/console: **игнорируется** при импорте (ID сменились); импортируются только `parent_type = "global"` страницы
+
+### Остаток (TODO)
+- **Локализация** `ExportDialog.tsx` и `ImportDialog.tsx` — все строки сейчас захардкожены на русском; нужно вынести в `ru.json` / `en.json` и заменить на `t("export.*")` / `t("import.*")`
+
+---
+
 ## Этап 11: Post-MVP
 
 - GlobalSearch (Cmd+Shift+K) — FTS5 по wiki с подсветкой
@@ -358,7 +444,6 @@
 - Сплит-терминал (Ctrl+Shift+H / V)
 - Broadcast-режим (ввод одновременно в несколько консолей)
 - Snippets / быстрые команды с параметрами
-- Экспорт/импорт workspace (zip + Markdown)
 - Интеграции: Git (текущая ветка), Docker (статус)
 - Wiki: блоки кода с кнопками "Копировать" и "Вставить в терминал" (TipTap NodeView)
 - AI панель: drag-and-drop смены позиции (мышью)
@@ -377,4 +462,4 @@
 11.x AI панель: drag-and-drop позиции
 ```
 
-**MVP + AI (с историей в SQLite) завершён.**
+**MVP + AI (с историей в SQLite) + экспорт/импорт — завершены.**

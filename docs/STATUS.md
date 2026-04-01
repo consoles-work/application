@@ -1,6 +1,6 @@
 # DevConsole Hub — Статус проекта
 
-> Последнее обновление: 2026-03-29 (Этап 10.8 — баг-фиксы AI панели)
+> Последнее обновление: 2026-04-02 (Этап 10.11 — Экспорт/импорт .dchub)
 
 ---
 
@@ -9,7 +9,7 @@
 ### Инфраструктура
 - Tauri 2.0 проект компилируется и запускается
 - Все npm-зависимости установлены (xterm.js, TipTap, lowlight, lucide-react, plugin-dialog)
-- Cargo.toml: rusqlite, portable-pty, uuid, dirs, chrono, tauri-plugin-dialog
+- Cargo.toml: rusqlite, portable-pty, uuid, dirs, chrono, tauri-plugin-dialog, aes-gcm, pbkdf2, sha2, hmac, rand
 - Tailwind настроен через CSS-переменные (10 тем, динамическая смена)
 - Capabilities: core:default, event listen/unlisten/emit, shell:open, dialog
 
@@ -17,24 +17,25 @@
 
 | Файл | Статус | Примечания |
 |------|--------|------------|
-| `src/types/index.ts` | ✅ Готово | Все интерфейсы: WikiPage (camelCase), isDanger/dangerLabel, SSH-поля, AppSettings |
-| `src/stores/appStore.ts` | ✅ Готово | CRUD + Toast + Wiki + Settings + AI сессии (`aiSessions[]`, `activeAiSessionId`, CRUD-экшены) |
-| `src/lib/tauriCommands.ts` | ✅ Готово | Все IPC-обёртки: дерево, PTY, wiki, clone, settings, AI сессии (8 функций) |
-| `src/types/index.ts` | ✅ Готово | Добавлены `AiSession`, `AiMessage` |
+| `src/types/index.ts` | ✅ Готово | Все интерфейсы: WikiPage (camelCase), isDanger/dangerLabel, SSH-поля (включая `sshPassphrase`), AppSettings, AiSession, AiMessage |
+| `src/stores/appStore.ts` | ✅ Готово | CRUD + Toast + Wiki + Settings + AI сессии; `toggleNodeExpanded` сохраняет состояние в SQLite |
+| `src/lib/tauriCommands.ts` | ✅ Готово | Все IPC-обёртки: дерево, PTY (с `sshKeyPath`/`sshPassphrase`), wiki, clone, settings, AI сессии, `setNodeExpanded`, `exportData`/`previewImport`/`applyImport` |
 | `src/lib/themes.ts` | ✅ Готово | 10 тем с UI-цветами и полной xterm-палитрой, resolveThemeId, applyTheme |
 | `src/components/Layout.tsx` | ✅ Готово | Трёхпанельный layout с resizable сплиттерами + кнопка Settings в titlebar |
-| `src/components/TreePanel.tsx` | ✅ Готово | Дерево + раскрытие по клику на строку + контекстное меню + inline rename (F2) + danger/ssh badge + клонирование + поиск по дереву |
+| `src/components/TreePanel.tsx` | ✅ Готово | Дерево + раскрытие по клику на строку + контекстное меню + inline rename (F2) + danger/ssh badge + клонирование + поиск по дереву + кнопки Export/Import |
 | `src/components/TerminalPanel.tsx` | ✅ Готово | xterm.js + PTY + danger-баннер + SSH + startup + динамические настройки; убрана дублирующая Bot-кнопка из таббара; индикатор-точка при выделении текста |
 | `src/components/WikiPanel.tsx` | ✅ Готово | TipTap редактор + привязка к узлу + автосохранение debounce + теги + поиск по wiki (FTS5) |
 | `src/components/WikiToolbar.tsx` | ✅ Готово | H1/H2/H3, Bold/Italic/Code, списки, TaskList, CodeBlock, HR, Undo/Redo |
 | `src/components/CommandPalette.tsx` | ✅ Готово | Fuzzy-поиск по дереву, ↑↓/Enter/Esc, danger badge |
-| `src/components/SettingsDialog.tsx` | ✅ Готово | 3 вкладки: Данные (БД-инфо), Терминал (шрифт/размер/scrollback/курсор), Интерфейс (10 тем + random, язык-заготовка) |
+| `src/components/SettingsDialog.tsx` | ✅ Готово | 4 вкладки: Данные, Терминал, Интерфейс, Агенты; раздельные API-ключи per-провайдер (`ai.apiKey.openai` / `ai.apiKey.anthropic`) |
 | `src/components/Toast.tsx` | ✅ Готово | Success/error/info, автоисчезновение 3 сек |
 | `src/components/ContextMenu.tsx` | ✅ Готово | Workspace/Project/Console меню + danger-пометка + клонирование + подтверждение удаления (ask) |
 | `src/components/dialogs/CreateWorkspaceDialog.tsx` | ✅ Готово | Имя + emoji + цвет |
 | `src/components/dialogs/CreateProjectDialog.tsx` | ✅ Готово | Имя + Browse + shell + emoji + цвет + danger-чекбокс |
-| `src/components/dialogs/CreateConsoleDialog.tsx` | ✅ Готово | Имя + Local/SSH + все SSH-поля + Browse для ключа + textarea startup + danger-чекбокс |
-| `src/components/dialogs/EditConsoleDialog.tsx` | ✅ Готово | Редактирование существующей консоли |
+| `src/components/dialogs/CreateConsoleDialog.tsx` | ✅ Готово | Имя + Local/SSH + все SSH-поля + Browse для ключа + passphrase (show/hide) + textarea startup + danger-чекбокс |
+| `src/components/dialogs/EditConsoleDialog.tsx` | ✅ Готово | Редактирование существующей консоли; поле passphrase для SSH-ключа (show/hide) |
+| `src/components/dialogs/ExportDialog.tsx` | ✅ Готово | Чекбоксы (дерево/wiki/AI), опциональный пароль, сохранение через нативный save-диалог |
+| `src/components/dialogs/ImportDialog.tsx` | ✅ Готово | 3-шаговый диалог: выбор файла → ввод пароля (если нужен) → превью со статистикой + опции режима merge/replace |
 | `src/App.tsx` | ✅ Готово | Загрузка данных + настроек + применение темы при старте; восстановление видимости панелей из SQLite; Cmd+B/\\/P/, |
 | `src/styles/globals.css` | ✅ Готово | CSS-переменные для 10 тем + xterm.js + TipTap стили |
 
@@ -42,11 +43,12 @@
 
 | Файл | Статус | Примечания |
 |------|--------|------------|
-| `src-tauri/src/main.rs` | ✅ Готово | 33 IPC-команды (включая 8 AI-сессий) |
+| `src-tauri/src/main.rs` | ✅ Готово | 38 IPC-команд (включая `set_node_expanded`, `export_data`, `preview_import`, `apply_import`) |
 | `src-tauri/src/lib.rs` | ✅ Готово | Дубликат для мобильных/библиотечной сборки — синхронизирован с main.rs |
-| `src-tauri/src/commands.rs` | ✅ Готово | CRUD дерева, PTY, wiki, danger, clone, settings; `AiSession`/`AiMessage` структуры + 8 команд |
-| `src-tauri/src/db.rs` | ✅ Готово | Полный CRUD + FTS5 + клонирование + settings + SQLCipher (AES-256) + таблицы `ai_sessions`/`ai_messages` + CRUD AI-сессий |
-| `src-tauri/src/pty_manager.rs` | ✅ Готово | portable-pty: spawn/write/resize/kill; `sh -c` для команд с пробелами; явная установка `LANG`/`LC_CTYPE`/`TERM` для поддержки UTF-8 (кириллица) |
+| `src-tauri/src/commands.rs` | ✅ Готово | CRUD дерева, PTY, wiki, danger, clone, settings, AiSession + 8 команд, экспорт/импорт + 3 команды |
+| `src-tauri/src/db.rs` | ✅ Готово | Полный CRUD + FTS5 + клонирование + settings + SQLCipher + AI-сессии + `set_node_expanded` + `ssh_passphrase` (automigration) + `load_all_wiki_pages` + `delete_all_*` + `get_workspace_names` |
+| `src-tauri/src/export.rs` | ✅ Готово | Шифрованный формат `.dchub`: AES-256-GCM + PBKDF2-HMAC-SHA256 (100k iter); app-секрет + опциональный пользовательский пароль; верификационная фраза в payload; функции build/encrypt/decrypt/preview/apply |
+| `src-tauri/src/pty_manager.rs` | ✅ Готово | portable-pty: spawn/write/resize/kill; `sh -c` для команд с пробелами; UTF-8 локаль; SSH passphrase через `add_key_to_agent` (SSH_ASKPASS trick) |
 | `src-tauri/build.rs` | ✅ Готово | Читает `.env` из корня проекта; встраивает `DB_ENCRYPTION_KEY` в бинарник через `env!()` |
 
 ### Frontend — AI панель
@@ -97,12 +99,85 @@
 - Сплит-терминал (Ctrl+Shift+H / V)
 - Broadcast-режим (ввод в несколько консолей)
 - Snippets / быстрые команды
-- Экспорт/импорт workspace (zip + Markdown)
 - Интеграции: Git, Docker
 
 ---
 
 ## История изменений
+
+### 2026-04-02 — Этап 10.11: Экспорт/импорт (.dchub)
+
+**Rust — новый модуль `export.rs`**
+- Бинарный формат `.dchub`: magic `DCHUB1` + flags + salt(32) + nonce(12) + len(4) + AES-256-GCM ciphertext
+- PBKDF2-HMAC-SHA256 (100 000 итераций) деривация ключа; app-секрет встроен в бинарник; пользовательский пароль — опциональный второй слой
+- Верификационная фраза `"_verify": "dchub-v1-ok"` в JSON-payload; неверный пароль → ошибка аутентификации GCM
+- `Cargo.toml`: добавлены `aes-gcm`, `pbkdf2`, `sha2`, `hmac`, `rand`
+
+**Rust — три новые Tauri-команды** (зарегистрированы в `main.rs` и `lib.rs`)
+- `export_data(file_path, include_tree, include_wiki, include_ai, user_password)` — пишет зашифрованный файл
+- `preview_import(file_path, user_password)` → `ImportPreview` — статистика без изменения БД
+- `apply_import(file_path, user_password, include_*, mode)` — применяет с режимом merge/replace
+
+**Rust — новые функции `db.rs`**
+- `load_all_wiki_pages()`, `delete_all_workspaces/wiki_pages/ai_sessions()`, `get_workspace_names()`
+
+**Frontend**
+- `tauriCommands.ts`: 3 обёртки + интерфейс `ImportPreview`
+- `ExportDialog.tsx`: чекбоксы + поле пароля + нативный save-диалог
+- `ImportDialog.tsx`: 3-шаговый (выбор файла → пароль → превью+опции) + режимы merge/replace
+- `TreePanel.tsx`: кнопки Upload/Download (иконки из lucide-react) в header
+
+**Поведение при конфликтах**: merge → суффикс `(import)` + новые UUID; replace → удаление + вставка; wiki без `parent_type=global` — игнорируется
+
+---
+
+### 2026-04-01 — Этап 10.10: Светлые темы + UX-fix
+
+**Светлые темы** (добавлены 3 новые)
+- `themes.ts`: добавлены `Solarized Light`, `Catppuccin Latte`, `One Light` с полными xterm-палитрами
+- `globals.css`: CSS-переменные (`--surface-*`, `--text-*`, `--accent`, `--border`, `--scrollbar`, `--resizer`) для каждой новой темы
+- Итого тем: 13 (10 тёмных + 3 светлых)
+
+**UX-фиксы консолей в дереве**
+- `TreePanel.tsx`: убран буквенный badge `S`/`L`; SSH-badge перенесён перед именем; emoji-иконка у консолей не показывается; структура строки: `ssh` → имя → `⚠ LABEL`
+
+**Ширина панели дерева — сохранение**
+- `appStore.ts`: дефолтная ширина увеличена с 250 до 280px
+- `Layout.tsx`: на mouseup при ресайзе дерева сохраняет ширину в SQLite (`ui.treePanelWidth`)
+- `App.tsx`: восстанавливает сохранённую ширину из настроек при старте
+
+**Надёжность сохранения состояния дерева**
+- `appStore.ts`: `toggleNodeExpanded` переписан — текущее значение `is_expanded` читается через `get()` до вызова `set()`, без мутации внутри updater; `persistNodeExpanded` получает гарантированно корректное значение
+
+---
+
+### 2026-04-01 — Этап 10.9: UX-улучшения
+
+**Иконки типа консоли в дереве**
+- `appStore.ts` / `TreePanel.tsx`: иконка консоли изменена с `">_"` на цветной badge-символ: `S` (синий) для SSH, `L` (серый) для Local
+- В дереве значок рендерится как маленький квадратный бейдж с соответствующим цветом; в поиске по дереву аналогично
+
+**Раздельные API-ключи для AI-провайдеров**
+- `SettingsDialog.tsx` (AgentsTab): ключ хранится в SQLite как `ai.apiKey.openai` или `ai.apiKey.anthropic` — при переключении провайдера поле показывает/сохраняет соответствующий ключ; заголовок поля содержит имя текущего провайдера
+- `AiPanel.tsx`: читает ключ по ключу `ai.apiKey.<provider>`; `settings["ai.apiKey"]` остался как fallback для обратной совместимости
+
+**Сохранение состояния раскрытия дерева**
+- `db.rs`: новая функция `set_node_expanded` — UPDATE `is_expanded` для workspaces и projects
+- `commands.rs`: новая Tauri-команда `set_node_expanded(id, node_type, is_expanded)`
+- `main.rs` + `lib.rs`: команда зарегистрирована в обоих файлах
+- `tauriCommands.ts`: обёртка `setNodeExpanded()`
+- `appStore.ts`: `toggleNodeExpanded` теперь сохраняет состояние в SQLite через `persistNodeExpanded`; дерево восстанавливается при следующем запуске
+
+**SSH passphrase — сохранение и автоподстановка**
+- `db.rs`: новая колонка `ssh_passphrase TEXT NOT NULL DEFAULT ''` в таблице `consoles`; добавлена через `ALTER TABLE ... ADD COLUMN` с automigration (`.ok()` на ошибку дубликата)
+- `commands.rs` / `db.rs`: `ConsoleConfig` дополнен полем `ssh_passphrase`; `create_console`, `update_console_config`, `clone_console_by_id`, `clone_project_by_id` обновлены
+- `pty_manager.rs`: новая функция `add_key_to_agent(key_path, passphrase)` — создаёт временный `SSH_ASKPASS`-скрипт (`/tmp/.devconsole_askpass_<pid>`), запускает `ssh-add` с env `SSH_ASKPASS_REQUIRE=force`, удаляет скрипт; `spawn()` принимает `ssh_key_path` + `ssh_passphrase`
+- `types/index.ts`: `sshPassphrase: string` в `ConsoleConfig`
+- `tauriCommands.ts`: `createConsole`, `updateConsoleConfig`, `spawnPty` — добавлены параметры passphrase/key_path
+- `CreateConsoleDialog.tsx` + `EditConsoleDialog.tsx`: поле "Пароль к ключу" с маской и кнопкой показать/скрыть
+- `ru.json` + `en.json`: добавлены ключи `sshPassphrase`, `sshPassphraseNote`, `sshPassphrasePlaceholder`
+
+---
 
 ### 2026-03-29 — Этап 10.8: Баг-фиксы AI панели
 
@@ -174,14 +249,15 @@
 | Layout и дерево (CRUD + danger + SSH + клонирование + UX + поиск) | 100% |
 | Backend CRUD (Rust + SQLite) | 100% |
 | PTY / Терминал | 100% |
-| SSH-подключение | 100% |
+| SSH-подключение (включая passphrase через ssh-agent) | 100% |
 | Wiki / TipTap (редактор + теги + поиск) | 100% |
 | Настройки (Settings + темы) | 100% |
-| Система тем (10 тем + random) | 100% |
+| Система тем (13 тем: 10 тёмных + 3 светлых + random) | 100% |
 | Шифрование БД (SQLCipher + compile-time key) | 100% |
 | AI панель (OpenAI + Anthropic, стриминг, сессии в SQLite) | 95% (Ollama, drag-and-drop позиции — Post-MVP) |
+| Экспорт/импорт (.dchub, AES-256-GCM) | 100% |
 | Поиск и навигация (дерево + wiki) | 85% (GlobalSearch-модал отсутствует) |
 | Локализация | 70% (ru/en полностью; zh/fr/kk — без AI-ключей) |
 | Post-MVP функции | 0% |
 
-**Общая готовность: ~97%** (MVP + AI с персистентной историей)
+**Общая готовность: ~99%** (MVP + AI с историей + UX + экспорт/импорт)

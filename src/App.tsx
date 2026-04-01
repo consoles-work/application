@@ -14,7 +14,7 @@ import i18n from "./lib/i18n";
 // ══════════════════════════════════════
 
 function App() {
-  const { setWorkspaces, setSettings, toggleTreePanel, toggleWikiPanel, setShowTreePanel, setShowWikiPanel, showToast, toggleAiPanel, setShowAiPanel, setAiPanelPosition, setAiSessions, setActiveAiSessionId } = useAppStore();
+  const { setWorkspaces, setSettings, toggleTreePanel, toggleWikiPanel, setShowTreePanel, setShowWikiPanel, showToast, toggleAiPanel, setShowAiPanel, setAiPanelPosition, setAiSessions, setActiveAiSessionId, setTreePanelWidth } = useAppStore();
   const { t } = useTranslation();
   const [showPalette, setShowPalette] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -48,6 +48,10 @@ function App() {
       if (s["ui.showWikiPanel"] !== undefined) setShowWikiPanel(s["ui.showWikiPanel"] !== "false");
       if (s["ui.showAiPanel"] !== undefined) setShowAiPanel(s["ui.showAiPanel"] === "true");
       if (s["ui.aiPanelPosition"] !== undefined) setAiPanelPosition(s["ui.aiPanelPosition"] as "right" | "bottom");
+      if (s["ui.treePanelWidth"] !== undefined) {
+        const w = parseInt(s["ui.treePanelWidth"]);
+        if (w >= 180 && w <= 500) setTreePanelWidth(w);
+      }
     }).catch(() => {});
   }, [setWorkspaces, setSettings, showToast]);
 

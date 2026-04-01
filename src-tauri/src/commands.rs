@@ -90,6 +90,7 @@ pub struct ConsoleConfig {
     pub ssh_user: String,
     pub ssh_key_path: String,
     pub ssh_extra_args: String,
+    pub ssh_passphrase: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -212,6 +213,7 @@ pub fn create_console(
     ssh_user: Option<String>,
     ssh_key_path: Option<String>,
     ssh_extra_args: Option<String>,
+    ssh_passphrase: Option<String>,
 ) -> Result<ConsoleConfig, String> {
     let id = uuid::Uuid::new_v4().to_string();
     let console = ConsoleConfig {
@@ -231,6 +233,7 @@ pub fn create_console(
         ssh_user: ssh_user.unwrap_or_default(),
         ssh_key_path: ssh_key_path.unwrap_or_default(),
         ssh_extra_args: ssh_extra_args.unwrap_or_default(),
+        ssh_passphrase: ssh_passphrase.unwrap_or_default(),
     };
 
     crate::db::save_console(&console)?;
@@ -255,11 +258,13 @@ pub fn update_console_config(
     ssh_user: String,
     ssh_key_path: String,
     ssh_extra_args: String,
+    ssh_passphrase: String,
 ) -> Result<(), String> {
     crate::db::update_console_config_fields(
         &id, &name, startup_cmd.as_deref(),
         &connection_type, &ssh_host, ssh_port,
         &ssh_user, &ssh_key_path, &ssh_extra_args,
+        &ssh_passphrase,
     )
 }
 
@@ -280,8 +285,14 @@ pub fn spawn_pty(
     shell: String,
     cwd: String,
     env_vars: HashMap<String, String>,
+    ssh_key_path: Option<String>,
+    ssh_passphrase: Option<String>,
 ) -> Result<u32, String> {
-    crate::pty_manager::spawn(shell, cwd, env_vars)
+    crate::pty_manager::spawn(
+        shell, cwd, env_vars,
+        ssh_key_path.unwrap_or_default(),
+        ssh_passphrase.unwrap_or_default(),
+    )
 }
 
 /// Отправить данные (ввод пользователя) в терминал
@@ -334,6 +345,12 @@ pub fn search_wiki(query: String) -> Result<Vec<WikiPage>, String> {
 #[tauri::command]
 pub fn set_node_danger(id: String, node_type: String, is_danger: bool, danger_label: String) -> Result<(), String> {
     crate::db::update_node_danger(&id, &node_type, is_danger, &danger_label)
+}
+
+/// Сохранить состояние раскрытия узла дерева (workspace или project)
+#[tauri::command]
+pub fn set_node_expanded(id: String, node_type: String, is_expanded: bool) -> Result<(), String> {
+    crate::db::set_node_expanded(&id, &node_type, is_expanded)
 }
 
 /// Дублировать консоль (копия с именем "{имя} (copy)")
@@ -433,4 +450,50 @@ pub fn update_ai_message(id: String, content: String) -> Result<(), String> {
 #[tauri::command]
 pub fn clear_ai_session(session_id: String) -> Result<(), String> {
     crate::db::clear_ai_session_messages(&session_id)
+}
+
+// ══════════════════════════════════════════════
+// Команды: Экспорт/импорт
+// ══════════════════════════════════════════════
+
+/// Экспортировать данные в зашифрованный .dchub файл (пишет файл по пути)
+#[tauri::command]
+pub fn export_data(
+    file_path: String,
+    include_tree: bool,
+    include_wiki: bool,
+    include_ai: bool,
+    user_password: Option<String>,
+) -> Result<(), String> {
+    let payload = crate::export::build_export_payload(include_tree, include_wiki, include_ai)?;
+    let json = serde_json::to_vec(&payload).map_err(|e| e.to_string())?;
+    let encrypted = crate::export::encrypt_export(&json, user_password.as_deref())?;
+    std::fs::write(&file_path, &encrypted).map_err(|e| format!("Ошибка записи файла: {e}"))
+}
+
+/// Расшифровать файл и вернуть превью (без применения к БД)
+#[tauri::command]
+pub fn preview_import(
+    file_path: String,
+    user_password: Option<String>,
+) -> Result<crate::export::ImportPreview, String> {
+    let has_password = user_password.as_ref().map(|p| !p.is_empty()).unwrap_or(false);
+    let file_bytes = std::fs::read(&file_path).map_err(|e| format!("Ошибка чтения файла: {e}"))?;
+    let decrypted = crate::export::decrypt_export(&file_bytes, user_password.as_deref())?;
+    crate::export::parse_preview(&decrypted, has_password)
+}
+
+/// Применить импорт к базе данных
+#[tauri::command]
+pub fn apply_import(
+    file_path: String,
+    user_password: Option<String>,
+    include_tree: bool,
+    include_wiki: bool,
+    include_ai: bool,
+    mode: String,
+) -> Result<(), String> {
+    let file_bytes = std::fs::read(&file_path).map_err(|e| format!("Ошибка чтения файла: {e}"))?;
+    let decrypted = crate::export::decrypt_export(&file_bytes, user_password.as_deref())?;
+    crate::export::apply_import(&decrypted, include_tree, include_wiki, include_ai, &mode)
 }

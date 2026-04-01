@@ -32,6 +32,13 @@ uuid = { version = "1", features = ["v4"] }
 dirs = "5"                    # пути к домашней директории
 chrono = { version = "0.4", features = ["serde"] }
 
+# ── Экспорт/импорт (шифрование) ──
+aes-gcm = "0.10"
+pbkdf2 = { version = "0.12", features = ["hmac"] }
+sha2 = "0.10"
+hmac = "0.12"
+rand = "0.8"
+
 [profile.release]
 # Оптимизация размера бинарника
 strip = true

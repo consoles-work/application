@@ -182,6 +182,11 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
         CREATE INDEX IF NOT EXISTS idx_ai_messages_session ON ai_messages(session_id);
     ")?;
 
+    // Automigration: добавляем ssh_passphrase если колонки нет
+    conn.execute_batch(
+        "ALTER TABLE consoles ADD COLUMN ssh_passphrase TEXT NOT NULL DEFAULT '';"
+    ).ok(); // .ok() — игнорируем ошибку "duplicate column name"
+
     DB.set(Mutex::new(conn))
         .map_err(|_| "Database already initialized")?;
 
@@ -260,7 +265,7 @@ fn load_projects_for_workspace(db: &Connection, workspace_id: &str) -> Result<Ve
 
 fn load_consoles_for_project(db: &Connection, project_id: &str) -> Result<Vec<ConsoleConfig>, String> {
     let mut stmt = db.prepare(
-        "SELECT id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args FROM consoles WHERE project_id = ?1 ORDER BY sort_order"
+        "SELECT id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args, ssh_passphrase FROM consoles WHERE project_id = ?1 ORDER BY sort_order"
     ).map_err(|e| e.to_string())?;
 
     let consoles = stmt.query_map(params![project_id], |row| {
@@ -284,6 +289,7 @@ fn load_consoles_for_project(db: &Connection, project_id: &str) -> Result<Vec<Co
             ssh_user: row.get::<_, Option<String>>(13)?.unwrap_or_default(),
             ssh_key_path: row.get::<_, Option<String>>(14)?.unwrap_or_default(),
             ssh_extra_args: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
+            ssh_passphrase: row.get::<_, Option<String>>(16)?.unwrap_or_default(),
         })
     }).map_err(|e| e.to_string())?
     .filter_map(|r| r.ok())
@@ -348,6 +354,23 @@ pub fn delete_project_cascade(id: &str) -> Result<(), String> {
     Ok(())
 }
 
+pub fn set_node_expanded(id: &str, node_type: &str, is_expanded: bool) -> Result<(), String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    let val = is_expanded as i32;
+    match node_type {
+        "workspace" => db.execute(
+            "UPDATE workspaces SET is_expanded = ?2 WHERE id = ?1",
+            params![id, val],
+        ),
+        "project" => db.execute(
+            "UPDATE projects SET is_expanded = ?2 WHERE id = ?1",
+            params![id, val],
+        ),
+        _ => return Ok(()), // console не имеет is_expanded
+    }.map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 // ══════════════════════════════════════════════
 // CRUD: Consoles
 // ══════════════════════════════════════════════
@@ -357,8 +380,8 @@ pub fn save_console(con: &ConsoleConfig) -> Result<(), String> {
     let env_json = con.env_vars.as_ref()
         .map(|e| serde_json::to_string(e).unwrap_or_default());
     db.execute(
-        "INSERT OR REPLACE INTO consoles (id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
-        params![con.id, con.project_id, con.name, con.shell_override, con.cwd_override, con.startup_cmd, env_json, con.sort_order, con.is_danger as i32, con.danger_label, con.connection_type, con.ssh_host, con.ssh_port, con.ssh_user, con.ssh_key_path, con.ssh_extra_args],
+        "INSERT OR REPLACE INTO consoles (id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args, ssh_passphrase) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
+        params![con.id, con.project_id, con.name, con.shell_override, con.cwd_override, con.startup_cmd, env_json, con.sort_order, con.is_danger as i32, con.danger_label, con.connection_type, con.ssh_host, con.ssh_port, con.ssh_user, con.ssh_key_path, con.ssh_extra_args, con.ssh_passphrase],
     ).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -382,11 +405,12 @@ pub fn update_console_config_fields(
     ssh_user: &str,
     ssh_key_path: &str,
     ssh_extra_args: &str,
+    ssh_passphrase: &str,
 ) -> Result<(), String> {
     let db = get_db().lock().map_err(|e| e.to_string())?;
     db.execute(
-        "UPDATE consoles SET name = ?2, startup_cmd = ?3, connection_type = ?4, ssh_host = ?5, ssh_port = ?6, ssh_user = ?7, ssh_key_path = ?8, ssh_extra_args = ?9 WHERE id = ?1",
-        params![id, name, startup_cmd, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args],
+        "UPDATE consoles SET name = ?2, startup_cmd = ?3, connection_type = ?4, ssh_host = ?5, ssh_port = ?6, ssh_user = ?7, ssh_key_path = ?8, ssh_extra_args = ?9, ssh_passphrase = ?10 WHERE id = ?1",
+        params![id, name, startup_cmd, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args, ssh_passphrase],
     ).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -477,7 +501,7 @@ pub fn clone_console_by_id(id: &str) -> Result<ConsoleConfig, String> {
     let db = get_db().lock().map_err(|e| e.to_string())?;
 
     let mut stmt = db.prepare(
-        "SELECT project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args FROM consoles WHERE id = ?1"
+        "SELECT project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args, ssh_passphrase FROM consoles WHERE id = ?1"
     ).map_err(|e| e.to_string())?;
 
     let con = stmt.query_row(params![id], |row| {
@@ -501,6 +525,7 @@ pub fn clone_console_by_id(id: &str) -> Result<ConsoleConfig, String> {
             ssh_user: row.get::<_, Option<String>>(12)?.unwrap_or_default(),
             ssh_key_path: row.get::<_, Option<String>>(13)?.unwrap_or_default(),
             ssh_extra_args: row.get::<_, Option<String>>(14)?.unwrap_or_default(),
+            ssh_passphrase: row.get::<_, Option<String>>(15)?.unwrap_or_default(),
         })
     }).map_err(|e| e.to_string())?;
 
@@ -514,8 +539,8 @@ pub fn clone_console_by_id(id: &str) -> Result<ConsoleConfig, String> {
     let env_json = new_con.env_vars.as_ref()
         .map(|e| serde_json::to_string(e).unwrap_or_default());
     db.execute(
-        "INSERT INTO consoles (id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
-        params![new_con.id, new_con.project_id, new_con.name, new_con.shell_override, new_con.cwd_override, new_con.startup_cmd, env_json, new_con.sort_order, new_con.is_danger as i32, new_con.danger_label, new_con.connection_type, new_con.ssh_host, new_con.ssh_port, new_con.ssh_user, new_con.ssh_key_path, new_con.ssh_extra_args],
+        "INSERT INTO consoles (id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args, ssh_passphrase) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
+        params![new_con.id, new_con.project_id, new_con.name, new_con.shell_override, new_con.cwd_override, new_con.startup_cmd, env_json, new_con.sort_order, new_con.is_danger as i32, new_con.danger_label, new_con.connection_type, new_con.ssh_host, new_con.ssh_port, new_con.ssh_user, new_con.ssh_key_path, new_con.ssh_extra_args, new_con.ssh_passphrase],
     ).map_err(|e| e.to_string())?;
 
     Ok(new_con)
@@ -574,8 +599,8 @@ pub fn clone_project_by_id(id: &str) -> Result<Project, String> {
             ..con
         };
         db.execute(
-            "INSERT INTO consoles (id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
-            params![new_con.id, new_con.project_id, new_con.name, new_con.shell_override, new_con.cwd_override, new_con.startup_cmd, con_env_json, new_con.sort_order, new_con.is_danger as i32, new_con.danger_label, new_con.connection_type, new_con.ssh_host, new_con.ssh_port, new_con.ssh_user, new_con.ssh_key_path, new_con.ssh_extra_args],
+            "INSERT INTO consoles (id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args, ssh_passphrase) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
+            params![new_con.id, new_con.project_id, new_con.name, new_con.shell_override, new_con.cwd_override, new_con.startup_cmd, con_env_json, new_con.sort_order, new_con.is_danger as i32, new_con.danger_label, new_con.connection_type, new_con.ssh_host, new_con.ssh_port, new_con.ssh_user, new_con.ssh_key_path, new_con.ssh_extra_args, new_con.ssh_passphrase],
         ).map_err(|e| e.to_string())?;
         new_consoles.push(new_con);
     }
@@ -764,4 +789,73 @@ pub fn search_wiki_fts(query: &str) -> Result<Vec<WikiPage>, String> {
     .collect();
 
     Ok(pages)
+}
+
+// ══════════════════════════════════════════════
+// Экспорт/импорт
+// ══════════════════════════════════════════════
+
+/// Загрузить все wiki-страницы (без фильтрации по parent)
+pub fn load_all_wiki_pages() -> Result<Vec<WikiPage>, String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    let mut stmt = db.prepare(
+        "SELECT id, parent_type, parent_id, title, content, tags, pinned, created_at, updated_at FROM wiki_pages ORDER BY created_at"
+    ).map_err(|e| e.to_string())?;
+
+    let pages = stmt.query_map([], |row| {
+        let tags_str: String = row.get(5)?;
+        let tags: Vec<String> = serde_json::from_str(&tags_str).unwrap_or_default();
+        Ok(WikiPage {
+            id: row.get(0)?,
+            parent_type: row.get(1)?,
+            parent_id: row.get(2)?,
+            title: row.get(3)?,
+            content: row.get(4)?,
+            tags,
+            pinned: row.get::<_, i32>(6)? != 0,
+            created_at: row.get(7)?,
+            updated_at: row.get(8)?,
+        })
+    }).map_err(|e| e.to_string())?
+    .filter_map(|r| r.ok())
+    .collect();
+
+    Ok(pages)
+}
+
+/// Удалить все workspaces (каскадно — проекты и консоли тоже)
+pub fn delete_all_workspaces() -> Result<(), String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    db.execute("DELETE FROM workspaces", [])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Удалить все wiki-страницы
+pub fn delete_all_wiki_pages() -> Result<(), String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    db.execute("DELETE FROM wiki_pages", [])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Удалить все AI-сессии (каскадно — сообщения тоже)
+pub fn delete_all_ai_sessions() -> Result<(), String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    db.execute("DELETE FROM ai_sessions", [])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Получить список имён всех workspaces (для проверки конфликтов при импорте)
+pub fn get_workspace_names() -> Result<std::collections::HashSet<String>, String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    let mut stmt = db.prepare("SELECT name FROM workspaces")
+        .map_err(|e| e.to_string())?;
+    let names: std::collections::HashSet<String> = stmt
+        .query_map([], |row| row.get(0))
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+    Ok(names)
 }

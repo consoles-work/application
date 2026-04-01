@@ -67,12 +67,52 @@ fn default_shell() -> String {
     }
 }
 
+/// Добавить SSH-ключ с passphrase в ssh-agent через SSH_ASKPASS trick.
+/// Создаёт временный скрипт, запускает ssh-add, удаляет скрипт.
+fn add_key_to_agent(key_path: &str, passphrase: &str) {
+    if key_path.is_empty() || passphrase.is_empty() {
+        return;
+    }
+    // Создаём временный askpass-скрипт
+    let askpass_path = format!("/tmp/.devconsole_askpass_{}", std::process::id());
+    // Экранируем passphrase: заменяем ' на '\''
+    let escaped = passphrase.replace('\'', r"'\''");
+    let script = format!("#!/bin/sh\necho '{}'\n", escaped);
+    if std::fs::write(&askpass_path, &script).is_err() {
+        return;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&askpass_path, std::fs::Permissions::from_mode(0o700));
+    }
+    // Запускаем ssh-add с SSH_ASKPASS
+    let _ = std::process::Command::new("ssh-add")
+        .arg(key_path)
+        .env("SSH_ASKPASS", &askpass_path)
+        .env("SSH_ASKPASS_REQUIRE", "force")
+        .env("DISPLAY", "dummy") // нужно для Linux; macOS игнорирует
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status();
+    // Удаляем временный скрипт
+    let _ = std::fs::remove_file(&askpass_path);
+}
+
 /// Запустить новую PTY-сессию
 pub fn spawn(
     shell: String,
     cwd: String,
     env_vars: HashMap<String, String>,
+    ssh_key_path: String,
+    ssh_passphrase: String,
 ) -> Result<u32, String> {
+    // Если есть passphrase — добавляем ключ в ssh-agent до запуска SSH
+    if !ssh_passphrase.is_empty() {
+        add_key_to_agent(&ssh_key_path, &ssh_passphrase);
+    }
+
     let id = NEXT_ID.fetch_add(1, Ordering::SeqCst);
 
     let pty_system = native_pty_system();

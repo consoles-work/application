@@ -107,7 +107,7 @@ export function AiPanel() {
   }, [renamingId]);
 
   const provider = getProvider(settings["ai.provider"] ?? "openai");
-  const apiKey = settings["ai.apiKey"] ?? "";
+  const apiKey = settings[`ai.apiKey.${settings["ai.provider"] ?? "openai"}`] ?? settings["ai.apiKey"] ?? "";
   const model = settings["ai.model"] ?? provider.defaultModel;
   const showContext = terminalSelection && terminalSelection !== dismissedSelection;
   const activeSession = aiSessions.find((s) => s.id === activeAiSessionId);

@@ -19,6 +19,7 @@
 mod commands;  // src/commands.rs — обработчики IPC-вызовов из JS
 mod db;        // src/db.rs — работа с SQLite
 mod pty_manager; // src/pty_manager.rs — управление терминальными сессиями
+mod export;    // src/export.rs — экспорт/импорт .dchub
 
 // Подключаем публичные функции из модуля commands
 use commands::*;
@@ -83,6 +84,7 @@ pub fn run() {
 
             // Утилиты
             set_node_danger,
+            set_node_expanded,
 
             // Клонирование
             clone_console,
@@ -104,6 +106,11 @@ pub fn run() {
             save_ai_message,
             update_ai_message,
             clear_ai_session,
+
+            // Экспорт/импорт
+            export_data,
+            preview_import,
+            apply_import,
         ])
 
         // Перехватываем закрытие окна: всегда отменяем и просим фронт показать диалог

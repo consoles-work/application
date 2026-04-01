@@ -5,6 +5,7 @@
 mod commands;
 mod db;
 mod pty_manager;
+mod export;
 
 use commands::*;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -45,6 +46,7 @@ pub fn run() {
             delete_wiki_page,
             search_wiki,
             set_node_danger,
+            set_node_expanded,
             clone_console,
             clone_project,
             get_settings,
@@ -60,6 +62,9 @@ pub fn run() {
             save_ai_message,
             update_ai_message,
             clear_ai_session,
+            export_data,
+            preview_import,
+            apply_import,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

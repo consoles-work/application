@@ -212,6 +212,8 @@ function TerminalView({
     const envVars = { ...project?.env_vars, ...consoleConfig?.envVars };
 
     // SSH: строим команду подключения
+    let sshKeyPath: string | undefined;
+    let sshPassphrase: string | undefined;
     if (consoleConfig?.connectionType === "ssh") {
       const host = consoleConfig.sshHost || "";
       const port = consoleConfig.sshPort || 22;
@@ -227,6 +229,8 @@ function TerminalView({
 
       shell = sshCmd;
       cwd = "";
+      sshKeyPath = keyPath || undefined;
+      sshPassphrase = (consoleConfig as { sshPassphrase?: string }).sshPassphrase || undefined;
     }
 
     // Запускаем PTY и подключаем всё
@@ -234,7 +238,7 @@ function TerminalView({
 
     (async () => {
       try {
-        const ptyId = await spawnPty(shell, cwd, envVars ?? {});
+        const ptyId = await spawnPty(shell, cwd, envVars ?? {}, sshKeyPath, sshPassphrase);
         if (disposed) {
           killPty(ptyId).catch(() => {});
           return;

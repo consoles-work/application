@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { setSetting as persistSetting } from "../lib/tauriCommands";
+import { setSetting as persistSetting, setNodeExpanded as persistNodeExpanded } from "../lib/tauriCommands";
 import type {
   Workspace,
   Project,
@@ -133,7 +133,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeWikiPageId: null,
   showTreePanel: true,
   showWikiPanel: true,
-  treePanelWidth: 250,
+  treePanelWidth: 280,
   wikiPanelWidth: 350,
   terminalSelection: "",
   showAiPanel: false,
@@ -154,23 +154,39 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   selectNode: (node) => set({ selectedNode: node }),
 
-  toggleNodeExpanded: (type, id) =>
+  toggleNodeExpanded: (type, id) => {
+    // Читаем текущее состояние через get() до вызова set()
+    const { workspaces } = get();
+    let nextExpanded = false;
+    outer: for (const ws of workspaces) {
+      if (type === "workspace" && ws.id === id) {
+        nextExpanded = !ws.is_expanded;
+        break;
+      }
+      for (const proj of ws.projects) {
+        if (type === "project" && proj.id === id) {
+          nextExpanded = !proj.is_expanded;
+          break outer;
+        }
+      }
+    }
     set((state) => ({
       workspaces: state.workspaces.map((ws) => {
         if (type === "workspace" && ws.id === id) {
-          return { ...ws, is_expanded: !ws.is_expanded };
+          return { ...ws, is_expanded: nextExpanded };
         }
         return {
           ...ws,
-          projects: ws.projects.map((proj) => {
-            if (type === "project" && proj.id === id) {
-              return { ...proj, is_expanded: !proj.is_expanded };
-            }
-            return proj;
-          }),
+          projects: ws.projects.map((proj) =>
+            type === "project" && proj.id === id
+              ? { ...proj, is_expanded: nextExpanded }
+              : proj
+          ),
         };
       }),
-    })),
+    }));
+    persistNodeExpanded(id, type, nextExpanded).catch(() => {});
+  },
 
   addWorkspace: (workspace) =>
     set((state) => ({ workspaces: [...state.workspaces, workspace] })),
@@ -401,7 +417,7 @@ export const useAppStore = create<AppState>((set, get) => ({
                 id: con.id,
                 type: "console",
                 name: con.name,
-                icon: ">_",
+                icon: con.connectionType === "ssh" ? "S" : "L",
                 color: proj.color,
                 depth: 2,
                 is_expanded: false,

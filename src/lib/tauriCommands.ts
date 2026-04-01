@@ -88,7 +88,8 @@ export async function createConsole(
   sshPort?: number,
   sshUser?: string,
   sshKeyPath?: string,
-  sshExtraArgs?: string
+  sshExtraArgs?: string,
+  sshPassphrase?: string
 ): Promise<ConsoleConfig> {
   return invoke<ConsoleConfig>("create_console", {
     projectId,
@@ -100,6 +101,7 @@ export async function createConsole(
     sshUser,
     sshKeyPath,
     sshExtraArgs,
+    sshPassphrase,
   });
 }
 
@@ -116,7 +118,8 @@ export async function updateConsoleConfig(
   sshPort: number,
   sshUser: string,
   sshKeyPath: string,
-  sshExtraArgs: string
+  sshExtraArgs: string,
+  sshPassphrase: string
 ): Promise<void> {
   return invoke("update_console_config", {
     id,
@@ -128,6 +131,7 @@ export async function updateConsoleConfig(
     sshUser,
     sshKeyPath,
     sshExtraArgs,
+    sshPassphrase,
   });
 }
 
@@ -140,10 +144,12 @@ export async function deleteConsole(id: string): Promise<void> {
 export async function spawnPty(
   shell: string,
   cwd: string,
-  envVars: Record<string, string>
+  envVars: Record<string, string>,
+  sshKeyPath?: string,
+  sshPassphrase?: string
 ): Promise<number> {
   // Возвращает pty_id — числовой идентификатор сессии на Rust-стороне
-  return invoke<number>("spawn_pty", { shell, cwd, envVars });
+  return invoke<number>("spawn_pty", { shell, cwd, envVars, sshKeyPath, sshPassphrase });
 }
 
 export async function writeToPty(
@@ -193,6 +199,14 @@ export async function setNodeDanger(
   dangerLabel: string
 ): Promise<void> {
   return invoke("set_node_danger", { id, nodeType, isDanger, dangerLabel });
+}
+
+export async function setNodeExpanded(
+  id: string,
+  nodeType: string,
+  isExpanded: boolean
+): Promise<void> {
+  return invoke("set_node_expanded", { id, nodeType, isExpanded });
 }
 
 export async function cloneConsole(id: string): Promise<ConsoleConfig> {
@@ -266,4 +280,61 @@ export async function updateAiMessage(id: string, content: string): Promise<void
 
 export async function clearAiSession(sessionId: string): Promise<void> {
   return invoke("clear_ai_session", { sessionId });
+}
+
+// ── Экспорт/импорт ──
+
+export interface ImportPreview {
+  exportedAt: string;
+  workspaceCount: number;
+  projectCount: number;
+  consoleCount: number;
+  wikiCount: number;
+  aiSessionCount: number;
+  aiMessageCount: number;
+  hasPassword: boolean;
+}
+
+export async function exportData(
+  filePath: string,
+  includeTree: boolean,
+  includeWiki: boolean,
+  includeAi: boolean,
+  userPassword?: string
+): Promise<void> {
+  return invoke("export_data", {
+    filePath,
+    includeTree,
+    includeWiki,
+    includeAi,
+    userPassword: userPassword || null,
+  });
+}
+
+export async function previewImport(
+  filePath: string,
+  userPassword?: string
+): Promise<ImportPreview> {
+  return invoke<ImportPreview>("preview_import", {
+    filePath,
+    userPassword: userPassword || null,
+  });
+}
+
+export async function applyImport(
+  filePath: string,
+  userPassword: string | undefined,
+  includeTree: boolean,
+  includeWiki: boolean,
+  includeAi: boolean,
+  mode: "merge" | "replace"
+): Promise<void> {
+  return invoke("apply_import", {
+    filePath,
+    userPassword: userPassword || null,
+    includeTree,
+    includeWiki,
+    includeAi,
+    mode,
+  });
 }

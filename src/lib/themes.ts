@@ -140,6 +140,43 @@ export const THEMES: AppTheme[] = [
       brightBlue: "#83a598", brightMagenta: "#d3869b", brightCyan: "#8ec07c", brightWhite: "#ebdbb2",
     },
   },
+  // ── Светлые темы ──────────────────────────────
+  {
+    id: "solarized-light",
+    label: "Solarized Light",
+    xterm: {
+      background: "#fdf6e3", foreground: "#657b83", cursor: "#586e75",
+      selectionBackground: "#eee8d5",
+      black: "#073642", red: "#dc322f", green: "#859900", yellow: "#b58900",
+      blue: "#268bd2", magenta: "#d33682", cyan: "#2aa198", white: "#eee8d5",
+      brightBlack: "#002b36", brightRed: "#cb4b16", brightGreen: "#586e75", brightYellow: "#657b83",
+      brightBlue: "#839496", brightMagenta: "#6c71c4", brightCyan: "#93a1a1", brightWhite: "#fdf6e3",
+    },
+  },
+  {
+    id: "catppuccin-latte",
+    label: "Catppuccin Latte",
+    xterm: {
+      background: "#eff1f5", foreground: "#4c4f69", cursor: "#dc8a78",
+      selectionBackground: "#bcc0cc",
+      black: "#5c5f77", red: "#d20f39", green: "#40a02b", yellow: "#df8e1d",
+      blue: "#1e66f5", magenta: "#8839ef", cyan: "#179299", white: "#acb0be",
+      brightBlack: "#6c6f85", brightRed: "#d20f39", brightGreen: "#40a02b", brightYellow: "#df8e1d",
+      brightBlue: "#1e66f5", brightMagenta: "#8839ef", brightCyan: "#179299", brightWhite: "#bcc0cc",
+    },
+  },
+  {
+    id: "one-light",
+    label: "One Light",
+    xterm: {
+      background: "#fafafa", foreground: "#383a42", cursor: "#4078f2",
+      selectionBackground: "#e5e5e5",
+      black: "#383a42", red: "#e45649", green: "#50a14f", yellow: "#c18401",
+      blue: "#4078f2", magenta: "#a626a4", cyan: "#0184bc", white: "#d4d4d4",
+      brightBlack: "#4f525e", brightRed: "#e45649", brightGreen: "#50a14f", brightYellow: "#c18401",
+      brightBlue: "#4078f2", brightMagenta: "#a626a4", brightCyan: "#0184bc", brightWhite: "#ffffff",
+    },
+  },
 ];
 
 // Темы доступные для случайного выбора (все 10)
