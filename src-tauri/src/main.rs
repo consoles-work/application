@@ -50,7 +50,7 @@ pub fn run() {
             // Инициализируем менеджер PTY-сессий
             pty_manager::init(app.handle().clone());
 
-            println!("✅ DevConsole Hub started successfully");
+            println!("✅ consoles.work started successfully");
             Ok(())
         })
 
@@ -140,7 +140,7 @@ pub fn run() {
         // Запускаем приложение
         // .expect() — если произошла ошибка, завершить программу с сообщением
         .run(tauri::generate_context!())
-        .expect("error while running DevConsole Hub");
+        .expect("error while running consoles.work");
 }
 
 // ── Точка входа ──

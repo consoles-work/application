@@ -22,7 +22,7 @@ pub fn run() {
         .setup(|app| {
             db::init()?;
             pty_manager::init(app.handle().clone());
-            println!("✅ DevConsole Hub started successfully");
+            println!("✅ consoles.work started successfully");
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -89,5 +89,5 @@ pub fn run() {
             }
         })
         .run(tauri::generate_context!())
-        .expect("error while running DevConsole Hub");
+        .expect("error while running consoles.work");
 }

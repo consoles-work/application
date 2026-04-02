@@ -74,7 +74,7 @@ fn add_key_to_agent(key_path: &str, passphrase: &str) {
         return;
     }
     // Создаём временный askpass-скрипт
-    let askpass_path = format!("/tmp/.devconsole_askpass_{}", std::process::id());
+    let askpass_path = format!("/tmp/.consoleswork_askpass_{}", std::process::id());
     // Экранируем passphrase: заменяем ' на '\''
     let escaped = passphrase.replace('\'', r"'\''");
     let script = format!("#!/bin/sh\necho '{}'\n", escaped);
@@ -107,6 +107,7 @@ pub fn spawn(
     env_vars: HashMap<String, String>,
     ssh_key_path: String,
     ssh_passphrase: String,
+    ssh_password: String,
 ) -> Result<u32, String> {
     // Если есть passphrase — добавляем ключ в ssh-agent до запуска SSH
     if !ssh_passphrase.is_empty() {
@@ -157,6 +158,25 @@ pub fn spawn(
 
     for (key, value) in &env_vars {
         cmd.env(key, value);
+    }
+
+    // Если задан пароль SSH-сервера — используем SSH_ASKPASS для его передачи
+    if !ssh_password.is_empty() {
+        let askpass_path = format!("/tmp/.consoleswork_pw_{}", std::process::id());
+        let escaped = ssh_password.replace('\'', r"'\''");
+        let script = format!("#!/bin/sh\necho '{}'\n", escaped);
+        if std::fs::write(&askpass_path, &script).is_ok() {
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let _ = std::fs::set_permissions(&askpass_path, std::fs::Permissions::from_mode(0o700));
+            }
+            cmd.env("SSH_ASKPASS", &askpass_path);
+            cmd.env("SSH_ASKPASS_REQUIRE", "force");
+            if !env_vars.contains_key("DISPLAY") {
+                cmd.env("DISPLAY", "dummy");
+            }
+        }
     }
 
     // Запускаем процесс в PTY

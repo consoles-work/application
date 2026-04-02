@@ -65,7 +65,7 @@
     "ptyError": "PTY іске қосу қатесі: {{error}}",
     "noTerminals": "Ашық терминалдар жоқ",
     "clickConsole": "Сол жақтағы жоба ағашындағы консольді басыңыз",
-    "dangerWarning": "Абай болыңыз — бұл өндірістік орта. Пәрмендерді іске қоспастан бұрын тексеріңіз."
+    "dangerWarning": "«{{label}}» деп белгіленген. Абай болыңыз — пәрмендерді іске қоспастан бұрын тексеріңіз."
   },
   "wikiPanel": {
     "searchPlaceholder": "Wiki іздеу...",
@@ -146,7 +146,10 @@
     "toastFinderError": "Finder-ді ашу мүмкін болмады: {{error}}",
     "toastPathCopied": "Жол көшірілді",
     "toastCopyError": "Көшіру мүмкін болмады",
-    "toastSaveError": "Параметрлерді сақтау қатесі: {{error}}"
+    "toastSaveError": "Параметрлерді сақтау қатесі: {{error}}",
+    "tabAgents": "Агенттер",
+    "agentsShowKey": "Көрсету",
+    "agentsHideKey": "Жасыру"
   },
   "dialogs": {
     "newWorkspace": "Жаңа жұмыс кеңістігі",
@@ -168,6 +171,12 @@
     "user": "Пайдаланушы",
     "sshKey": "SSH кілті (міндетті емес)",
     "extraArgs": "Қосымша SSH аргументтері (міндетті емес)",
+    "sshPassword": "SSH құпия сөзі",
+    "sshPasswordNote": "(серверде аутентификация үшін)",
+    "sshPasswordPlaceholder": "кіру құпия сөзі",
+    "sshPassphrase": "Кілт құпия сөзі",
+    "sshPassphraseNote": "(кілт құпия сөзбен қорғалған болса)",
+    "sshPassphrasePlaceholder": "құпия сөз жоқ болса бос қалдырыңыз",
     "startupCommands": "Іске қосу пәрмендері",
     "startupCommandsNote": "(әр жол — бөлек пәрмен)",
     "startupPlaceholderLocal": "cd /app\nnpm run dev",
@@ -185,6 +194,49 @@
     "toastFileSelectError": "Файлды таңдау қатесі: {{error}}",
     "toastSshHostRequired": "SSH хостын көрсетіңіз",
     "toastError": "Қате: {{error}}"
+  },
+  "export": {
+    "title": "Деректерді экспорттау",
+    "includeLabel": "Экспортқа қосу:",
+    "includeTree": "Жобалар ағашы",
+    "required": "(міндетті)",
+    "includeWiki": "Wiki беттері",
+    "includeAi": "AI чат тарихы",
+    "password": "Қорғау құпия сөзі",
+    "optional": "(міндетті емес)",
+    "passwordPlaceholder": "Автоматты шифрлау үшін бос қалдырыңыз",
+    "passwordNote": "Файл әрқашан шифрланады. Құпия сөз қосымша қорғаныс деңгейін береді.",
+    "exporting": "Экспорттауда...",
+    "exportButton": "Экспорттау",
+    "toastSuccess": "Экспорт сәтті сақталды",
+    "toastError": "Экспорт қатесі: {{error}}"
+  },
+  "import": {
+    "title": "Деректерді импорттау",
+    "selectDesc": "Деректерді импорттау үшін экспорт файлын (.dchub) таңдаңыз.",
+    "opening": "Ашылуда...",
+    "selectButton": "↓ .dchub файлын таңдау",
+    "passwordProtectedFile": "«{{name}}» файлы құпия сөзбен қорғалған.",
+    "passwordPlaceholder": "Құпия сөзді енгізіңіз",
+    "back": "Артқа",
+    "checking": "Тексерілуде...",
+    "check": "Тексеру",
+    "wrongPassword": "Қате құпия сөз немесе файл зақымдалған",
+    "file": "Файл:",
+    "exportedAt": "Экспортталды:",
+    "statsTree": "Жұмыс кеңістіктері / Жобалар / Консольдер",
+    "statsWiki": "Wiki беттері",
+    "statsAi": "AI чаттар / Хабарлар",
+    "importLabel": "Импорттау:",
+    "modeLabel": "Импорт режимі:",
+    "modeMerge": "Біріктіру",
+    "modeReplace": "Ауыстыру",
+    "mergeDesc": "Деректер қосылады. Атаулар қайталанса «(import)» жұрнағы қосылады.",
+    "replaceDesc": "Ағымдағы деректерді жойып импортталғандармен ауыстыру.",
+    "replaceWarning": "⚠ «Ауыстыру» режимі таңдалған деректерді біржола жояды.",
+    "toastSuccess": "Импорт сәтті аяқталды",
+    "importButton": "Импорттау",
+    "importing": "Импорттауда..."
   },
   "app": {
     "toastLoadError": "Деректерді жүктеу қатесі: {{error}}",

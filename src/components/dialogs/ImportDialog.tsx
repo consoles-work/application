@@ -4,6 +4,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../../stores/appStore";
 import { previewImport, applyImport, ImportPreview } from "../../lib/tauriCommands";
 import { loadAllWorkspaces, loadAiSessions } from "../../lib/tauriCommands";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   onClose: () => void;
@@ -26,15 +27,14 @@ export function ImportDialog({ onClose }: Props) {
   const [error, setError] = useState("");
 
   const { showToast, setWorkspaces, setAiSessions, setActiveAiSessionId } = useAppStore();
-
-  // ── Шаг 1: выбор файла ────────────────────────────────────────
+  const { t } = useTranslation();
 
   const handleSelectFile = async () => {
     setLoading(true);
     setError("");
     try {
       const selected = await open({
-        filters: [{ name: "DevConsole Hub", extensions: ["dchub"] }],
+        filters: [{ name: "consoles.work", extensions: ["dchub"] }],
         multiple: false,
       });
       if (!selected || typeof selected !== "string") {
@@ -47,7 +47,6 @@ export function ImportDialog({ onClose }: Props) {
       setFilePath(path);
       setFileName(name);
 
-      // Попробуем без пароля
       try {
         const prev = await previewImport(path, undefined);
         setPreview(prev);
@@ -69,8 +68,6 @@ export function ImportDialog({ onClose }: Props) {
     }
   };
 
-  // ── Шаг 2: ввод пароля ───────────────────────────────────────
-
   const handleCheckPassword = async () => {
     setLoading(true);
     setError("");
@@ -79,13 +76,11 @@ export function ImportDialog({ onClose }: Props) {
       setPreview(prev);
       setStep("preview");
     } catch {
-      setError("Неверный пароль или файл повреждён");
+      setError(t("import.wrongPassword"));
     } finally {
       setLoading(false);
     }
   };
-
-  // ── Шаг 3: применение импорта ────────────────────────────────
 
   const handleApply = async () => {
     setLoading(true);
@@ -100,7 +95,6 @@ export function ImportDialog({ onClose }: Props) {
         mode
       );
 
-      // Перезагружаем дерево и сессии после импорта
       const workspaces = await loadAllWorkspaces();
       setWorkspaces(workspaces);
 
@@ -108,7 +102,7 @@ export function ImportDialog({ onClose }: Props) {
       setAiSessions(sessions);
       if (sessions.length > 0) setActiveAiSessionId(sessions[0].id);
 
-      showToast("success", "Импорт успешно завершён");
+      showToast("success", t("import.toastSuccess"));
       onClose();
     } catch (e) {
       setError(String(e));
@@ -116,8 +110,6 @@ export function ImportDialog({ onClose }: Props) {
       setLoading(false);
     }
   };
-
-  // ── Рендер ───────────────────────────────────────────────────
 
   return createPortal(
     <div
@@ -128,9 +120,8 @@ export function ImportDialog({ onClose }: Props) {
         className="bg-surface-2 border border-border rounded-xl shadow-2xl w-96 p-5 flex flex-col gap-4"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        {/* Заголовок */}
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-text-primary">Импорт данных</h2>
+          <h2 className="text-sm font-semibold text-text-primary">{t("import.title")}</h2>
           <button
             onClick={onClose}
             className="text-text-muted hover:text-text-primary text-lg leading-none"
@@ -143,7 +134,7 @@ export function ImportDialog({ onClose }: Props) {
         {step === "select" && (
           <div className="flex flex-col gap-3">
             <p className="text-xs text-text-secondary">
-              Выберите файл экспорта (.dchub) для импорта данных.
+              {t("import.selectDesc")}
             </p>
             {error && (
               <p className="text-xs text-red-400 bg-red-400/10 rounded px-2 py-1.5">{error}</p>
@@ -153,7 +144,7 @@ export function ImportDialog({ onClose }: Props) {
               disabled={loading}
               className="w-full px-4 py-2 text-xs bg-surface-3 hover:bg-accent/20 border border-border rounded-md text-text-primary disabled:opacity-50"
             >
-              {loading ? "Открываем..." : "↓ Выбрать файл .dchub"}
+              {loading ? t("import.opening") : t("import.selectButton")}
             </button>
           </div>
         )}
@@ -162,7 +153,7 @@ export function ImportDialog({ onClose }: Props) {
         {step === "password" && (
           <div className="flex flex-col gap-3">
             <p className="text-xs text-text-secondary">
-              Файл <span className="text-text-primary font-medium">{fileName}</span> защищён паролем.
+              {t("import.passwordProtectedFile", { name: fileName })}
             </p>
             <div className="relative">
               <input
@@ -171,7 +162,7 @@ export function ImportDialog({ onClose }: Props) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCheckPassword()}
-                placeholder="Введите пароль"
+                placeholder={t("import.passwordPlaceholder")}
                 className="w-full bg-surface-0 border border-border rounded-md px-3 py-2 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-accent pr-16"
               />
               <button
@@ -179,7 +170,7 @@ export function ImportDialog({ onClose }: Props) {
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary text-xs"
               >
-                {showPassword ? "скрыть" : "показ."}
+                {showPassword ? t("settings.agentsHideKey") : t("settings.agentsShowKey")}
               </button>
             </div>
             {error && (
@@ -190,14 +181,14 @@ export function ImportDialog({ onClose }: Props) {
                 onClick={() => { setStep("select"); setError(""); }}
                 className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary rounded-md hover:bg-surface-3"
               >
-                Назад
+                {t("import.back")}
               </button>
               <button
                 onClick={handleCheckPassword}
                 disabled={!password || loading}
                 className="px-4 py-1.5 text-xs bg-accent/90 hover:bg-accent text-white rounded-md disabled:opacity-50"
               >
-                {loading ? "Проверяем..." : "Проверить"}
+                {loading ? t("import.checking") : t("import.check")}
               </button>
             </div>
           </div>
@@ -207,39 +198,37 @@ export function ImportDialog({ onClose }: Props) {
         {step === "preview" && preview && (
           <div className="flex flex-col gap-3">
             <p className="text-xs text-text-secondary">
-              Файл: <span className="text-text-primary font-medium">{fileName}</span>
+              {t("import.file")} <span className="text-text-primary font-medium">{fileName}</span>
               <br />
-              Экспортирован:{" "}
+              {t("import.exportedAt")}{" "}
               <span className="text-text-primary">{preview.exportedAt.slice(0, 10)}</span>
             </p>
 
-            {/* Статистика */}
             <div className="bg-surface-0 rounded-lg p-3 flex flex-col gap-1 text-xs">
               <div className="flex justify-between text-text-secondary">
-                <span>Workspaces / Проекты / Консоли</span>
+                <span>{t("import.statsTree")}</span>
                 <span className="text-text-primary font-mono">
                   {preview.workspaceCount} / {preview.projectCount} / {preview.consoleCount}
                 </span>
               </div>
               <div className="flex justify-between text-text-secondary">
-                <span>Wiki-страниц</span>
+                <span>{t("import.statsWiki")}</span>
                 <span className="text-text-primary font-mono">{preview.wikiCount}</span>
               </div>
               <div className="flex justify-between text-text-secondary">
-                <span>AI-чатов / Сообщений</span>
+                <span>{t("import.statsAi")}</span>
                 <span className="text-text-primary font-mono">
                   {preview.aiSessionCount} / {preview.aiMessageCount}
                 </span>
               </div>
             </div>
 
-            {/* Что импортировать */}
             <div className="flex flex-col gap-1.5">
-              <p className="text-xs text-text-secondary font-medium">Импортировать:</p>
+              <p className="text-xs text-text-secondary font-medium">{t("import.importLabel")}</p>
               <label className="flex items-center gap-2 cursor-not-allowed opacity-70">
                 <input type="checkbox" checked disabled className="accent-accent" />
-                <span className="text-xs text-text-primary">Дерево проектов</span>
-                <span className="text-2xs text-text-muted ml-auto">(обязательно)</span>
+                <span className="text-xs text-text-primary">{t("export.includeTree")}</span>
+                <span className="text-2xs text-text-muted ml-auto">{t("export.required")}</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -248,7 +237,7 @@ export function ImportDialog({ onClose }: Props) {
                   onChange={(e) => setIncludeWiki(e.target.checked)}
                   className="accent-accent cursor-pointer"
                 />
-                <span className="text-xs text-text-primary">Wiki-страницы</span>
+                <span className="text-xs text-text-primary">{t("export.includeWiki")}</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -257,13 +246,12 @@ export function ImportDialog({ onClose }: Props) {
                   onChange={(e) => setIncludeAi(e.target.checked)}
                   className="accent-accent cursor-pointer"
                 />
-                <span className="text-xs text-text-primary">История AI-чатов</span>
+                <span className="text-xs text-text-primary">{t("export.includeAi")}</span>
               </label>
             </div>
 
-            {/* Режим */}
             <div className="flex flex-col gap-1.5">
-              <p className="text-xs text-text-secondary font-medium">Режим импорта:</p>
+              <p className="text-xs text-text-secondary font-medium">{t("import.modeLabel")}</p>
               <div className="flex gap-4">
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <input
@@ -274,7 +262,7 @@ export function ImportDialog({ onClose }: Props) {
                     onChange={() => setMode("merge")}
                     className="accent-accent"
                   />
-                  <span className="text-xs text-text-primary">Объединить</span>
+                  <span className="text-xs text-text-primary">{t("import.modeMerge")}</span>
                 </label>
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <input
@@ -285,13 +273,11 @@ export function ImportDialog({ onClose }: Props) {
                     onChange={() => setMode("replace")}
                     className="accent-accent"
                   />
-                  <span className="text-xs text-text-primary">Заменить</span>
+                  <span className="text-xs text-text-primary">{t("import.modeReplace")}</span>
                 </label>
               </div>
               <p className="text-2xs text-text-muted">
-                {mode === "merge"
-                  ? "Добавить данные. При конфликте имён добавит суффикс «(import)»."
-                  : "Удалить текущие данные и заменить импортируемыми."}
+                {mode === "merge" ? t("import.mergeDesc") : t("import.replaceDesc")}
               </p>
             </div>
 
@@ -301,7 +287,7 @@ export function ImportDialog({ onClose }: Props) {
 
             {mode === "replace" && (
               <p className="text-2xs text-yellow-400 bg-yellow-400/10 rounded px-2 py-1.5">
-                ⚠ Режим «Заменить» удалит выбранные данные безвозвратно.
+                {t("import.replaceWarning")}
               </p>
             )}
 
@@ -313,7 +299,7 @@ export function ImportDialog({ onClose }: Props) {
                 }}
                 className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary rounded-md hover:bg-surface-3"
               >
-                Назад
+                {t("import.back")}
               </button>
               <button
                 onClick={handleApply}
@@ -322,10 +308,10 @@ export function ImportDialog({ onClose }: Props) {
               >
                 {loading ? (
                   <span className="flex items-center gap-1.5">
-                    <span className="animate-spin">↻</span> Импорт...
+                    <span className="animate-spin">↻</span> {t("import.importing")}
                   </span>
                 ) : (
-                  "↓ Импортировать"
+                  <>↓ {t("import.importButton")}</>
                 )}
               </button>
             </div>

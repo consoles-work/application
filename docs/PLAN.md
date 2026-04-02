@@ -1,6 +1,6 @@
 # DevConsole Hub — План разработки
 
-> Последнее обновление: 2026-04-02
+> Последнее обновление: 2026-04-02 (Этап 10.12)
 
 ---
 
@@ -432,8 +432,40 @@
 - Режим **replace**: удаляет выбранные данные из БД, затем вставляет из файла
 - Wiki, привязанная к конкретным workspace/project/console: **игнорируется** при импорте (ID сменились); импортируются только `parent_type = "global"` страницы
 
-### Остаток (TODO)
-- **Локализация** `ExportDialog.tsx` и `ImportDialog.tsx` — все строки сейчас захардкожены на русском; нужно вынести в `ru.json` / `en.json` и заменить на `t("export.*")` / `t("import.*")`
+---
+
+## Этап 10.12: UX SSH + локализация экспорт/импорт — ВЫПОЛНЕН
+
+### SSH: пароль сервера + passphrase по условию — ВЫПОЛНЕНО
+
+**Проблема:** в форме SSH отсутствовало поле пароля для аутентификации на сервере (password-based SSH); поле passphrase показывалось всегда, хотя актуально только при наличии ключа.
+
+**Backend:**
+- `db.rs`: новая колонка `ssh_password TEXT NOT NULL DEFAULT ''` в `consoles` (automigration)
+- `commands.rs`: поле `ssh_password: String` добавлено в `ConsoleConfig`; параметры обновлены в `create_console`, `update_console_config`, `spawn_pty`
+- `db.rs`: все запросы (SELECT / INSERT / UPDATE / clone) обновлены
+- `pty_manager.rs`: новая логика — если `ssh_password` задан, создаётся временный `SSH_ASKPASS`-скрипт `/tmp/.devconsole_pw_<pid>`, SSH получает переменные `SSH_ASKPASS_REQUIRE=force` и `DISPLAY=dummy`; ключ/passphrase и пароль сервера — независимые пути
+
+**Frontend:**
+- `types/index.ts`: `sshPassword: string` в `ConsoleConfig`
+- `tauriCommands.ts`: `sshPassword` добавлен во все 3 вызова (`createConsole`, `updateConsoleConfig`, `spawnPty`)
+- `CreateConsoleDialog` + `EditConsoleDialog`: новое поле "SSH пароль" (show/hide) видно всегда в SSH-секции; поле "Пароль к ключу" (passphrase) — только когда поле ключа непустое
+
+### SSH по умолчанию в форме — ВЫПОЛНЕНО
+- `CreateConsoleDialog`: дефолтный тип изменён `"local"` → `"ssh"`
+- В обоих диалогах кнопки переключатора переставлены: `["ssh", "local"]` (SSH — первая кнопка)
+
+### Универсальный текст danger-баннера — ВЫПОЛНЕНО
+- `TerminalPanel.tsx`: компонент `DangerWarning` теперь принимает `label: string` и вставляет его в текст
+- Вместо "это продакшн-окружение" → "Помечен как «LABEL»" — показывает саму метку пользователя
+- Обновлено в 5 локалях: `terminalPanel.dangerWarning` теперь с интерполяцией `{{label}}`
+
+### Локализация ExportDialog и ImportDialog — ВЫПОЛНЕНО
+- `ExportDialog.tsx`: полностью переведён на `useTranslation`; убраны все хардкоженные русские строки
+- `ImportDialog.tsx`: аналогично; строка ошибки неверного пароля теперь через `t("import.wrongPassword")`
+- Новые секции `"export"` и `"import"` добавлены во все 5 локалей: `ru.json`, `en.json`, `zh.json`, `fr.json`, `kk.json`
+- Также добавлены недостающие ключи `agentsShowKey`/`agentsHideKey` в `zh.json`, `fr.json`, `kk.json`
+- Ключи `sshPassword`, `sshPasswordNote`, `sshPasswordPlaceholder` добавлены в диалоговые секции всех 5 локалей
 
 ---
 

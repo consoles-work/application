@@ -89,7 +89,8 @@ export async function createConsole(
   sshUser?: string,
   sshKeyPath?: string,
   sshExtraArgs?: string,
-  sshPassphrase?: string
+  sshPassphrase?: string,
+  sshPassword?: string
 ): Promise<ConsoleConfig> {
   return invoke<ConsoleConfig>("create_console", {
     projectId,
@@ -102,6 +103,7 @@ export async function createConsole(
     sshKeyPath,
     sshExtraArgs,
     sshPassphrase,
+    sshPassword,
   });
 }
 
@@ -119,7 +121,8 @@ export async function updateConsoleConfig(
   sshUser: string,
   sshKeyPath: string,
   sshExtraArgs: string,
-  sshPassphrase: string
+  sshPassphrase: string,
+  sshPassword: string
 ): Promise<void> {
   return invoke("update_console_config", {
     id,
@@ -132,6 +135,7 @@ export async function updateConsoleConfig(
     sshKeyPath,
     sshExtraArgs,
     sshPassphrase,
+    sshPassword,
   });
 }
 
@@ -146,10 +150,11 @@ export async function spawnPty(
   cwd: string,
   envVars: Record<string, string>,
   sshKeyPath?: string,
-  sshPassphrase?: string
+  sshPassphrase?: string,
+  sshPassword?: string
 ): Promise<number> {
   // Возвращает pty_id — числовой идентификатор сессии на Rust-стороне
-  return invoke<number>("spawn_pty", { shell, cwd, envVars, sshKeyPath, sshPassphrase });
+  return invoke<number>("spawn_pty", { shell, cwd, envVars, sshKeyPath, sshPassphrase, sshPassword });
 }
 
 export async function writeToPty(

@@ -65,7 +65,7 @@
     "ptyError": "Erreur de démarrage PTY: {{error}}",
     "noTerminals": "Aucun terminal ouvert",
     "clickConsole": "Cliquez sur une console dans l'arbre de projets à gauche",
-    "dangerWarning": "Attention — il s'agit d'un environnement de production. Vérifiez les commandes avant de les exécuter."
+    "dangerWarning": "Marqué comme «{{label}}». Soyez prudent — vérifiez les commandes avant de les exécuter."
   },
   "wikiPanel": {
     "searchPlaceholder": "Rechercher dans le wiki...",
@@ -146,7 +146,10 @@
     "toastFinderError": "Impossible d'ouvrir le Finder: {{error}}",
     "toastPathCopied": "Chemin copié",
     "toastCopyError": "Impossible de copier",
-    "toastSaveError": "Erreur d'enregistrement des paramètres: {{error}}"
+    "toastSaveError": "Erreur d'enregistrement des paramètres: {{error}}",
+    "tabAgents": "Agents",
+    "agentsShowKey": "Afficher",
+    "agentsHideKey": "Masquer"
   },
   "dialogs": {
     "newWorkspace": "Nouvel espace de travail",
@@ -168,6 +171,12 @@
     "user": "Utilisateur",
     "sshKey": "Clé SSH (optionnel)",
     "extraArgs": "Arguments SSH supplémentaires (optionnel)",
+    "sshPassword": "Mot de passe SSH",
+    "sshPasswordNote": "(pour l'authentification au serveur)",
+    "sshPasswordPlaceholder": "mot de passe de connexion",
+    "sshPassphrase": "Mot de passe de la clé",
+    "sshPassphraseNote": "(si la clé est protégée par un mot de passe)",
+    "sshPassphrasePlaceholder": "laisser vide si pas de mot de passe",
     "startupCommands": "Commandes de démarrage",
     "startupCommandsNote": "(chaque ligne est une commande séparée)",
     "startupPlaceholderLocal": "cd /app\nnpm run dev",
@@ -185,6 +194,49 @@
     "toastFileSelectError": "Erreur de sélection du fichier: {{error}}",
     "toastSshHostRequired": "Veuillez spécifier l'hôte SSH",
     "toastError": "Erreur: {{error}}"
+  },
+  "export": {
+    "title": "Exporter les données",
+    "includeLabel": "Inclure dans l'export:",
+    "includeTree": "Arborescence des projets",
+    "required": "(obligatoire)",
+    "includeWiki": "Pages Wiki",
+    "includeAi": "Historique des chats IA",
+    "password": "Mot de passe de protection",
+    "optional": "(facultatif)",
+    "passwordPlaceholder": "Laisser vide pour le chiffrement automatique",
+    "passwordNote": "Le fichier est toujours chiffré. Un mot de passe ajoute une protection supplémentaire.",
+    "exporting": "Export...",
+    "exportButton": "Exporter",
+    "toastSuccess": "Export sauvegardé avec succès",
+    "toastError": "Erreur d'export: {{error}}"
+  },
+  "import": {
+    "title": "Importer les données",
+    "selectDesc": "Sélectionnez un fichier d'export (.dchub) pour importer les données.",
+    "opening": "Ouverture...",
+    "selectButton": "↓ Sélectionner un fichier .dchub",
+    "passwordProtectedFile": "Le fichier «{{name}}» est protégé par un mot de passe.",
+    "passwordPlaceholder": "Entrez le mot de passe",
+    "back": "Retour",
+    "checking": "Vérification...",
+    "check": "Vérifier",
+    "wrongPassword": "Mot de passe incorrect ou fichier corrompu",
+    "file": "Fichier:",
+    "exportedAt": "Exporté le:",
+    "statsTree": "Espaces / Projets / Consoles",
+    "statsWiki": "Pages Wiki",
+    "statsAi": "Chats IA / Messages",
+    "importLabel": "Importer:",
+    "modeLabel": "Mode d'import:",
+    "modeMerge": "Fusionner",
+    "modeReplace": "Remplacer",
+    "mergeDesc": "Ajouter des données. En cas de conflit de noms, ajoute le suffixe «(import)».",
+    "replaceDesc": "Supprimer les données actuelles et les remplacer par les données importées.",
+    "replaceWarning": "⚠ Le mode «Remplacer» supprimera définitivement les données sélectionnées.",
+    "toastSuccess": "Import terminé avec succès",
+    "importButton": "Importer",
+    "importing": "Import..."
   },
   "app": {
     "toastLoadError": "Erreur de chargement des données: {{error}}",

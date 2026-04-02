@@ -1,8 +1,8 @@
 [package]
-name = "devconsole-hub"
+name = "consoles-work"
 version = "0.1.0"
 description = "Multi-project terminal manager with integrated knowledge base"
-authors = ["DevConsole Hub"]
+authors = ["consoles.work"]
 edition = "2021"
 
 [lib]

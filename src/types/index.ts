@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════
-// DevConsole Hub — Модель данных
+// consoles.work — Модель данных
 // ══════════════════════════════════════════════
 
 // ── Иерархия: Workspace → Project → Console ──
@@ -49,6 +49,7 @@ export interface ConsoleConfig {
   sshKeyPath: string;
   sshExtraArgs: string;
   sshPassphrase: string;
+  sshPassword: string;
 }
 
 // ── Wiki ──

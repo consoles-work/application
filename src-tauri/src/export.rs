@@ -26,7 +26,7 @@ use crate::commands::{Workspace, WikiPage, AiSession, AiMessage};
 
 // Внутренний секрет приложения (не секретный от reverse-engineering,
 // но защищает файл от случайного открытия другими программами)
-const APP_SECRET: &[u8] = b"devconsole-hub-v1-app-2024";
+const APP_SECRET: &[u8] = b"consoles-work-v1-app-2026";
 const MAGIC: &[u8] = b"DCHUB1";
 const PBKDF2_ITERATIONS: u32 = 100_000;
 const VERIFY_VALUE: &str = "dchub-v1-ok";

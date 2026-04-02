@@ -24,8 +24,10 @@ export function EditConsoleDialog({ console_, onClose }: Props) {
   const [sshUser, setSshUser] = useState(console_.sshUser || "");
   const [sshKeyPath, setSshKeyPath] = useState(console_.sshKeyPath || "");
   const [sshExtraArgs, setSshExtraArgs] = useState(console_.sshExtraArgs || "");
-  const [sshPassphrase, setSshPassphrase] = useState((console_ as { sshPassphrase?: string }).sshPassphrase || "");
+  const [sshPassphrase, setSshPassphrase] = useState(console_.sshPassphrase || "");
   const [showPassphrase, setShowPassphrase] = useState(false);
+  const [sshPassword, setSshPassword] = useState(console_.sshPassword || "");
+  const [showSshPassword, setShowSshPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const { updateConsole: storeUpdateConsole, showToast } = useAppStore();
@@ -66,7 +68,8 @@ export function EditConsoleDialog({ console_, onClose }: Props) {
         sshUser.trim(),
         sshKeyPath.trim(),
         sshExtraArgs.trim(),
-        sshPassphrase
+        sshPassphrase,
+        sshPassword
       );
       storeUpdateConsole(console_.id, {
         name: name.trim(),
@@ -78,6 +81,7 @@ export function EditConsoleDialog({ console_, onClose }: Props) {
         sshKeyPath: sshKeyPath.trim(),
         sshExtraArgs: sshExtraArgs.trim(),
         sshPassphrase,
+        sshPassword,
       } as any);
       showToast("success", t("dialogs.toastConsoleUpdated", { name: name.trim() }));
       onClose();
@@ -109,7 +113,7 @@ export function EditConsoleDialog({ console_, onClose }: Props) {
           <div>
             <div className="text-2xs text-text-muted mb-1.5">{t("dialogs.connectionType")}</div>
             <div className="flex gap-1">
-              {(["local", "ssh"] as const).map((type) => (
+              {(["ssh", "local"] as const).map((type) => (
                 <button key={type} type="button" onClick={() => setConnectionType(type)}
                   className={`px-3 py-1.5 text-xs rounded-lg font-mono ${connectionType === type ? "bg-accent/20 text-accent border border-accent/40" : "bg-surface-0 text-text-secondary border border-border hover:border-accent/40"}`}>
                   {type === "local" ? "💻 Local" : "🔗 SSH"}
@@ -145,6 +149,24 @@ export function EditConsoleDialog({ console_, onClose }: Props) {
                   className="w-full px-2.5 py-1.5 rounded-md bg-surface-2 border border-border text-xs text-text-primary outline-none focus:border-accent font-mono" />
               </div>
 
+              {/* SSH Password */}
+              <div>
+                <div className="text-2xs text-text-muted mb-1">{t("dialogs.sshPassword")} <span className="opacity-50">{t("dialogs.sshPasswordNote")}</span></div>
+                <div className="flex gap-2">
+                  <input
+                      type={showSshPassword ? "text" : "password"}
+                      value={sshPassword}
+                      onChange={(e) => setSshPassword(e.target.value)}
+                      placeholder={t("dialogs.sshPasswordPlaceholder")}
+                      className="flex-1 px-2.5 py-1.5 rounded-md bg-surface-2 border border-border text-xs text-text-primary outline-none focus:border-accent font-mono"
+                  />
+                  <button type="button" onClick={() => setShowSshPassword(v => !v)}
+                          className="px-2.5 py-1.5 text-xs bg-surface-3 hover:bg-surface-1 text-text-secondary rounded-md border border-border shrink-0">
+                    {showSshPassword ? t("settings.agentsHideKey") : t("settings.agentsShowKey")}
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <div className="text-2xs text-text-muted mb-1">{t("dialogs.sshKey")}</div>
                 <div className="flex gap-2">
@@ -158,6 +180,26 @@ export function EditConsoleDialog({ console_, onClose }: Props) {
                 </div>
               </div>
 
+              {/* Passphrase — только когда выбран ключ */}
+              {sshKeyPath.trim() !== "" && (
+                  <div>
+                    <div className="text-2xs text-text-muted mb-1">{t("dialogs.sshPassphrase")} <span className="opacity-50">{t("dialogs.sshPassphraseNote")}</span></div>
+                    <div className="flex gap-2">
+                      <input
+                          type={showPassphrase ? "text" : "password"}
+                          value={sshPassphrase}
+                          onChange={(e) => setSshPassphrase(e.target.value)}
+                          placeholder={t("dialogs.sshPassphrasePlaceholder")}
+                          className="flex-1 px-2.5 py-1.5 rounded-md bg-surface-2 border border-border text-xs text-text-primary outline-none focus:border-accent font-mono"
+                      />
+                      <button type="button" onClick={() => setShowPassphrase(v => !v)}
+                              className="px-2.5 py-1.5 text-xs bg-surface-3 hover:bg-surface-1 text-text-secondary rounded-md border border-border shrink-0">
+                        {showPassphrase ? t("settings.agentsHideKey") : t("settings.agentsShowKey")}
+                      </button>
+                    </div>
+                  </div>
+              )}
+
               <div>
                 <div className="text-2xs text-text-muted mb-1">{t("dialogs.extraArgs")}</div>
                 <input value={sshExtraArgs} onChange={(e) => setSshExtraArgs(e.target.value)}
@@ -165,22 +207,6 @@ export function EditConsoleDialog({ console_, onClose }: Props) {
                   className="w-full px-2.5 py-1.5 rounded-md bg-surface-2 border border-border text-xs text-text-primary outline-none focus:border-accent font-mono" />
               </div>
 
-              <div>
-                <div className="text-2xs text-text-muted mb-1">{t("dialogs.sshPassphrase")} <span className="opacity-50">{t("dialogs.sshPassphraseNote")}</span></div>
-                <div className="flex gap-2">
-                  <input
-                    type={showPassphrase ? "text" : "password"}
-                    value={sshPassphrase}
-                    onChange={(e) => setSshPassphrase(e.target.value)}
-                    placeholder={t("dialogs.sshPassphrasePlaceholder")}
-                    className="flex-1 px-2.5 py-1.5 rounded-md bg-surface-2 border border-border text-xs text-text-primary outline-none focus:border-accent font-mono"
-                  />
-                  <button type="button" onClick={() => setShowPassphrase(v => !v)}
-                    className="px-2.5 py-1.5 text-xs bg-surface-3 hover:bg-surface-1 text-text-secondary rounded-md border border-border shrink-0">
-                    {showPassphrase ? t("settings.agentsHideKey") : t("settings.agentsShowKey")}
-                  </button>
-                </div>
-              </div>
             </div>
           )}
 

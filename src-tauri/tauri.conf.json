@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-config-schema/schema.json",
-  "productName": "DevConsole Hub",
+  "productName": "consoles.work",
   "version": "0.1.0",
-  "identifier": "com.devconsole.hub",
+  "identifier": "work.consoles.app",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "DevConsole Hub",
+        "title": "consoles.work",
         "width": 1400,
         "height": 900,
         "minWidth": 800,

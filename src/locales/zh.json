@@ -65,7 +65,7 @@
     "ptyError": "PTY 启动错误: {{error}}",
     "noTerminals": "没有打开的终端",
     "clickConsole": "点击左侧项目树中的控制台",
-    "dangerWarning": "警告 — 这是生产环境。执行命令前请仔细检查。"
+    "dangerWarning": "已标记为「{{label}}」。请注意 — 执行命令前请仔细检查。"
   },
   "wikiPanel": {
     "searchPlaceholder": "搜索 Wiki...",
@@ -146,7 +146,10 @@
     "toastFinderError": "无法打开访达: {{error}}",
     "toastPathCopied": "路径已复制",
     "toastCopyError": "无法复制",
-    "toastSaveError": "保存设置失败: {{error}}"
+    "toastSaveError": "保存设置失败: {{error}}",
+    "tabAgents": "智能体",
+    "agentsShowKey": "显示",
+    "agentsHideKey": "隐藏"
   },
   "dialogs": {
     "newWorkspace": "新建工作区",
@@ -168,6 +171,12 @@
     "user": "用户",
     "sshKey": "SSH 密钥 (可选)",
     "extraArgs": "额外 SSH 参数 (可选)",
+    "sshPassword": "SSH 密码",
+    "sshPasswordNote": "(用于服务器身份验证)",
+    "sshPasswordPlaceholder": "登录密码",
+    "sshPassphrase": "密钥密码",
+    "sshPassphraseNote": "(如果密钥受密码保护)",
+    "sshPassphrasePlaceholder": "无密码请留空",
     "startupCommands": "启动命令",
     "startupCommandsNote": "(每行一条命令)",
     "startupPlaceholderLocal": "cd /app\nnpm run dev",
@@ -185,6 +194,49 @@
     "toastFileSelectError": "选择文件失败: {{error}}",
     "toastSshHostRequired": "请指定 SSH 主机",
     "toastError": "错误: {{error}}"
+  },
+  "export": {
+    "title": "导出数据",
+    "includeLabel": "包含在导出中:",
+    "includeTree": "项目树",
+    "required": "(必需)",
+    "includeWiki": "Wiki 页面",
+    "includeAi": "AI 聊天记录",
+    "password": "保护密码",
+    "optional": "(可选)",
+    "passwordPlaceholder": "留空以自动加密",
+    "passwordNote": "文件始终加密。密码提供额外保护。",
+    "exporting": "导出中...",
+    "exportButton": "导出",
+    "toastSuccess": "导出已成功保存",
+    "toastError": "导出错误: {{error}}"
+  },
+  "import": {
+    "title": "导入数据",
+    "selectDesc": "选择导出文件 (.dchub) 以导入数据。",
+    "opening": "打开中...",
+    "selectButton": "↓ 选择 .dchub 文件",
+    "passwordProtectedFile": "文件 «{{name}}» 受密码保护。",
+    "passwordPlaceholder": "输入密码",
+    "back": "返回",
+    "checking": "验证中...",
+    "check": "验证",
+    "wrongPassword": "密码错误或文件已损坏",
+    "file": "文件:",
+    "exportedAt": "导出于:",
+    "statsTree": "工作区 / 项目 / 控制台",
+    "statsWiki": "Wiki 页面",
+    "statsAi": "AI 聊天 / 消息",
+    "importLabel": "导入:",
+    "modeLabel": "导入模式:",
+    "modeMerge": "合并",
+    "modeReplace": "替换",
+    "mergeDesc": "添加数据。名称冲突时添加 «(import)» 后缀。",
+    "replaceDesc": "删除当前数据并替换为导入的数据。",
+    "replaceWarning": "⚠ 替换模式将永久删除所选数据。",
+    "toastSuccess": "导入成功完成",
+    "importButton": "导入",
+    "importing": "导入中..."
   },
   "app": {
     "toastLoadError": "加载数据失败: {{error}}",

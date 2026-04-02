@@ -214,6 +214,7 @@ function TerminalView({
     // SSH: строим команду подключения
     let sshKeyPath: string | undefined;
     let sshPassphrase: string | undefined;
+    let sshPassword: string | undefined;
     if (consoleConfig?.connectionType === "ssh") {
       const host = consoleConfig.sshHost || "";
       const port = consoleConfig.sshPort || 22;
@@ -230,7 +231,8 @@ function TerminalView({
       shell = sshCmd;
       cwd = "";
       sshKeyPath = keyPath || undefined;
-      sshPassphrase = (consoleConfig as { sshPassphrase?: string }).sshPassphrase || undefined;
+      sshPassphrase = consoleConfig.sshPassphrase || undefined;
+      sshPassword = consoleConfig.sshPassword || undefined;
     }
 
     // Запускаем PTY и подключаем всё
@@ -238,7 +240,7 @@ function TerminalView({
 
     (async () => {
       try {
-        const ptyId = await spawnPty(shell, cwd, envVars ?? {}, sshKeyPath, sshPassphrase);
+        const ptyId = await spawnPty(shell, cwd, envVars ?? {}, sshKeyPath, sshPassphrase, sshPassword);
         if (disposed) {
           killPty(ptyId).catch(() => {});
           return;
@@ -321,7 +323,7 @@ function TerminalView({
           <span className="text-red-400 text-sm leading-none">⚠</span>
           <span className="text-red-300 font-bold text-xs tracking-widest uppercase">{dangerLabel}</span>
           <span className="text-red-400/50 text-xs">—</span>
-          <DangerWarning />
+          <DangerWarning label={dangerLabel} />
         </div>
       )}
       {/* Terminal container с красноватым фоном для опасных */}
@@ -335,11 +337,11 @@ function TerminalView({
   );
 }
 
-function DangerWarning() {
+function DangerWarning({ label }: { label: string }) {
   const { t } = useTranslation();
   return (
     <span className="text-red-400/60 text-2xs">
-      {t("terminalPanel.dangerWarning")}
+      {t("terminalPanel.dangerWarning", { label })}
     </span>
   );
 }

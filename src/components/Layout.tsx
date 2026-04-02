@@ -102,7 +102,7 @@ export function Layout({ onOpenSettings }: LayoutProps) {
       {/* ── Title bar ── */}
       <div className="h-10 flex items-center px-4 bg-surface-1 border-b border-border drag-region shrink-0">
         <span className="text-xs font-semibold text-text-secondary no-drag">
-          DevConsole Hub
+          Consoles.work
         </span>
         <div className="flex-1" />
         <div className="flex gap-1 no-drag">
