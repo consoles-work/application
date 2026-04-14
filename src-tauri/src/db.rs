@@ -421,6 +421,15 @@ pub fn delete_console_by_id(id: &str) -> Result<(), String> {
     Ok(())
 }
 
+pub fn move_console(id: &str, target_project_id: &str) -> Result<(), String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    db.execute(
+        "UPDATE consoles SET project_id = ?1 WHERE id = ?2",
+        params![target_project_id, id],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 // ══════════════════════════════════════════════
 // CRUD: Wiki
 // ══════════════════════════════════════════════
@@ -622,6 +631,27 @@ pub fn get_all_settings() -> Result<HashMap<String, String>, String> {
     .filter_map(|r| r.ok())
     .collect();
     Ok(map)
+}
+
+pub fn get_setting_str(key: &str, default: &str) -> String {
+    let Ok(db) = get_db().lock() else { return default.to_string(); };
+    db.query_row(
+        "SELECT value FROM settings WHERE key = ?1",
+        params![key],
+        |row| row.get::<_, String>(0),
+    ).ok()
+    .unwrap_or_else(|| default.to_string())
+}
+
+pub fn get_setting_bool(key: &str, default: bool) -> bool {
+    let Ok(db) = get_db().lock() else { return default; };
+    db.query_row(
+        "SELECT value FROM settings WHERE key = ?1",
+        params![key],
+        |row| row.get::<_, String>(0),
+    ).ok()
+    .map(|v| v == "true" || v == "1")
+    .unwrap_or(default)
 }
 
 pub fn set_setting_value(key: &str, value: &str) -> Result<(), String> {

@@ -27,7 +27,11 @@
     "toastWorkspaceNotFound": "Не удалось найти workspace",
     "toastProjectCloned": "Проект «{{name}}» создан",
     "dangerLabelPrompt": "Метка предупреждения:",
-    "toastDangerError": "Ошибка: {{error}}"
+    "toastDangerError": "Ошибка: {{error}}",
+    "toastConsoleMoved": "Консоль «{{name}}» перемещена в «{{project}}»",
+    "toastMoveError": "Ошибка перемещения: {{error}}",
+    "moveConfirm": "Переместить консоль «{{name}}» в проект «{{project}}»?",
+    "moveConfirmTitle": "Переместить консоль"
   },
   "contextMenu": {
     "addProject": "Добавить проект",
@@ -41,6 +45,7 @@
     "markAsDangerous": "⚠ Пометить как опасный...",
     "deleteProject": "Удалить проект",
     "runConsole": "Запустить",
+    "reconnectConsole": "Переподключить",
     "connectionSettings": "Настройки подключения...",
     "cloneConsole": "Дублировать консоль",
     "deleteConsole": "Удалить консоль",
@@ -155,10 +160,21 @@
     "agentsPositionRight": "Справа",
     "agentsPositionBottom": "Снизу",
     "agentsTestConnection": "Проверить подключение",
+    "agentsTestTesting": "Проверка...",
     "agentsTestSuccess": "Подключение успешно",
     "agentsTestError": "Ошибка подключения: {{error}}",
+    "agentsOllamaNote": "Ollama запущена локально — API-ключ не нужен. Убедитесь что сервис запущен на localhost:11434.",
+    "agentsOllamaLoading": "Загрузка моделей...",
+    "agentsOllamaNoModels": "Модели не найдены. Убедитесь что Ollama запущена.",
+    "agentsOllamaFetchError": "Не удалось получить список моделей. Проверьте что Ollama запущена на localhost:11434.",
     "agentsShowKey": "Показать",
-    "agentsHideKey": "Скрыть"
+    "agentsHideKey": "Скрыть",
+    "closeBehavior": "При закрытии окна",
+    "closeToTray": "Свернуть в трей",
+    "closeAndQuit": "Завершить программу",
+    "autostart": "Запускать при входе в систему",
+    "autostartNote": "Приложение будет запускаться автоматически при входе в macOS",
+    "autostartError": "Ошибка настройки автозапуска: {{error}}"
   },
   "dialogs": {
     "newWorkspace": "Новый Workspace",
@@ -190,6 +206,8 @@
     "startupCommandsNote": "(каждая строка — отдельная команда)",
     "startupPlaceholderLocal": "cd /app\nnpm run dev",
     "startupPlaceholderSsh": "cd /var/www/app\ntail -f logs/app.log",
+    "markAsDanger": "⚠ Пометить как опасный (продакшн)",
+    "dangerLabel": "Метка опасности",
     "markDangerous": "⚠ Пометить как опасный",
     "markDangerousProduction": "⚠ Пометить как опасный (продакшн)",
     "dangerLabelPlaceholder": "Метка (PRODUCTION, STAGING...)",
@@ -211,6 +229,8 @@
     "required": "(обязательно)",
     "includeWiki": "Wiki-страницы",
     "includeAi": "История AI-чатов",
+    "selectWorkspaces": "Выберите воркспейсы для экспорта",
+    "noWorkspaces": "Нет воркспейсов",
     "password": "Пароль защиты",
     "optional": "(необязательно)",
     "passwordPlaceholder": "Оставьте пустым для авто-шифрования",
@@ -218,7 +238,8 @@
     "exporting": "Экспорт...",
     "exportButton": "Экспортировать",
     "toastSuccess": "Экспорт успешно сохранён",
-    "toastError": "Ошибка экспорта: {{error}}"
+    "toastError": "Ошибка экспорта: {{error}}",
+    "includeSettings": "Настройки приложения"
   },
   "import": {
     "title": "Импорт данных",
@@ -245,7 +266,20 @@
     "replaceWarning": "⚠ Режим «Заменить» удалит выбранные данные безвозвратно.",
     "toastSuccess": "Импорт успешно завершён",
     "importButton": "Импортировать",
-    "importing": "Импорт..."
+    "importing": "Импорт...",
+    "statsSettings": "Настроек",
+    "includeSettings": "Применить настройки из файла"
+  },
+  "globalSearch": {
+    "placeholder": "Поиск по wiki...",
+    "nothingFound": "Ничего не найдено",
+    "navHint": "↑↓ навигация",
+    "openHint": "Enter открыть",
+    "closeHint": "Esc закрыть",
+    "contextGlobal": "Глобальная",
+    "contextWorkspace": "Workspace",
+    "contextProject": "Проект",
+    "contextConsole": "Консоль"
   },
   "app": {
     "toastLoadError": "Ошибка загрузки данных: {{error}}",

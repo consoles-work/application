@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-config-schema/schema.json",
-  "productName": "consoles.work",
+  "productName": "Consoles.work",
   "version": "0.1.0",
   "identifier": "work.consoles.app",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "consoles.work",
+        "title": "Consoles.work",
         "width": 1400,
         "height": 900,
         "minWidth": 800,

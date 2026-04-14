@@ -297,6 +297,7 @@ export interface ImportPreview {
   wikiCount: number;
   aiSessionCount: number;
   aiMessageCount: number;
+  settingsCount: number;
   hasPassword: boolean;
 }
 
@@ -305,14 +306,18 @@ export async function exportData(
   includeTree: boolean,
   includeWiki: boolean,
   includeAi: boolean,
-  userPassword?: string
+  includeSettings: boolean,
+  userPassword?: string,
+  workspaceIds?: string[]
 ): Promise<void> {
   return invoke("export_data", {
     filePath,
     includeTree,
     includeWiki,
     includeAi,
+    includeSettings,
     userPassword: userPassword || null,
+    workspaceIds: workspaceIds || null,
   });
 }
 
@@ -332,6 +337,7 @@ export async function applyImport(
   includeTree: boolean,
   includeWiki: boolean,
   includeAi: boolean,
+  includeSettings: boolean,
   mode: "merge" | "replace"
 ): Promise<void> {
   return invoke("apply_import", {
@@ -340,6 +346,31 @@ export async function applyImport(
     includeTree,
     includeWiki,
     includeAi,
+    includeSettings,
     mode,
   });
+}
+
+// ── Перемещение консоли ──
+
+export async function moveConsole(id: string, targetProjectId: string): Promise<void> {
+  return invoke("move_console", { id, targetProjectId });
+}
+
+// ── Автозапуск ──
+
+export async function enableAutostart(): Promise<void> {
+  return invoke("enable_autostart");
+}
+
+export async function disableAutostart(): Promise<void> {
+  return invoke("disable_autostart");
+}
+
+export async function getAutostartStatus(): Promise<boolean> {
+  return invoke<boolean>("get_autostart_status");
+}
+
+export async function updateTrayLanguage(lang: string): Promise<void> {
+  return invoke("update_tray_language", { lang });
 }

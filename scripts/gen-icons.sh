@@ -4,34 +4,104 @@
 # Использование:
 #   ./scripts/gen-icons.sh              # source: icon.png в корне проекта
 #   ./scripts/gen-icons.sh my-icon.png  # кастомный source
+#   ./scripts/gen-icons.sh my-icon.png --crop 800 --crop-y -40
 #
-# Требования: macOS (sips + iconutil встроены), ImageMagick (brew install imagemagick) для .ico
+# Опции:
+#   --crop N      обрезать центр NxN пикселей из исходника и растянуть до 1024x1024
+#                 (убирает паддинг вокруг логотипа, чтобы иконка в Dock была полноразмерной)
+#                 по умолчанию: 800
+#                 --crop 0 — отключить обрезку, использовать исходник как есть
+#   --crop-y N    вертикальный сдвиг центра кропа в пикселях (отрицательное = вверх)
+#                 по умолчанию: -40 (чтобы не срезать верх иконки/волосы)
+#   --no-round    не применять скруглённые углы (по умолчанию скругление включено)
+#                 Скруглённые углы нужны чтобы macOS не добавлял белый squircle-фон
+#                 на неподписанные .app при сборке (баг macOS Ventura/Sonoma)
+#
+# Требования: macOS (sips + iconutil встроены), ImageMagick (brew install imagemagick) для .ico и --crop
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-SOURCE="${1:-$PROJECT_ROOT/icon.png}"
 ICONS_DIR="$PROJECT_ROOT/src-tauri/icons"
+
+# ── Парсинг аргументов ────────────────────────────────────────────────────────
+
+SOURCE=""
+CROP=800
+CROP_Y=-20
+ROUND=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --crop)
+      CROP="$2"; shift 2 ;;
+    --crop=*)
+      CROP="${1#--crop=}"; shift ;;
+    --crop-y)
+      CROP_Y="$2"; shift 2 ;;
+    --crop-y=*)
+      CROP_Y="${1#--crop-y=}"; shift ;;
+    --no-round)
+      ROUND=0; shift ;;
+    *)
+      SOURCE="$1"; shift ;;
+  esac
+done
+
+SOURCE="${SOURCE:-$PROJECT_ROOT/icon.png}"
 
 # ── Проверки ─────────────────────────────────────────────────────────────────
 
 if [ ! -f "$SOURCE" ]; then
   echo "❌ Файл иконки не найден: $SOURCE"
-  echo "   Положите icon.png (1024x1024) в корень проекта или передайте путь аргументом."
+  echo "   Положите icon.png в корень проекта или передайте путь аргументом."
+  exit 1
+fi
+
+if [ "$CROP" -gt 0 ] 2>/dev/null && ! command -v magick &>/dev/null; then
+  echo "❌ --crop требует ImageMagick: brew install imagemagick"
   exit 1
 fi
 
 W=$(sips -g pixelWidth "$SOURCE" 2>/dev/null | awk '/pixelWidth/{print $2}')
 H=$(sips -g pixelHeight "$SOURCE" 2>/dev/null | awk '/pixelHeight/{print $2}')
-if [ "$W" != "$H" ]; then
-  echo "⚠️  Иконка не квадратная (${W}x${H}). Будет ресайз с искажением."
-fi
-if [ "$W" -lt 512 ] 2>/dev/null; then
-  echo "⚠️  Рекомендуется исходник минимум 512x512 (найдено ${W}x${W})"
-fi
 
 echo "🎨 Генерация иконок из: $SOURCE (${W}x${H})"
+
+# ── Кроп: вырезаем центр и растягиваем до 1024x1024 ──────────────────────────
+
+if [ "$CROP" -gt 0 ] 2>/dev/null; then
+  if [ "$CROP" -ge "$W" ] || [ "$CROP" -ge "$H" ]; then
+    echo "⚠️  --crop $CROP >= размер исходника (${W}x${H}), кроп пропущен"
+  else
+    PREPARED="/tmp/gen-icons-prepared-$$.png"
+    magick "$SOURCE" -gravity Center -crop "${CROP}x${CROP}+0${CROP_Y}" +repage -resize 1024x1024! "$PREPARED"
+    SOURCE="$PREPARED"
+    echo "  ✓ crop ${CROP}x${CROP} offset y=${CROP_Y} → 1024x1024"
+    CLEANUP_PREPARED=1
+  fi
+fi
+
+# ── Скругление углов (squircle-маска Apple HIG) ──────────────────────────────
+# Убирает белый фон который macOS добавляет неподписанным .app на Ventura/Sonoma
+
+if [ "$ROUND" -eq 1 ]; then
+  ROUNDED="/tmp/gen-icons-rounded-$$.png"
+  # Радиус 230px на 1024x1024 = ~22.5% (стандарт Apple HIG для macOS иконок)
+  magick "$SOURCE" \
+    \( +clone -alpha extract \
+       -draw "fill black polygon 0,0 0,230 230,0 fill white circle 230,230 230,0" \
+       \( +clone -flip \) -compose Multiply -composite \
+       \( +clone -flop \) -compose Multiply -composite \
+    \) \
+    -alpha off -compose CopyOpacity -composite \
+    "$ROUNDED"
+  SOURCE="$ROUNDED"
+  echo "  ✓ squircle-маска применена (r=230)"
+  CLEANUP_ROUNDED=1
+fi
+
 echo ""
 
 # ── Вспомогательная функция ───────────────────────────────────────────────────
@@ -156,3 +226,6 @@ done
 
 echo ""
 echo "✅ Готово! Все иконки сгенерированы в src-tauri/icons/"
+
+[ -n "$CLEANUP_PREPARED" ] && rm -f "$PREPARED"
+[ -n "$CLEANUP_ROUNDED" ] && rm -f "$ROUNDED"

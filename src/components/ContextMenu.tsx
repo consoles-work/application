@@ -28,6 +28,7 @@ interface ContextMenuProps {
   onEditConsole: (node: TreeNode) => void;
   onCloneConsole: (node: TreeNode) => void;
   onCloneProject: (node: TreeNode) => void;
+  onReconnectConsole: (node: TreeNode) => void;
 }
 
 export function ContextMenu({
@@ -40,6 +41,7 @@ export function ContextMenu({
   onEditConsole,
   onCloneConsole,
   onCloneProject,
+  onReconnectConsole,
 }: ContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const {
@@ -187,6 +189,8 @@ export function ContextMenu({
     onEditConsole: () => { onClose(); onEditConsole(menu.node); },
     onCloneConsole: () => { onClose(); onCloneConsole(menu.node); },
     onCloneProject: () => { onClose(); onCloneProject(menu.node); },
+    onReconnectConsole: () => { onClose(); onReconnectConsole(menu.node); },
+    sessions,
   });
 
   return createPortal(
@@ -236,6 +240,8 @@ function getMenuItems(handlers: {
   onEditConsole: () => void;
   onCloneConsole: () => void;
   onCloneProject: () => void;
+  onReconnectConsole: () => void;
+  sessions: { console_id: string }[];
 }): MenuItem[] {
   const { node, t } = handlers;
   const data = node.data as { isDanger?: boolean };
@@ -269,17 +275,15 @@ function getMenuItems(handlers: {
   }
 
   // console
+  const hasSession = handlers.sessions.some((s) => s.console_id === node.id);
   return [
     { label: t("contextMenu.runConsole"), icon: "▶", action: handlers.onRunConsole },
+    ...(hasSession ? [{ label: t("contextMenu.reconnectConsole"), icon: "↺", action: handlers.onReconnectConsole } as MenuItem] : []),
     { label: t("contextMenu.connectionSettings"), icon: "⚙", action: handlers.onEditConsole },
     { label: t("contextMenu.cloneConsole"), icon: "⎘", action: handlers.onCloneConsole },
-    "separator",
-    data.isDanger
-      ? { label: t("contextMenu.removeDangerFlag"), icon: "✓", action: handlers.onToggleDanger }
-      : { label: t("contextMenu.markAsDangerous"), icon: "⚠", action: handlers.onToggleDanger },
-    "separator",
+    "separator" as MenuItem,
     { label: t("contextMenu.rename"), icon: "✎", action: handlers.onRename },
-    "separator",
+    "separator" as MenuItem,
     { label: t("contextMenu.deleteConsole"), icon: "✕", action: handlers.onDeleteConsole, danger: true },
   ];
 }

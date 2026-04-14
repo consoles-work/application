@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import { useAppStore } from "../stores/appStore";
-import { getDbInfo, setSetting } from "../lib/tauriCommands";
+import { getDbInfo, setSetting, enableAutostart, disableAutostart, getAutostartStatus, updateTrayLanguage } from "../lib/tauriCommands";
 import type { DbInfo } from "../lib/tauriCommands";
 import { THEMES } from "../lib/themes";
 import { useTranslation } from "react-i18next";
@@ -30,6 +30,7 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
       storeSetting(key, value);
       if (key === "ui.language") {
         i18n.changeLanguage(value);
+        updateTrayLanguage(value).catch(() => {});
       }
     } catch (e) {
       showToast("error", t("settings.toastSaveError", { error: e }));
@@ -289,6 +290,9 @@ function AgentsTab({
   const { t } = useTranslation();
   const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [ollamaModels, setOllamaModels] = useState<string[]>([]);
+  const [ollamaLoading, setOllamaLoading] = useState(false);
+  const [ollamaError, setOllamaError] = useState<string | null>(null);
 
   const provider = settings["ai.provider"] ?? "openai";
   const apiKey = settings[`ai.apiKey.${provider}`] ?? settings["ai.apiKey"] ?? "";
@@ -296,25 +300,46 @@ function AgentsTab({
   const panelPosition = settings["ui.aiPanelPosition"] ?? "right";
 
   const providerObj = AI_PROVIDERS.find((p) => p.id === provider) ?? AI_PROVIDERS[0];
+  const isOllama = provider === "ollama";
+
+  // Динамическая загрузка моделей Ollama при выборе провайдера
+  useEffect(() => {
+    if (!isOllama) return;
+    setOllamaLoading(true);
+    setOllamaError(null);
+    fetch("http://localhost:11434/api/tags")
+      .then((r) => r.json())
+      .then((data) => {
+        const models = (data.models ?? []).map((m: { name: string }) => m.name);
+        setOllamaModels(models);
+      })
+      .catch(() => setOllamaError(t("settings.agentsOllamaFetchError")))
+      .finally(() => setOllamaLoading(false));
+  }, [isOllama]);
+
+  const activeModels = isOllama ? ollamaModels : providerObj.models;
+  const activeDefault = isOllama ? (ollamaModels[0] ?? "") : providerObj.defaultModel;
 
   const handleTestConnection = async () => {
-    if (!apiKey) {
-      showToast("error", "Сначала введите API-ключ");
-      return;
-    }
     setTesting(true);
     try {
-      const testProvider = getProvider(provider);
-      const testModel = model || testProvider.defaultModel;
-      let got = false;
-      await streamCompletion(
-        testProvider,
-        [{ role: "user", content: "Say: ok" }],
-        testModel,
-        apiKey,
-        () => { got = true; }
-      );
-      if (got || true) showToast("success", t("settings.agentsTestSuccess"));
+      if (isOllama) {
+        const r = await fetch("http://localhost:11434/api/tags");
+        if (r.ok) showToast("success", t("settings.agentsTestSuccess"));
+        else showToast("error", t("settings.agentsTestError", { error: r.status }));
+      } else {
+        if (!apiKey) { showToast("error", t("settings.agentsApiKey") + " — ?"); return; }
+        const testProvider = getProvider(provider);
+        const testModel = model || testProvider.defaultModel;
+        await streamCompletion(
+          testProvider,
+          [{ role: "user", content: "Say: ok" }],
+          testModel,
+          apiKey,
+          () => {}
+        );
+        showToast("success", t("settings.agentsTestSuccess"));
+      }
     } catch (e) {
       showToast("error", t("settings.agentsTestError", { error: e }));
     } finally {
@@ -346,41 +371,55 @@ function AgentsTab({
         </div>
       </div>
 
-      {/* API Key */}
-      <div>
-        <label className="block text-xs font-medium text-text-secondary mb-2">
-          {t("settings.agentsApiKey")} <span className="text-text-muted font-mono text-2xs">({providerObj.name})</span>
-        </label>
-        <div className="flex gap-2">
-          <input
-            type={showKey ? "text" : "password"}
-            value={apiKey}
-            onChange={(e) => onChange(`ai.apiKey.${provider}`, e.target.value)}
-            placeholder={
-              provider === "openai" ? "sk-..." : "sk-ant-..."
-            }
-            className="flex-1 bg-surface-0 border border-border rounded-lg px-3 py-2 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-accent font-mono"
-          />
-          <button
-            onClick={() => setShowKey((v) => !v)}
-            className="px-3 py-2 text-xs bg-surface-2 hover:bg-surface-3 border border-border rounded-lg text-text-secondary transition-colors"
-          >
-            {showKey ? t("settings.agentsHideKey") : t("settings.agentsShowKey")}
-          </button>
+      {/* API Key — скрыт для Ollama */}
+      {!isOllama && (
+        <div>
+          <label className="block text-xs font-medium text-text-secondary mb-2">
+            {t("settings.agentsApiKey")} <span className="text-text-muted font-mono text-2xs">({providerObj.name})</span>
+          </label>
+          <div className="flex gap-2">
+            <input
+              type={showKey ? "text" : "password"}
+              value={apiKey}
+              onChange={(e) => onChange(`ai.apiKey.${provider}`, e.target.value)}
+              placeholder={provider === "openai" ? "sk-..." : "sk-ant-..."}
+              className="flex-1 bg-surface-0 border border-border rounded-lg px-3 py-2 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-accent font-mono"
+            />
+            <button
+              onClick={() => setShowKey((v) => !v)}
+              className="px-3 py-2 text-xs bg-surface-2 hover:bg-surface-3 border border-border rounded-lg text-text-secondary transition-colors"
+            >
+              {showKey ? t("settings.agentsHideKey") : t("settings.agentsShowKey")}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Ollama note */}
+      {isOllama && (
+        <p className="text-2xs text-text-muted">{t("settings.agentsOllamaNote")}</p>
+      )}
 
       {/* Model */}
       <div>
         <label className="block text-xs font-medium text-text-secondary mb-2">
           {t("settings.agentsModel")}
         </label>
+        {isOllama && ollamaLoading && (
+          <p className="text-xs text-text-muted">{t("settings.agentsOllamaLoading")}</p>
+        )}
+        {isOllama && ollamaError && (
+          <p className="text-xs text-red-400">{ollamaError}</p>
+        )}
+        {isOllama && !ollamaLoading && !ollamaError && ollamaModels.length === 0 && (
+          <p className="text-xs text-text-muted">{t("settings.agentsOllamaNoModels")}</p>
+        )}
         <div className="grid grid-cols-2 gap-2">
-          {providerObj.models.map((m) => (
+          {activeModels.map((m) => (
             <button
               key={m}
               className={`px-3 py-2 text-xs rounded-lg border transition-colors text-left ${
-                (model || providerObj.defaultModel) === m
+                (model || activeDefault) === m
                   ? "bg-accent/15 border-accent text-accent"
                   : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
               }`}
@@ -419,10 +458,10 @@ function AgentsTab({
       {/* Test connection */}
       <button
         onClick={handleTestConnection}
-        disabled={testing || !apiKey}
+        disabled={testing || (!isOllama && !apiKey)}
         className="w-full py-2 text-xs rounded-lg border border-border bg-surface-0 hover:bg-surface-2 text-text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        {testing ? "Проверка..." : t("settings.agentsTestConnection")}
+        {testing ? t("settings.agentsTestTesting") : t("settings.agentsTestConnection")}
       </button>
     </div>
   );
@@ -438,7 +477,24 @@ function InterfaceTab({
   onChange: (key: string, value: string) => void;
 }) {
   const { t } = useTranslation();
+  const { showToast } = useAppStore();
   const currentTheme = settings["ui.theme"] ?? "dark";
+  const closeToTray = (settings["ui.closeToTray"] ?? "true") === "true";
+  const [autostartEnabled, setAutostartEnabled] = useState(false);
+
+  useEffect(() => {
+    getAutostartStatus().then(setAutostartEnabled).catch(() => {});
+  }, []);
+
+  const handleAutostart = async (enabled: boolean) => {
+    try {
+      if (enabled) await enableAutostart();
+      else await disableAutostart();
+      setAutostartEnabled(enabled);
+    } catch (e) {
+      showToast("error", t("settings.autostartError", { error: e }));
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -481,6 +537,48 @@ function InterfaceTab({
             {t("settings.themeRandomNote")}
           </p>
         )}
+      </div>
+
+      {/* Поведение при закрытии */}
+      <div>
+        <label className="block text-xs font-medium text-text-secondary mb-2">
+          {t("settings.closeBehavior")}
+        </label>
+        <div className="flex gap-2">
+          {([true, false] as const).map((toTray) => (
+            <button
+              key={String(toTray)}
+              className={`flex-1 py-2 text-xs rounded-lg border transition-colors ${
+                closeToTray === toTray
+                  ? "bg-accent/15 border-accent text-accent"
+                  : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
+              }`}
+              onClick={() => onChange("ui.closeToTray", toTray ? "true" : "false")}
+            >
+              {toTray ? t("settings.closeToTray") : t("settings.closeAndQuit")}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Автозапуск */}
+      <div>
+        <label className="flex items-center justify-between cursor-pointer">
+          <span className="text-xs font-medium text-text-secondary">{t("settings.autostart")}</span>
+          <button
+            onClick={() => handleAutostart(!autostartEnabled)}
+            className={`relative w-10 h-5 rounded-full transition-colors ${
+              autostartEnabled ? "bg-accent" : "bg-surface-3"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                autostartEnabled ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </label>
+        <p className="text-2xs text-text-muted mt-1">{t("settings.autostartNote")}</p>
       </div>
 
       <div>

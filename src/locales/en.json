@@ -27,7 +27,11 @@
     "toastWorkspaceNotFound": "Could not find workspace",
     "toastProjectCloned": "Project «{{name}}» created",
     "dangerLabelPrompt": "Warning label:",
-    "toastDangerError": "Error: {{error}}"
+    "toastDangerError": "Error: {{error}}",
+    "toastConsoleMoved": "Console «{{name}}» moved to «{{project}}»",
+    "toastMoveError": "Move error: {{error}}",
+    "moveConfirm": "Move console «{{name}}» to project «{{project}}»?",
+    "moveConfirmTitle": "Move console"
   },
   "contextMenu": {
     "addProject": "Add project",
@@ -41,6 +45,7 @@
     "markAsDangerous": "⚠ Mark as dangerous...",
     "deleteProject": "Delete project",
     "runConsole": "Run",
+    "reconnectConsole": "Reconnect",
     "connectionSettings": "Connection settings...",
     "cloneConsole": "Duplicate console",
     "deleteConsole": "Delete console",
@@ -155,10 +160,21 @@
     "agentsPositionRight": "Right",
     "agentsPositionBottom": "Bottom",
     "agentsTestConnection": "Test Connection",
+    "agentsTestTesting": "Testing...",
     "agentsTestSuccess": "Connection successful",
     "agentsTestError": "Connection error: {{error}}",
+    "agentsOllamaNote": "Ollama runs locally — no API key needed. Make sure the service is running on localhost:11434.",
+    "agentsOllamaLoading": "Loading models...",
+    "agentsOllamaNoModels": "No models found. Make sure Ollama is running.",
+    "agentsOllamaFetchError": "Could not fetch model list. Check that Ollama is running on localhost:11434.",
     "agentsShowKey": "Show",
-    "agentsHideKey": "Hide"
+    "agentsHideKey": "Hide",
+    "closeBehavior": "On window close",
+    "closeToTray": "Minimize to tray",
+    "closeAndQuit": "Quit application",
+    "autostart": "Launch at login",
+    "autostartNote": "The app will start automatically when you log into macOS",
+    "autostartError": "Autostart error: {{error}}"
   },
   "dialogs": {
     "newWorkspace": "New Workspace",
@@ -190,6 +206,8 @@
     "startupCommandsNote": "(each line is a separate command)",
     "startupPlaceholderLocal": "cd /app\nnpm run dev",
     "startupPlaceholderSsh": "cd /var/www/app\ntail -f logs/app.log",
+    "markAsDanger": "⚠ Mark as dangerous (production)",
+    "dangerLabel": "Danger label",
     "markDangerous": "⚠ Mark as dangerous",
     "markDangerousProduction": "⚠ Mark as dangerous (production)",
     "dangerLabelPlaceholder": "Label (PRODUCTION, STAGING...)",
@@ -211,6 +229,8 @@
     "required": "(required)",
     "includeWiki": "Wiki pages",
     "includeAi": "AI chat history",
+    "selectWorkspaces": "Select workspaces to export",
+    "noWorkspaces": "No workspaces",
     "password": "Protection password",
     "optional": "(optional)",
     "passwordPlaceholder": "Leave empty for auto-encryption",
@@ -218,7 +238,8 @@
     "exporting": "Exporting...",
     "exportButton": "Export",
     "toastSuccess": "Export saved successfully",
-    "toastError": "Export error: {{error}}"
+    "toastError": "Export error: {{error}}",
+    "includeSettings": "App settings"
   },
   "import": {
     "title": "Import data",
@@ -245,7 +266,20 @@
     "replaceWarning": "⚠ Replace mode will permanently delete selected data.",
     "toastSuccess": "Import completed successfully",
     "importButton": "Import",
-    "importing": "Importing..."
+    "importing": "Importing...",
+    "statsSettings": "Settings",
+    "includeSettings": "Apply settings from file"
+  },
+  "globalSearch": {
+    "placeholder": "Search wiki...",
+    "nothingFound": "Nothing found",
+    "navHint": "↑↓ navigate",
+    "openHint": "Enter open",
+    "closeHint": "Esc close",
+    "contextGlobal": "Global",
+    "contextWorkspace": "Workspace",
+    "contextProject": "Project",
+    "contextConsole": "Console"
   },
   "app": {
     "toastLoadError": "Data load error: {{error}}",

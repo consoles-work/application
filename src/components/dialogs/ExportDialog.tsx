@@ -10,15 +10,32 @@ interface Props {
 }
 
 export function ExportDialog({ onClose }: Props) {
+  const { showToast, workspaces } = useAppStore();
+  const { t } = useTranslation();
   const [includeWiki, setIncludeWiki] = useState(true);
   const [includeAi, setIncludeAi] = useState(true);
+  const [includeSettings, setIncludeSettings] = useState(false);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { showToast } = useAppStore();
-  const { t } = useTranslation();
+  // По умолчанию все воркспейсы выбраны
+  const [selectedWsIds, setSelectedWsIds] = useState<Set<string>>(
+    () => new Set(workspaces.map((ws) => ws.id))
+  );
+
+  const allSelected = selectedWsIds.size === workspaces.length;
+
+  const toggleWs = (id: string) => {
+    setSelectedWsIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const handleExport = async () => {
+    if (selectedWsIds.size === 0) return;
     setLoading(true);
     try {
       const filePath = await save({
@@ -31,7 +48,8 @@ export function ExportDialog({ onClose }: Props) {
         return;
       }
 
-      await exportData(filePath, true, includeWiki, includeAi, password || undefined);
+      const wsIds = allSelected ? undefined : Array.from(selectedWsIds);
+      await exportData(filePath, true, includeWiki, includeAi, includeSettings, password || undefined, wsIds);
       showToast("success", t("export.toastSuccess"));
       onClose();
     } catch (err) {
@@ -63,11 +81,25 @@ export function ExportDialog({ onClose }: Props) {
         <div className="flex flex-col gap-2">
           <p className="text-xs text-text-secondary font-medium">{t("export.includeLabel")}</p>
 
-          <label className="flex items-center gap-2 cursor-not-allowed opacity-70">
-            <input type="checkbox" checked disabled className="accent-accent" />
-            <span className="text-xs text-text-primary">{t("export.includeTree")}</span>
-            <span className="text-2xs text-text-muted ml-auto">{t("export.required")}</span>
-          </label>
+          {/* Воркспейсы */}
+          <div className="flex flex-col gap-1 rounded-lg border border-border bg-surface-0 p-2.5">
+            <p className="text-2xs text-text-muted font-medium mb-1">{t("export.selectWorkspaces")}</p>
+            {workspaces.map((ws) => (
+              <label key={ws.id} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedWsIds.has(ws.id)}
+                  onChange={() => toggleWs(ws.id)}
+                  className="accent-accent cursor-pointer"
+                />
+                <span className="text-sm mr-1">{ws.icon}</span>
+                <span className="text-xs text-text-primary truncate">{ws.name}</span>
+              </label>
+            ))}
+            {workspaces.length === 0 && (
+              <span className="text-xs text-text-muted">{t("export.noWorkspaces")}</span>
+            )}
+          </div>
 
           <label className="flex items-center gap-2 cursor-pointer">
             <input
@@ -87,6 +119,16 @@ export function ExportDialog({ onClose }: Props) {
               className="accent-accent cursor-pointer"
             />
             <span className="text-xs text-text-primary">{t("export.includeAi")}</span>
+          </label>
+
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={includeSettings}
+              onChange={(e) => setIncludeSettings(e.target.checked)}
+              className="accent-accent cursor-pointer"
+            />
+            <span className="text-xs text-text-primary">{t("export.includeSettings")}</span>
           </label>
         </div>
 
@@ -125,7 +167,7 @@ export function ExportDialog({ onClose }: Props) {
           </button>
           <button
             onClick={handleExport}
-            disabled={loading}
+            disabled={loading || selectedWsIds.size === 0}
             className="px-4 py-1.5 text-xs bg-accent/90 hover:bg-accent text-white rounded-md disabled:opacity-50 flex items-center gap-1.5"
           >
             {loading ? (

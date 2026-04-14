@@ -27,7 +27,11 @@
     "toastWorkspaceNotFound": "找不到工作区",
     "toastProjectCloned": "项目 «{{name}}» 已创建",
     "dangerLabelPrompt": "警告标签:",
-    "toastDangerError": "错误: {{error}}"
+    "toastDangerError": "错误: {{error}}",
+    "toastConsoleMoved": "控制台 «{{name}}» 已移动到 «{{project}}»",
+    "toastMoveError": "移动错误: {{error}}",
+    "moveConfirm": "将控制台 «{{name}}» 移动到项目 «{{project}}»？",
+    "moveConfirmTitle": "移动控制台"
   },
   "contextMenu": {
     "addProject": "添加项目",
@@ -41,6 +45,7 @@
     "markAsDangerous": "⚠ 标记为危险...",
     "deleteProject": "删除项目",
     "runConsole": "运行",
+    "reconnectConsole": "重新连接",
     "connectionSettings": "连接设置...",
     "cloneConsole": "复制控制台",
     "deleteConsole": "删除控制台",
@@ -148,8 +153,28 @@
     "toastCopyError": "无法复制",
     "toastSaveError": "保存设置失败: {{error}}",
     "tabAgents": "智能体",
+    "agentsProvider": "提供商",
+    "agentsApiKey": "API 密钥",
+    "agentsModel": "模型",
+    "agentsPanelPosition": "面板位置",
+    "agentsPositionRight": "右侧",
+    "agentsPositionBottom": "底部",
+    "agentsTestConnection": "测试连接",
+    "agentsTestTesting": "测试中...",
+    "agentsTestSuccess": "连接成功",
+    "agentsTestError": "连接错误: {{error}}",
+    "agentsOllamaNote": "Ollama 在本地运行 — 无需 API 密钥。确保服务在 localhost:11434 上运行。",
+    "agentsOllamaLoading": "加载模型中...",
+    "agentsOllamaNoModels": "未找到模型。确保 Ollama 正在运行。",
+    "agentsOllamaFetchError": "无法获取模型列表。请检查 Ollama 是否在 localhost:11434 上运行。",
     "agentsShowKey": "显示",
-    "agentsHideKey": "隐藏"
+    "agentsHideKey": "隐藏",
+    "closeBehavior": "关闭窗口时",
+    "closeToTray": "最小化到托盘",
+    "closeAndQuit": "退出程序",
+    "autostart": "登录时启动",
+    "autostartNote": "登录 macOS 时将自动启动应用",
+    "autostartError": "自动启动错误: {{error}}"
   },
   "dialogs": {
     "newWorkspace": "新建工作区",
@@ -181,6 +206,8 @@
     "startupCommandsNote": "(每行一条命令)",
     "startupPlaceholderLocal": "cd /app\nnpm run dev",
     "startupPlaceholderSsh": "cd /var/www/app\ntail -f logs/app.log",
+    "markAsDanger": "⚠ 标记为危险（生产环境）",
+    "dangerLabel": "危险标签",
     "markDangerous": "⚠ 标记为危险",
     "markDangerousProduction": "⚠ 标记为危险 (生产环境)",
     "dangerLabelPlaceholder": "标签 (PRODUCTION, STAGING...)",
@@ -202,6 +229,8 @@
     "required": "(必需)",
     "includeWiki": "Wiki 页面",
     "includeAi": "AI 聊天记录",
+    "selectWorkspaces": "选择要导出的工作区",
+    "noWorkspaces": "没有工作区",
     "password": "保护密码",
     "optional": "(可选)",
     "passwordPlaceholder": "留空以自动加密",
@@ -209,7 +238,8 @@
     "exporting": "导出中...",
     "exportButton": "导出",
     "toastSuccess": "导出已成功保存",
-    "toastError": "导出错误: {{error}}"
+    "toastError": "导出错误: {{error}}",
+    "includeSettings": "应用设置"
   },
   "import": {
     "title": "导入数据",
@@ -236,7 +266,20 @@
     "replaceWarning": "⚠ 替换模式将永久删除所选数据。",
     "toastSuccess": "导入成功完成",
     "importButton": "导入",
-    "importing": "导入中..."
+    "importing": "导入中...",
+    "statsSettings": "设置",
+    "includeSettings": "应用文件中的设置"
+  },
+  "globalSearch": {
+    "placeholder": "搜索 Wiki...",
+    "nothingFound": "未找到任何内容",
+    "navHint": "↑↓ 导航",
+    "openHint": "Enter 打开",
+    "closeHint": "Esc 关闭",
+    "contextGlobal": "全局",
+    "contextWorkspace": "工作区",
+    "contextProject": "项目",
+    "contextConsole": "控制台"
   },
   "app": {
     "toastLoadError": "加载数据失败: {{error}}",

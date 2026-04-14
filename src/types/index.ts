@@ -74,6 +74,7 @@ export interface TerminalSession {
   title: string; // отображаемое имя во вкладке
   is_active: boolean;
   pty_id?: number; // ID процесса на Rust-стороне
+  reconnectKey?: number; // инкрементируется для перезапуска PTY
 }
 
 // ── Типы ──

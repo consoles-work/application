@@ -469,12 +469,47 @@ pub fn export_data(
     include_tree: bool,
     include_wiki: bool,
     include_ai: bool,
+    include_settings: bool,
     user_password: Option<String>,
+    workspace_ids: Option<Vec<String>>,
 ) -> Result<(), String> {
-    let payload = crate::export::build_export_payload(include_tree, include_wiki, include_ai)?;
+    let payload = crate::export::build_export_payload(
+        include_tree,
+        include_wiki,
+        include_ai,
+        include_settings,
+        workspace_ids.as_deref(),
+    )?;
     let json = serde_json::to_vec(&payload).map_err(|e| e.to_string())?;
     let encrypted = crate::export::encrypt_export(&json, user_password.as_deref())?;
     std::fs::write(&file_path, &encrypted).map_err(|e| format!("Ошибка записи файла: {e}"))
+}
+
+/// Переместить консоль в другой проект
+#[tauri::command]
+pub fn move_console(id: String, target_project_id: String) -> Result<(), String> {
+    crate::db::move_console(&id, &target_project_id)
+}
+
+/// Включить автозапуск при входе в систему
+#[tauri::command]
+pub fn enable_autostart(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri_plugin_autostart::ManagerExt;
+    app.autolaunch().enable().map_err(|e| e.to_string())
+}
+
+/// Отключить автозапуск
+#[tauri::command]
+pub fn disable_autostart(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri_plugin_autostart::ManagerExt;
+    app.autolaunch().disable().map_err(|e| e.to_string())
+}
+
+/// Получить текущий статус автозапуска
+#[tauri::command]
+pub fn get_autostart_status(app: tauri::AppHandle) -> Result<bool, String> {
+    use tauri_plugin_autostart::ManagerExt;
+    app.autolaunch().is_enabled().map_err(|e| e.to_string())
 }
 
 /// Расшифровать файл и вернуть превью (без применения к БД)
@@ -497,9 +532,43 @@ pub fn apply_import(
     include_tree: bool,
     include_wiki: bool,
     include_ai: bool,
+    include_settings: bool,
     mode: String,
 ) -> Result<(), String> {
     let file_bytes = std::fs::read(&file_path).map_err(|e| format!("Ошибка чтения файла: {e}"))?;
     let decrypted = crate::export::decrypt_export(&file_bytes, user_password.as_deref())?;
-    crate::export::apply_import(&decrypted, include_tree, include_wiki, include_ai, &mode)
+    crate::export::apply_import(&decrypted, include_tree, include_wiki, include_ai, include_settings, &mode)
+}
+
+// ── Локализация трея ──
+
+/// Возвращает локализованные надписи меню трея для заданного языка.
+/// Используется как при старте (main.rs / lib.rs), так и в команде update_tray_language.
+pub fn tray_labels(lang: &str) -> (&'static str, &'static str) {
+    match lang {
+        "en" => ("Open Consoles.work", "Quit"),
+        "zh" => ("打开 Consoles.work", "退出"),
+        "fr" => ("Ouvrir Consoles.work", "Quitter"),
+        "kk" => ("Consoles.work ашу", "Шығу"),
+        _    => ("Открыть Consoles.work", "Выход"),
+    }
+}
+
+/// Обновить надписи меню системного трея при смене языка интерфейса.
+#[tauri::command]
+pub fn update_tray_language(app: tauri::AppHandle, lang: String) -> Result<(), String> {
+    use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+    let (show_label, quit_label) = tray_labels(&lang);
+    if let Some(tray) = app.tray_by_id("main_tray") {
+        if let (Ok(show_item), Ok(sep), Ok(quit_item)) = (
+            MenuItem::with_id(&app, "show", show_label, true, None::<&str>),
+            PredefinedMenuItem::separator(&app),
+            MenuItem::with_id(&app, "quit", quit_label, true, None::<&str>),
+        ) {
+            if let Ok(menu) = Menu::with_items(&app, &[&show_item, &sep, &quit_item]) {
+                let _ = tray.set_menu(Some(menu));
+            }
+        }
+    }
+    Ok(())
 }

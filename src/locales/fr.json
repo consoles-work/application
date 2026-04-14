@@ -27,7 +27,11 @@
     "toastWorkspaceNotFound": "Espace de travail introuvable",
     "toastProjectCloned": "Projet «{{name}}» créé",
     "dangerLabelPrompt": "Étiquette d'avertissement:",
-    "toastDangerError": "Erreur: {{error}}"
+    "toastDangerError": "Erreur: {{error}}",
+    "toastConsoleMoved": "Console «{{name}}» déplacée vers «{{project}}»",
+    "toastMoveError": "Erreur de déplacement: {{error}}",
+    "moveConfirm": "Déplacer la console «{{name}}» vers le projet «{{project}}» ?",
+    "moveConfirmTitle": "Déplacer la console"
   },
   "contextMenu": {
     "addProject": "Ajouter un projet",
@@ -41,6 +45,7 @@
     "markAsDangerous": "⚠ Marquer comme dangereux...",
     "deleteProject": "Supprimer le projet",
     "runConsole": "Exécuter",
+    "reconnectConsole": "Reconnecter",
     "connectionSettings": "Paramètres de connexion...",
     "cloneConsole": "Dupliquer la console",
     "deleteConsole": "Supprimer la console",
@@ -148,8 +153,28 @@
     "toastCopyError": "Impossible de copier",
     "toastSaveError": "Erreur d'enregistrement des paramètres: {{error}}",
     "tabAgents": "Agents",
+    "agentsProvider": "Fournisseur",
+    "agentsApiKey": "Clé API",
+    "agentsModel": "Modèle",
+    "agentsPanelPosition": "Position du panneau",
+    "agentsPositionRight": "Droite",
+    "agentsPositionBottom": "Bas",
+    "agentsTestConnection": "Tester la connexion",
+    "agentsTestTesting": "Test en cours...",
+    "agentsTestSuccess": "Connexion réussie",
+    "agentsTestError": "Erreur de connexion: {{error}}",
+    "agentsOllamaNote": "Ollama fonctionne localement — pas de clé API nécessaire. Assurez-vous que le service tourne sur localhost:11434.",
+    "agentsOllamaLoading": "Chargement des modèles...",
+    "agentsOllamaNoModels": "Aucun modèle trouvé. Assurez-vous qu'Ollama est en cours d'exécution.",
+    "agentsOllamaFetchError": "Impossible de récupérer la liste des modèles. Vérifiez qu'Ollama tourne sur localhost:11434.",
     "agentsShowKey": "Afficher",
-    "agentsHideKey": "Masquer"
+    "agentsHideKey": "Masquer",
+    "closeBehavior": "À la fermeture de la fenêtre",
+    "closeToTray": "Réduire dans la barre système",
+    "closeAndQuit": "Quitter l'application",
+    "autostart": "Lancer à la connexion",
+    "autostartNote": "L'application démarrera automatiquement lors de la connexion à macOS",
+    "autostartError": "Erreur de démarrage automatique: {{error}}"
   },
   "dialogs": {
     "newWorkspace": "Nouvel espace de travail",
@@ -181,6 +206,8 @@
     "startupCommandsNote": "(chaque ligne est une commande séparée)",
     "startupPlaceholderLocal": "cd /app\nnpm run dev",
     "startupPlaceholderSsh": "cd /var/www/app\ntail -f logs/app.log",
+    "markAsDanger": "⚠ Marquer comme dangereux (production)",
+    "dangerLabel": "Étiquette de danger",
     "markDangerous": "⚠ Marquer comme dangereux",
     "markDangerousProduction": "⚠ Marquer comme dangereux (production)",
     "dangerLabelPlaceholder": "Étiquette (PRODUCTION, STAGING...)",
@@ -202,6 +229,8 @@
     "required": "(obligatoire)",
     "includeWiki": "Pages Wiki",
     "includeAi": "Historique des chats IA",
+    "selectWorkspaces": "Sélectionner les espaces de travail à exporter",
+    "noWorkspaces": "Aucun espace de travail",
     "password": "Mot de passe de protection",
     "optional": "(facultatif)",
     "passwordPlaceholder": "Laisser vide pour le chiffrement automatique",
@@ -209,7 +238,8 @@
     "exporting": "Export...",
     "exportButton": "Exporter",
     "toastSuccess": "Export sauvegardé avec succès",
-    "toastError": "Erreur d'export: {{error}}"
+    "toastError": "Erreur d'export: {{error}}",
+    "includeSettings": "Paramètres de l'application"
   },
   "import": {
     "title": "Importer les données",
@@ -236,7 +266,20 @@
     "replaceWarning": "⚠ Le mode «Remplacer» supprimera définitivement les données sélectionnées.",
     "toastSuccess": "Import terminé avec succès",
     "importButton": "Importer",
-    "importing": "Import..."
+    "importing": "Import...",
+    "statsSettings": "Paramètres",
+    "includeSettings": "Appliquer les paramètres du fichier"
+  },
+  "globalSearch": {
+    "placeholder": "Rechercher dans le wiki...",
+    "nothingFound": "Rien trouvé",
+    "navHint": "↑↓ naviguer",
+    "openHint": "Enter ouvrir",
+    "closeHint": "Esc fermer",
+    "contextGlobal": "Global",
+    "contextWorkspace": "Espace de travail",
+    "contextProject": "Projet",
+    "contextConsole": "Console"
   },
   "app": {
     "toastLoadError": "Erreur de chargement des données: {{error}}",

@@ -21,6 +21,7 @@ use pbkdf2::pbkdf2_hmac;
 use sha2::Sha256;
 use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use crate::commands::{Workspace, WikiPage, AiSession, AiMessage};
 
@@ -40,6 +41,8 @@ pub struct ExportPayload {
     pub tree: Vec<Workspace>,
     pub wiki: Vec<WikiPage>,
     pub ai: Vec<AiSessionExport>,
+    #[serde(default)]
+    pub settings: HashMap<String, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -59,6 +62,7 @@ pub struct ImportPreview {
     pub wiki_count: usize,
     pub ai_session_count: usize,
     pub ai_message_count: usize,
+    pub settings_count: usize,
     pub has_password: bool,
 }
 
@@ -159,11 +163,17 @@ pub fn build_export_payload(
     include_tree: bool,
     include_wiki: bool,
     include_ai: bool,
+    include_settings: bool,
+    workspace_ids: Option<&[String]>,
 ) -> Result<ExportPayload, String> {
     let now = chrono::Utc::now().to_rfc3339();
 
     let tree = if include_tree {
-        crate::db::load_all_workspaces()?
+        let all = crate::db::load_all_workspaces()?;
+        match workspace_ids {
+            Some(ids) if !ids.is_empty() => all.into_iter().filter(|ws| ids.contains(&ws.id)).collect(),
+            _ => all,
+        }
     } else {
         Vec::new()
     };
@@ -186,12 +196,19 @@ pub fn build_export_payload(
         Vec::new()
     };
 
+    let settings = if include_settings {
+        crate::db::get_all_settings()?
+    } else {
+        HashMap::new()
+    };
+
     Ok(ExportPayload {
         _verify: VERIFY_VALUE.to_string(),
         exported_at: now,
         tree,
         wiki,
         ai,
+        settings,
     })
 }
 
@@ -219,6 +236,7 @@ pub fn parse_preview(payload_bytes: &[u8], has_password: bool) -> Result<ImportP
         wiki_count: payload.wiki.len(),
         ai_session_count: payload.ai.len(),
         ai_message_count,
+        settings_count: payload.settings.len(),
         has_password,
     })
 }
@@ -230,6 +248,7 @@ pub fn apply_import(
     include_tree: bool,
     include_wiki: bool,
     include_ai: bool,
+    include_settings: bool,
     mode: &str,
 ) -> Result<(), String> {
     let payload: ExportPayload = serde_json::from_slice(payload_bytes)
@@ -245,6 +264,9 @@ pub fn apply_import(
         if include_ai { crate::db::delete_all_ai_sessions()?; }
     }
 
+    // Маппинг старых ID → новых ID (для перепривязки wiki-страниц к дереву)
+    let mut id_map: HashMap<String, String> = HashMap::new();
+
     if include_tree {
         let existing_names = crate::db::get_workspace_names()?;
         for mut ws in payload.tree {
@@ -253,18 +275,25 @@ pub fn apply_import(
                 ws.name = format!("{} (import)", ws.name);
             }
             // Генерируем новые ID чтобы не было коллизий с существующими записями
+            let old_ws_id = ws.id.clone();
             let new_ws_id = uuid::Uuid::new_v4().to_string();
+            id_map.insert(old_ws_id, new_ws_id.clone());
             ws.id = new_ws_id.clone();
             crate::db::save_workspace(&ws)?;
 
             for mut proj in ws.projects {
+                let old_proj_id = proj.id.clone();
                 let new_proj_id = uuid::Uuid::new_v4().to_string();
+                id_map.insert(old_proj_id, new_proj_id.clone());
                 proj.id = new_proj_id.clone();
                 proj.workspace_id = new_ws_id.clone();
                 crate::db::save_project(&proj)?;
 
                 for mut con in proj.consoles {
-                    con.id = uuid::Uuid::new_v4().to_string();
+                    let old_con_id = con.id.clone();
+                    let new_con_id = uuid::Uuid::new_v4().to_string();
+                    id_map.insert(old_con_id, new_con_id.clone());
+                    con.id = new_con_id;
                     con.project_id = new_proj_id.clone();
                     crate::db::save_console(&con)?;
                 }
@@ -273,15 +302,22 @@ pub fn apply_import(
     }
 
     if include_wiki {
-        // Wiki привязана к дереву, но мы не можем перепривязать (parent_id неизвестен после re-ID)
-        // Импортируем только глобальные wiki-страницы (parent_type = "global")
         for mut page in payload.wiki {
+            page.id = uuid::Uuid::new_v4().to_string();
             if page.parent_type == "global" {
-                page.id = uuid::Uuid::new_v4().to_string();
+                crate::db::upsert_wiki_page(&page)?;
+            } else if include_tree {
+                // Перепривязываем к новому ID родителя (если он был в экспорте)
+                if let Some(new_parent_id) = id_map.get(&page.parent_id) {
+                    page.parent_id = new_parent_id.clone();
+                    crate::db::upsert_wiki_page(&page)?;
+                }
+                // Если родитель не найден в маппинге — пропускаем страницу
+            } else {
+                // Дерево не импортировалось — привязываем к оригинальным ID
+                // (работает при merge в ту же БД)
                 crate::db::upsert_wiki_page(&page)?;
             }
-            // Остальные (привязанные к конкретным workspace/project/console) игнорируем
-            // так как ID изменились при импорте
         }
     }
 
@@ -297,6 +333,12 @@ pub fn apply_import(
                 msg.session_id = new_session_id.clone();
                 crate::db::save_ai_message(&msg.id, &msg.session_id, &msg.role, &msg.content)?;
             }
+        }
+    }
+
+    if include_settings && !payload.settings.is_empty() {
+        for (key, value) in &payload.settings {
+            crate::db::set_setting_value(key, value)?;
         }
     }
 

@@ -1,6 +1,6 @@
 # DevConsole Hub — План разработки
 
-> Последнее обновление: 2026-04-02 (Этап 10.12)
+> Последнее обновление: 2026-04-13 (Этап 16 — UX-фиксы: переподключение, контекстное меню, fit терминала)
 
 ---
 
@@ -56,7 +56,7 @@
 - Контекстное меню: "Пометить как опасный..." / "Снять пометку"
 
 ### Остаток Этапа 2
-- Drag-and-drop (перетаскивание) — ОТМЕНЕНО, не нужно
+- Drag-and-drop (перетаскивание) — реализовано в Этапе 13.3
 
 ---
 
@@ -130,13 +130,34 @@
 - Вкладка "Интерфейс": выбор темы (10 тем + случайная), заготовка языка
 - Настройки сохраняются в SQLite `settings (key, value)`, загружаются при старте
 
-### 5.3 Drag-and-drop — ОТМЕНЕНО
+### 5.3 Drag-and-drop — реализовано в Этапе 13.3
 
 ### 5.4 UX-улучшения — ВЫПОЛНЕНО
 - Подтверждение закрытия вкладки через нативный ask()
 - Подтверждение удаления узлов (workspace / project / console) через ask()
 - Danger-пометка: баннер + красный градиент в терминале, индикатор в табе
 - Danger-пометка при создании проекта/консоли (чекбокс в диалоге)
+
+---
+
+## Этап 16: UX-фиксы — ВЫПОЛНЕН (2026-04-13)
+
+### 16.1 Переподключение консоли — ВЫПОЛНЕНО
+- ПКМ на консоли → пункт "Переподключить" (только если сессия открыта)
+- Реализация: `reconnectKey` в `TerminalSession` + `reconnectSession()` в Zustand store
+- Инкремент `reconnectKey` меняет `key` у `TerminalView` → React пересоздаёт компонент
+- PTY старого процесса корректно завершается через cleanup в `useEffect`
+- Локализация на 5 языков (ru/en/zh/fr/kk)
+
+### 16.2 Убрать нативное контекстное меню WebKit — ВЫПОЛНЕНО
+- При ПКМ на пустом месте показывался нативный пункт "Reload" из WebKit
+- Фикс: глобальный `document.addEventListener("contextmenu", e => e.preventDefault())` в `App.tsx`
+- Кастомные контекстные меню работают корректно (они уже вызывают `e.preventDefault()` в обработчике)
+
+### 16.3 Терминал не на всю ширину при первом открытии — ВЫПОЛНЕНО
+- `fitAddon.fit()` вызывался до того как WebKit вычислял финальные размеры контейнера
+- Фикс: дополнительные вызовы `fit()` через 100ms и 400ms после `term.open()`
+- Также добавлен повторный `fit()` через 200ms при переключении на активную вкладку
 
 ---
 
@@ -430,7 +451,7 @@
 ### Логика при импорте конфликтов
 - Режим **merge**: при совпадении имени workspace добавляет суффикс `(import)`; всем записям назначаются новые UUID
 - Режим **replace**: удаляет выбранные данные из БД, затем вставляет из файла
-- Wiki, привязанная к конкретным workspace/project/console: **игнорируется** при импорте (ID сменились); импортируются только `parent_type = "global"` страницы
+- Wiki, привязанная к конкретным workspace/project/console: **игнорируется** при импорте (ID сменились); импортируются только `parent_type = "global"` страницы ← **исправлено в Этапе 15**
 
 ---
 
@@ -469,6 +490,50 @@
 
 ---
 
+## Этап 15: Исправления экспорта/импорта + настройки в экспорте — ВЫПОЛНЕН
+
+### 15.1 Исправлен импорт wiki-страниц — ВЫПОЛНЕНО
+
+**Проблема:** при импорте дерева всем workspace/project/console назначались новые UUID (чтобы избежать коллизий с существующими записями), но wiki-страницы с `parent_type != "global"` содержали старые `parent_id` — ссылки на не существующие записи. Поэтому они молча отбрасывались, и импортировались только глобальные страницы.
+
+**Исправление в `export.rs` → `apply_import()`:**
+- Во время импорта дерева строится `HashMap<String, String>` — маппинг `old_id → new_id` для всех workspace, project и console
+- Wiki-страницы с `parent_type = "global"` — импортируются как раньше
+- Wiki-страницы с `parent_type = workspace|project|console` + `include_tree = true`: `parent_id` ищется в маппинге → заменяется новым ID → страница сохраняется; если родитель не найден в маппинге — страница пропускается
+- Wiki-страницы + `include_tree = false`: сохраняются с оригинальным `parent_id` (работает при merge в ту же БД)
+
+### 15.2 Проверен импорт AI-чатов — ПОДТВЕРЖДЕНО
+
+Код в `apply_import()` корректно:
+- Назначает новый UUID каждой сессии
+- Назначает новый UUID каждому сообщению
+- Связывает сообщения через новый `session_id`
+- Вызывает `create_ai_session` + `save_ai_message` — штатные db-функции
+
+### 15.3 Экспорт/импорт настроек — ВЫПОЛНЕНО
+
+**`export.rs`:**
+- `ExportPayload`: новое поле `settings: HashMap<String, String>` (с `#[serde(default)]` — обратная совместимость со старыми файлами)
+- `ImportPreview`: новое поле `settings_count: usize`
+- `build_export_payload(include_settings: bool)`: если `true` — собирает все настройки через `db::get_all_settings()`
+- `apply_import(include_settings: bool)`: если `true` и payload не пустой — применяет каждый key-value через `db::set_setting_value()`
+
+**`commands.rs`:**
+- `export_data` + `apply_import` — новый параметр `include_settings: bool`
+
+**TypeScript:**
+- `ImportPreview`: добавлено `settingsCount: number`
+- `exportData()`: новый параметр `includeSettings: boolean`
+- `applyImport()`: новый параметр `includeSettings: boolean`
+
+**Frontend:**
+- `ExportDialog.tsx`: чекбокс «Настройки приложения» (по умолчанию выключен)
+- `ImportDialog.tsx`: строка статистики «Настроек: N» (только если файл содержит настройки); чекбокс «Применить настройки из файла» (только если файл содержит настройки)
+
+**Локализация:** ключи `export.includeSettings`, `import.statsSettings`, `import.includeSettings` во все 5 локалей
+
+---
+
 ## Этап 11: Post-MVP
 
 - GlobalSearch (Cmd+Shift+K) — FTS5 по wiki с подсветкой
@@ -485,13 +550,463 @@
 
 ---
 
+## Этап 12: Системная интеграция macOS — ВЫПОЛНЕН (12.1, 12.2; 12.3 пропущен)
+
+---
+
+### 12.1 Автозапуск при входе в систему — ВЫПОЛНЕНО
+
+**Цель:** галочка в Settings → Интерфейс — "Запускать при входе в систему".
+
+**Реализация:**
+
+1. **Rust — плагин** `tauri-plugin-autostart` (официальный Tauri v2 плагин):
+  - `Cargo.toml`: добавить `tauri-plugin-autostart`
+  - `main.rs` / `lib.rs`: `.plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))`
+  - Плагин создаёт `~/Library/LaunchAgents/com.devconsole-hub.plist` при включении и удаляет при отключении
+
+2. **Rust — две команды** в `commands.rs`:
+  - `enable_autostart(app: AppHandle)` — вызывает `AutostartManager::enable()`
+  - `disable_autostart(app: AppHandle)` — вызывает `AutostartManager::disable()`
+  - `get_autostart_status(app: AppHandle) → bool` — текущее состояние
+  - Зарегистрировать в `main.rs` и `lib.rs`
+
+3. **SQLite** — настройка `ui.autostart` (key-value в таблице `settings`)
+
+4. **Frontend:**
+  - `tauriCommands.ts`: обёртки `enableAutostart`, `disableAutostart`, `getAutostartStatus`
+  - `SettingsDialog.tsx` (вкладка "Интерфейс"): чекбокс "Запускать при входе в систему"
+  - При смене чекбокса — сразу вызов команды (без кнопки "Сохранить")
+  - `App.tsx`: при старте читает статус из плагина (не из SQLite — источник истины сам LaunchAgent)
+
+5. **Локализация**: ключ `autostart` во все 5 локалей
+
+---
+
+### 12.2 Сворачивание в системный трей — ВЫПОЛНЕНО
+
+**Цель:** по умолчанию крестик сворачивает приложение в трей, а не закрывает; из трея можно открыть или завершить.
+
+**Реализация:**
+
+1. **Rust — плагин** `tauri-plugin-tray` (встроен в Tauri v2, включить capability):
+  - `tauri.conf.json` → capabilities: добавить `tray-icon:default`
+  - `main.rs` / `lib.rs`: создать `TrayIconBuilder` с иконкой (`icon.png`) и контекстным меню
+
+2. **Контекстное меню трея** (Rust, в `main.rs`):
+   ```rust
+   let menu = Menu::with_items(app, &[
+       &MenuItem::new(app, "Открыть DevConsole Hub", true, None::<&str>),
+       &PredefinedMenuItem::separator(app),
+       &MenuItem::new(app, "Выход", true, None::<&str>),
+   ]);
+   ```
+  - Клик по иконке трея → `app.get_webview_window("main").show() + set_focus()`
+  - "Выход" → `app.exit(0)`
+
+3. **Изменение CloseRequested** (сейчас показывает диалог — этап 8.5.3):
+  - Убрать `AtomicBool QUIT_DIALOG_ACTIVE` и диалог подтверждения из `CloseRequested`
+  - Новая логика: `CloseRequested` → `api.prevent_close()` → `window.hide()`
+  - Завершение только через меню трея ("Выход") или `app.exit(0)`
+  - **Опция в Settings**: "При закрытии окна" — переключатель "Свернуть в трей" / "Завершить программу"
+  - Настройка `ui.closeToTray` в SQLite (bool, default `true`)
+  - В `CloseRequested`: читать настройку и либо `hide()`, либо `app.exit(0)`
+
+4. **Frontend (Settings → Интерфейс)**:
+  - Переключатель "При закрытии окна" с двумя вариантами
+  - `tauriCommands.ts`: команды не нужны — настройка пишется в SQLite как обычный `set_setting`
+  - При запуске из трея (macOS): приложение стартует скрыто — обработать `app_ready` событие
+
+5. **Локализация**: ключи `closeBehavior`, `closeToTray`, `closeAndQuit` в 5 локалей
+
+**Важно для macOS:** при `window.hide()` приложение пропадает из Cmd+Tab (dock), это нормальное поведение для трей-приложений. Если нужно остаться в Dock при скрытии — использовать `NSApp.setActivationPolicy(.accessory)` через Rust FFI (опционально).
+
+---
+
+### 12.3 Подпись и нотаризация macOS (Code Signing + Notarization)
+
+**Цель:** убрать диалог "Приложение от неизвестного разработчика" при первом запуске. Нужен Apple Developer сертификат (уже есть).
+
+**Реализация:**
+
+1. **Конфигурация `tauri.conf.json`**:
+   ```json
+   "bundle": {
+     "macOS": {
+       "signingIdentity": "Developer ID Application: <ИМЯ> (<TEAM_ID>)",
+       "entitlements": "entitlements.plist",
+       "hardenedRuntime": true
+     }
+   }
+   ```
+
+2. **`entitlements.plist`** (создать в корне `src-tauri/`):
+   ```xml
+   <key>com.apple.security.cs.allow-jit</key><true/>
+   <key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/>
+   <key>com.apple.security.cs.disable-library-validation</key><true/>
+   ```
+   Эти права нужны для WebView (WKWebView) в Hardened Runtime.
+
+3. **Нотаризация** — через `notarytool` (Apple ID + App-specific password или API-ключ):
+   ```bash
+   xcrun notarytool submit devconsole-hub.dmg \
+     --apple-id "<APPLE_ID>" \
+     --password "<APP_SPECIFIC_PASSWORD>" \
+     --team-id "<TEAM_ID>" \
+     --wait
+   xcrun stapler staple devconsole-hub.dmg
+   ```
+   Tauri v2 делает это **автоматически** при наличии переменных окружения:
+   ```bash
+   export APPLE_SIGNING_IDENTITY="Developer ID Application: ..."
+   export APPLE_ID="..."
+   export APPLE_PASSWORD="..."   # App-specific password из appleid.apple.com
+   export APPLE_TEAM_ID="..."
+   npm run tauri build
+   ```
+
+4. **GitHub Actions** (`.github/workflows/build.yml`) — добавить secrets:
+  - `APPLE_CERTIFICATE` (base64 от `.p12` файла сертификата)
+  - `APPLE_CERTIFICATE_PASSWORD`
+  - `APPLE_SIGNING_IDENTITY`
+  - `APPLE_ID`
+  - `APPLE_PASSWORD`
+  - `APPLE_TEAM_ID`
+  - В workflow: шаг импорта сертификата в macOS Keychain перед `npm run tauri build`
+
+5. **Локальная сборка** — один раз прописать переменные в `.env` (не коммитить) или в `.zshrc`:
+   ```bash
+   export APPLE_SIGNING_IDENTITY="Developer ID Application: Rocky ... (XXXXXXXXXX)"
+   export APPLE_ID="..."
+   export APPLE_PASSWORD="..."
+   export APPLE_TEAM_ID="XXXXXXXXXX"
+   ```
+
+6. **Проверка подписи** после сборки:
+   ```bash
+   codesign --verify --deep --strict --verbose=2 "src-tauri/target/release/bundle/macos/DevConsole Hub.app"
+   spctl --assess --type execute "src-tauri/target/release/bundle/macos/DevConsole Hub.app"
+   ```
+
+**Результат:** первый запуск без диалога Gatekeeper, установка из DMG работает штатно как у App Store-приложений.
+
+---
+
+## Этап 13: Улучшения экспорта и редактирование danger-метки — ВЫПОЛНЕН
+
+---
+
+### 13.1 Выборочный экспорт по воркспейсам — ВЫПОЛНЕНО
+
+**Цель:** в диалоге экспорта можно выбрать конкретные воркспейсы (а не "всё дерево целиком").
+
+**Текущее состояние:** `export_data(filePath, includeTree, includeWiki, includeAi, userPassword)` — флаг `includeTree` включает/исключает дерево целиком. Выбора по воркспейсам нет.
+
+**Реализация:**
+
+1. **Rust — `export_data` в `commands.rs` + `export.rs`:**
+    - Новый параметр: `workspace_ids: Option<Vec<String>>` (если `None` или пустой → экспортировать все)
+    - `build_export_payload()` в `export.rs`: принимает фильтр workspace_ids, при сборке дерева фильтрует `workspaces` по списку; wiki/AI фильтруется автоматически (только страницы/сессии, привязанные к выбранным workspace+project+console)
+    - Зарегистрировать обновлённую команду в `main.rs` и `lib.rs`
+
+2. **TypeScript — `tauriCommands.ts`:**
+    - `exportData(..., workspaceIds?: string[])` — добавить опциональный параметр
+
+3. **Frontend — `ExportDialog.tsx`:**
+    - Когда `includeTree = true`, показать список воркспейсов из store с чекбоксами (получить через `useAppStore().workspaces`)
+    - По умолчанию все чекбоксы отмечены (= поведение как сейчас)
+    - Если сняты все → кнопка экспорта заблокирована
+    - Если все отмечены → передавать `workspaceIds = undefined` (бэкенд включит всё)
+    - Иначе → передавать список отмеченных ID
+
+4. **Локализация:** ключ `export.selectWorkspaces` и `export.allWorkspaces` в 5 локалей
+
+---
+
+### 13.2 Danger-метка: перенос в настройки подключения, удаление из контекстного меню — ВЫПОЛНЕНО
+
+**Проблема:** `EditConsoleDialog` не содержит danger-полей — если при создании допустил ошибку в метке, исправить её нельзя (только снять через контекстное меню и выставить заново через `window.prompt`).
+
+**Решение:** добавить danger-секцию в `EditConsoleDialog` (идентично `CreateConsoleDialog`) и убрать пункт "Пометить/Снять пометку" из контекстного меню — управление меткой полностью переходит в диалог настроек.
+
+**Файлы:**
+- `src/components/dialogs/EditConsoleDialog.tsx` — добавить danger-поля
+- `src/components/ContextMenu.tsx` — убрать `onToggleDanger` пункт для console
+- `src/components/TreePanel.tsx` — убрать `handleToggleDanger` и его передачу в ContextMenu
+
+**Реализация:**
+
+1. **`EditConsoleDialog.tsx`:**
+    - Инициализировать state из `ConsoleConfig`: `const [isDanger, setIsDanger] = useState(config.isDanger ?? false)` и `const [dangerLabel, setDangerLabel] = useState(config.dangerLabel || "PRODUCTION")`
+    - В форме — тот же блок что в `CreateConsoleDialog` (чекбокс + поле ввода метки при `isDanger = true`)
+    - При сохранении: после `updateConsoleConfig(...)` вызвать `setNodeDanger(id, "console", isDanger, finalLabel)` и обновить store
+
+2. **`ContextMenu.tsx`:**
+    - Убрать `onToggleDanger` из `ContextMenuProps` и из `buildMenuItems()` для console и project
+    - Убрать `import { setNodeDanger }` если он больше нигде не используется в этом файле
+
+3. **`TreePanel.tsx`:**
+    - Убрать `handleToggleDanger`, его передачу в `ContextMenu`
+    - Убрать `import { setNodeDanger }` если остался только там
+
+4. **Проект** (project-уровень): там тоже есть danger-пометка, но нет диалога редактирования — оставить пункт контекстного меню для проекта как есть (через `window.prompt`), пока не появится `EditProjectDialog`
+
+---
+
+### 13.3 Drag-and-drop консолей между проектами — ВЫПОЛНЕНО
+
+**Цель:** перетащить консоль из одного проекта в другой мышью прямо в дереве.
+
+**Реализация:**
+
+1. **Rust** — команда `move_console(id, target_project_id)` → `UPDATE consoles SET project_id = ?`. Зарегистрирована в `main.rs` и `lib.rs`.
+
+2. **TypeScript** — `moveConsole(id, targetProjectId)` в `tauriCommands.ts`.
+
+3. **Store** — `moveConsoleToProject(consoleId, targetProjectId)` в `appStore.ts`: удаляет консоль из старого проекта, вставляет в новый.
+
+4. **Frontend — `TreePanel.tsx` — mouse-event DnD** (HTML5 DnD API не работает в Tauri WebKit):
+    - `onMouseDown` на строках консолей запускает трекер через `window.addEventListener("mousemove"/"mouseup")`
+    - Drag активируется после сдвига ≥ 6px (порог, чтобы отличить клик от тащения)
+    - Порталовый ghost-элемент следует за курсором, показывает имя консоли и имя проекта-цели
+    - Hit-test цели по `getBoundingClientRect` строк с `data-nodetype="project"`
+    - Проект-цель подсвечивается (`ring-accent + bg-accent/5`) во время перетаскивания
+    - При отпускании — нативный диалог подтверждения (`ask()`), затем `moveConsole` + `moveConsoleToProject`
+
+5. **Ключевой баг:** `draggingConsoleRef.current` обнулялся до вызова дроп-хендлера → хендлер получал `null` и выходил без действия. Исправлено: сначала вызов хендлера, потом очистка ref.
+
+6. **Локализация:** ключи `moveConfirm`, `moveConfirmTitle`, `toastConsoleMoved`, `toastMoveError` во все 5 локалей.
+
+---
+
 ## Следующий порядок работы
 
+Все приоритетные пункты выполнены. Остались только Post-MVP:
+
 ```
-11.x GlobalSearch (Cmd+Shift+K)
-11.x Горячие клавиши: Cmd+T/W/Tab/1-9/Delete
-11.x AI панель: Ollama
-11.x AI панель: drag-and-drop позиции
+Post-MVP  Горячие клавиши: Delete (удалить выбранный узел)
+Post-MVP  AI панель: drag-and-drop смены позиции (11.E — НЕ ДЕЛАЕМ)
+Post-MVP  Wiki: блоки кода с кнопками (TipTap NodeView)
+Post-MVP  OS Keychain для API-ключей
+Post-MVP  Сплит-терминал, Broadcast-режим, Snippets
+Post-MVP  macOS Code Signing + Notarization (§12.3)
 ```
 
-**MVP + AI (с историей в SQLite) + экспорт/импорт — завершены.**
+**MVP + AI (OpenAI/Anthropic/Ollama) + GlobalSearch + горячие клавиши вкладок + локализация трея + экспорт/импорт + системная интеграция macOS — всё завершено.**
+
+---
+
+## Этап 11 — Детали реализации незавершённых пунктов
+
+### 11.A Локализация вкладки "Агенты" (zh / fr / kk) — ВЫПОЛНЕНО
+
+**Проблема:** ключи `agentsProvider`, `agentsApiKey`, `agentsModel`, `agentsPanelPosition`, `agentsTestConnection`, `agentsTestSuccess`, `agentsTestError` присутствуют в `ru.json` и `en.json`, но отсутствуют в `zh.json`, `fr.json`, `kk.json` → i18next использует fallback на ключ.
+
+**Файлы:** `src/locales/zh.json`, `src/locales/fr.json`, `src/locales/kk.json`
+
+**Реализация:** скопировать блок `agents*` из `en.json`, перевести значения. Никаких изменений в Rust или TypeScript не требуется. Это чисто текстовая правка трёх файлов.
+
+---
+
+### 11.B GlobalSearch (Cmd+Shift+K) — ВЫПОЛНЕНО
+
+**Цель:** глобальный модал поиска по всем wiki-страницам с подсветкой совпадений в фрагменте контента.
+
+**Backend (уже есть):** FTS5 через `search_wiki(query: String)` возвращает `Vec<WikiSearchResult>` с `title`, `parent_type`, `parent_id`, `snippet`. Новых Rust-команд не нужно.
+
+**Frontend — новый компонент `src/components/GlobalSearch.tsx`:**
+1. Модал поверх всего (portal в `document.body`), открывается по `Cmd+Shift+K` в `App.tsx`
+2. Input с debounce 300ms → `searchWiki(query)` → список результатов
+3. Каждый результат: заголовок страницы, breadcrumb (parentType / parentId), фрагмент контента со `<mark>`-подсветкой из SQLite FTS5 snippet
+4. Клик на результат: закрыть модал, выбрать соответствующий узел в дереве, открыть wiki-страницу
+5. Навигация стрелками + Enter, Escape — закрыть
+
+**App.tsx:** добавить хоткей `Cmd+Shift+K` аналогично Cmd+P; состояние `showGlobalSearch` в Zustand store.
+
+**Локализация:** ключ `globalSearch`, `globalSearchPlaceholder`, `globalSearchEmpty` в 5 локалях.
+
+---
+
+### 11.C Горячие клавиши для вкладок терминала — ВЫПОЛНЕНО
+
+Все клавиши работают в `TerminalPanel.tsx` через `useEffect` на `keydown` (или в `App.tsx`).
+
+| Комбинация | Действие | Реализация |
+|-----------|----------|------------|
+| `Cmd+T` | Открыть новую вкладку для выбранной консоли | Найти активную консоль или первую доступную → `openSession()` |
+| `Cmd+W` | Закрыть активную вкладку | `closeSession(activeSessionId)` — уже есть в store |
+| `Cmd+Tab` | Следующая вкладка | `setActiveSession(sessions[(idx+1) % len].id)` |
+| `Cmd+Shift+Tab` | Предыдущая вкладка | `setActiveSession(sessions[(idx-1+len) % len].id)` |
+| `Cmd+1..9` | Вкладка N | `setActiveSession(sessions[N-1]?.id)` если существует |
+| `Delete` | Удалить выбранный узел дерева | Вызвать ту же логику что в ContextMenu (с подтверждением) |
+
+**Важно:** `Cmd+T` и `Cmd+W` перехватываются WebView до JS — нужно добавить их в `tauri.conf.json` → `app.windows[0].shortcuts` (Tauri v2) или обрабатывать через `preventDefault` в глобальном keydown при фокусе внутри приложения.
+
+---
+
+### 11.D AI панель: Ollama — ВЫПОЛНЕНО
+
+**Цель:** поддержка локальных моделей через Ollama API (localhost:11434) без API-ключа.
+
+**`src/lib/aiProviders.ts`:**
+1. Добавить провайдер `"ollama"` в тип `AiProvider`
+2. Эндпоинт: `http://localhost:11434/v1/chat/completions` (Ollama поддерживает OpenAI-совместимый API)
+3. Заголовок `Authorization` не нужен (или пустой)
+4. Список моделей — динамический: `GET http://localhost:11434/api/tags` → `{ models: [{ name }] }`
+
+**`SettingsDialog.tsx` (AgentsTab):**
+- Добавить кнопку "Ollama" к переключателю провайдеров
+- При выборе Ollama: поле API-ключа скрыто; вместо хардкоженного списка моделей — fetch к localhost + выпадающий список
+- Кнопка "Проверить подключение" → `GET localhost:11434/api/tags` → success если ответил
+
+**`tauri.conf.json`:** `connect-src` уже содержит `localhost:11434` (добавлено при реализации AI-прототипа).
+
+**Локализация:** ключи `agentsOllamaNote`, `agentsOllamaNoModels`, `agentsOllamaFetchError` в 5 локалях.
+
+---
+
+### 11.E AI панель: drag-and-drop смены позиции — TODO (низкий приоритет) - пока не делаем
+
+Аналогично DnD консолей в дереве — mouse-event подход (HTML5 DnD не работает в Tauri WebKit).
+
+Реализация: захват за заголовок AI-панели → при перетаскивании определять позицию относительно терминала → если курсор в нижней половине экрана → `aiPanelPosition = "bottom"`, иначе `"right"`. Визуальный ghost с подсветкой зоны.
+
+---
+
+## Этап 14: Локализация системного трея — ВЫПОЛНЕНО
+
+### Проблема
+
+Надписи в меню системного трея (`"Открыть Consoles.work"` и `"Выход"`) захардкожены в `main.rs` на русском языке (`src-tauri/src/main.rs:55-57`). Они не меняются при переключении языка в Settings → Интерфейс, хотя механизм локализации (i18next + SQLite `ui.language`) уже реализован на фронтенде.
+
+Проблема в том, что трей создаётся Rust-кодом, который не имеет доступа к i18next. Решение — читать язык из SQLite в Rust и использовать статическую таблицу переводов.
+
+### Механизм
+
+- Язык хранится в SQLite: ключ `ui.language` (значения: `"ru"`, `"en"`, `"zh"`, `"fr"`, `"kk"`).
+- `db.rs` уже имеет функцию `get_setting(key)` → `Option<String>`.
+- При запуске: прочитать язык из БД → создать меню с правильными надписями.
+- При смене языка пользователем: фронтенд вызывает новую Tauri-команду `update_tray_language(lang)` → Rust пересоздаёт меню трея.
+
+### Реализация
+
+**Шаг 1 — Функция переводов в `main.rs`**
+
+```rust
+fn tray_labels(lang: &str) -> (&'static str, &'static str) {
+    // Возвращает (show_label, quit_label)
+    match lang {
+        "en" => ("Open Consoles.work", "Quit"),
+        "zh" => ("打开 Consoles.work", "退出"),
+        "fr" => ("Ouvrir Consoles.work", "Quitter"),
+        "kk" => ("Consoles.work ашу", "Шығу"),
+        _    => ("Открыть Consoles.work", "Выход"), // ru + fallback
+    }
+}
+```
+
+**Шаг 2 — Инициализация при старте (`main.rs` → `setup()`)**
+
+```rust
+// После db::init():
+let lang = db::get_setting("ui.language").unwrap_or_else(|| "ru".to_string());
+let (show_label, quit_label) = tray_labels(&lang);
+let show_item = MenuItem::with_id(app, "show", show_label, true, None::<&str>)?;
+let quit_item = MenuItem::with_id(app, "quit", quit_label, true, None::<&str>)?;
+```
+
+Вместо нынешних строк 55-57 с хардкоженным русским текстом.
+
+**Шаг 3 — Хранение `TrayIcon` для обновления**
+
+`TrayIconBuilder::build(app)?` возвращает `TrayIcon`. Сохранить его в глобальном `OnceLock`:
+
+```rust
+static TRAY_ICON: OnceLock<tauri::tray::TrayIcon> = OnceLock::new();
+
+// В setup():
+let tray = TrayIconBuilder::new()
+    .icon(...)
+    .menu(&menu)
+    // ... обработчики ...
+    .build(app)?;
+TRAY_ICON.set(tray).ok();
+```
+
+**Шаг 4 — Новая функция `rebuild_tray_menu` в `main.rs`**
+
+```rust
+pub fn rebuild_tray_menu(app: &tauri::AppHandle, lang: &str) {
+    if let Some(tray) = TRAY_ICON.get() {
+        let (show_label, quit_label) = tray_labels(lang);
+        if let (Ok(show_item), Ok(sep), Ok(quit_item)) = (
+            MenuItem::with_id(app, "show", show_label, true, None::<&str>),
+            PredefinedMenuItem::separator(app),
+            MenuItem::with_id(app, "quit", quit_label, true, None::<&str>),
+        ) {
+            if let Ok(menu) = Menu::with_items(app, &[&show_item, &sep, &quit_item]) {
+                let _ = tray.set_menu(Some(menu));
+            }
+        }
+    }
+}
+```
+
+**Шаг 5 — Новая Tauri-команда `update_tray_language` в `commands.rs`**
+
+```rust
+#[tauri::command]
+pub fn update_tray_language(app: tauri::AppHandle, lang: String) -> Result<(), String> {
+    crate::rebuild_tray_menu(&app, &lang);
+    Ok(())
+}
+```
+
+Зарегистрировать в `main.rs` → `invoke_handler![]` и в `lib.rs` → `invoke_handler![]`.
+
+**Шаг 6 — TypeScript-обёртка в `tauriCommands.ts`**
+
+```ts
+export async function updateTrayLanguage(lang: string): Promise<void> {
+    await invoke("update_tray_language", { lang });
+}
+```
+
+**Шаг 7 — Вызов при смене языка в `SettingsDialog.tsx`**
+
+Найти место где вызывается `i18n.changeLanguage(lang)` и `setSetting("ui.language", lang)` — добавить после них:
+
+```ts
+await updateTrayLanguage(lang);
+```
+
+### Нюанс: `TrayIcon` и `Send + Sync`
+
+`OnceLock<TrayIcon>` работает только если `TrayIcon: Send + Sync`. В Tauri v2 `TrayIcon` реализует оба трейта. Если компилятор выдаст ошибку — обернуть в `Mutex` и снять блокировку при обновлении.
+
+### Альтернативный подход (проще, без глобального стейта)
+
+Вместо хранения `TrayIcon` — использовать `app.tray_by_id("default")` если в `TrayIconBuilder` задан явный ID:
+
+```rust
+TrayIconBuilder::new().id("main_tray").icon(...).build(app)?;
+// ...
+// В команде:
+if let Some(tray) = app.tray_by_id("main_tray") {
+    let _ = tray.set_menu(Some(new_menu));
+}
+```
+
+Это чище: не нужен глобальный `OnceLock`, `AppHandle` уже есть в команде.
+
+### Файлы, которые нужно изменить
+
+| Файл | Изменение |
+|------|-----------|
+| `src-tauri/src/main.rs` | `tray_labels()`, `rebuild_tray_menu()`, явный ID трея `"main_tray"`, использовать язык из БД при инициализации |
+| `src-tauri/src/commands.rs` | Новая команда `update_tray_language` |
+| `src-tauri/src/main.rs` | Зарегистрировать команду в `invoke_handler![]` |
+| `src-tauri/src/lib.rs` | Зарегистрировать команду в `invoke_handler![]` |
+| `src/lib/tauriCommands.ts` | Обёртка `updateTrayLanguage(lang)` |
+| `src/components/SettingsDialog.tsx` | Вызов `updateTrayLanguage(lang)` при смене языка |

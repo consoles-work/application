@@ -27,7 +27,11 @@
     "toastWorkspaceNotFound": "Жұмыс кеңістігі табылмады",
     "toastProjectCloned": "Жоба «{{name}}» жасалды",
     "dangerLabelPrompt": "Ескерту белгісі:",
-    "toastDangerError": "Қате: {{error}}"
+    "toastDangerError": "Қате: {{error}}",
+    "toastConsoleMoved": "Консоль «{{name}}» «{{project}}» жобасына жылжытылды",
+    "toastMoveError": "Жылжыту қатесі: {{error}}",
+    "moveConfirm": "«{{name}}» консолін «{{project}}» жобасына жылжыту керек пе?",
+    "moveConfirmTitle": "Консолді жылжыту"
   },
   "contextMenu": {
     "addProject": "Жоба қосу",
@@ -41,6 +45,7 @@
     "markAsDangerous": "⚠ Қауіпті деп белгілеу...",
     "deleteProject": "Жобаны жою",
     "runConsole": "Іске қосу",
+    "reconnectConsole": "Қайта қосылу",
     "connectionSettings": "Қосылым параметрлері...",
     "cloneConsole": "Консольді көшіру",
     "deleteConsole": "Консольді жою",
@@ -148,8 +153,28 @@
     "toastCopyError": "Көшіру мүмкін болмады",
     "toastSaveError": "Параметрлерді сақтау қатесі: {{error}}",
     "tabAgents": "Агенттер",
+    "agentsProvider": "Провайдер",
+    "agentsApiKey": "API кілті",
+    "agentsModel": "Модель",
+    "agentsPanelPosition": "Панель орны",
+    "agentsPositionRight": "Оңда",
+    "agentsPositionBottom": "Төменде",
+    "agentsTestConnection": "Қосылымды тексеру",
+    "agentsTestTesting": "Тексерілуде...",
+    "agentsTestSuccess": "Қосылым сәтті",
+    "agentsTestError": "Қосылым қатесі: {{error}}",
+    "agentsOllamaNote": "Ollama жергілікті іске қосылады — API кілті қажет емес. localhost:11434 қызметінің іске қосылғанын тексеріңіз.",
+    "agentsOllamaLoading": "Модельдер жүктелуде...",
+    "agentsOllamaNoModels": "Модельдер табылмады. Ollama іске қосылғанын тексеріңіз.",
+    "agentsOllamaFetchError": "Модельдер тізімін алу мүмкін болмады. Ollama localhost:11434-те іске қосылғанын тексеріңіз.",
     "agentsShowKey": "Көрсету",
-    "agentsHideKey": "Жасыру"
+    "agentsHideKey": "Жасыру",
+    "closeBehavior": "Терезені жапқанда",
+    "closeToTray": "Трейге жию",
+    "closeAndQuit": "Бағдарламаны жабу",
+    "autostart": "Жүйеге кіргенде іске қосу",
+    "autostartNote": "macOS-қа кіргенде бағдарлама автоматты іске қосылады",
+    "autostartError": "Автоіске қосу қатесі: {{error}}"
   },
   "dialogs": {
     "newWorkspace": "Жаңа жұмыс кеңістігі",
@@ -181,6 +206,8 @@
     "startupCommandsNote": "(әр жол — бөлек пәрмен)",
     "startupPlaceholderLocal": "cd /app\nnpm run dev",
     "startupPlaceholderSsh": "cd /var/www/app\ntail -f logs/app.log",
+    "markAsDanger": "⚠ Қауіпті деп белгілеу (өндіріс)",
+    "dangerLabel": "Қауіп белгісі",
     "markDangerous": "⚠ Қауіпті деп белгілеу",
     "markDangerousProduction": "⚠ Қауіпті деп белгілеу (өндіріс)",
     "dangerLabelPlaceholder": "Белгі (PRODUCTION, STAGING...)",
@@ -202,6 +229,8 @@
     "required": "(міндетті)",
     "includeWiki": "Wiki беттері",
     "includeAi": "AI чат тарихы",
+    "selectWorkspaces": "Экспорт үшін жұмыс кеңістіктерін таңдаңыз",
+    "noWorkspaces": "Жұмыс кеңістіктері жоқ",
     "password": "Қорғау құпия сөзі",
     "optional": "(міндетті емес)",
     "passwordPlaceholder": "Автоматты шифрлау үшін бос қалдырыңыз",
@@ -209,7 +238,8 @@
     "exporting": "Экспорттауда...",
     "exportButton": "Экспорттау",
     "toastSuccess": "Экспорт сәтті сақталды",
-    "toastError": "Экспорт қатесі: {{error}}"
+    "toastError": "Экспорт қатесі: {{error}}",
+    "includeSettings": "Қолданба параметрлері"
   },
   "import": {
     "title": "Деректерді импорттау",
@@ -236,7 +266,20 @@
     "replaceWarning": "⚠ «Ауыстыру» режимі таңдалған деректерді біржола жояды.",
     "toastSuccess": "Импорт сәтті аяқталды",
     "importButton": "Импорттау",
-    "importing": "Импорттауда..."
+    "importing": "Импорттауда...",
+    "statsSettings": "Параметрлер",
+    "includeSettings": "Файлдан параметрлерді қолдану"
+  },
+  "globalSearch": {
+    "placeholder": "Wiki іздеу...",
+    "nothingFound": "Ештеңе табылмады",
+    "navHint": "↑↓ шарлау",
+    "openHint": "Enter ашу",
+    "closeHint": "Esc жабу",
+    "contextGlobal": "Жалпы",
+    "contextWorkspace": "Жұмыс кеңістігі",
+    "contextProject": "Жоба",
+    "contextConsole": "Консоль"
   },
   "app": {
     "toastLoadError": "Деректерді жүктеу қатесі: {{error}}",

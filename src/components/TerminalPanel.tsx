@@ -111,7 +111,7 @@ export function TerminalPanel() {
           const con = findConsoleById(session.console_id);
           return (
             <TerminalView
-              key={session.id}
+              key={`${session.id}-${session.reconnectKey ?? 0}`}
               session={session}
               isActive={session.id === activeSessionId}
               isDanger={con?.isDanger ?? false}
@@ -261,6 +261,9 @@ function TerminalView({
         // Ввод пользователя → PTY
         term.onData((data) => writeToPty(ptyId, data));
 
+        // Синхронизируем PTY с реальным размером xterm (fit уже был вызван до spawn)
+        resizePty(ptyId, term.cols, term.rows).catch(() => {});
+
         // Изменение размера → PTY
         term.onResize(({ cols, rows }) => resizePty(ptyId, cols, rows));
 
@@ -292,8 +295,8 @@ function TerminalView({
   // ── Fit при переключении на активную вкладку ──
   useEffect(() => {
     if (isActive && fitAddonRef.current) {
-      // Небольшая задержка чтобы CSS display успел примениться
-      setTimeout(() => fitAddonRef.current?.fit(), 50);
+      // display:none → display:flex требует один rAF чтобы браузер пересчитал layout
+      requestAnimationFrame(() => fitAddonRef.current?.fit());
     }
   }, [isActive]);
 
@@ -302,6 +305,8 @@ function TerminalView({
     if (!containerRef.current) return;
     let timer: ReturnType<typeof setTimeout>;
     const observer = new ResizeObserver(() => {
+      // Немедленный fit + отложенный, чтобы поймать финальный размер после анимаций сплиттера
+      fitAddonRef.current?.fit();
       clearTimeout(timer);
       timer = setTimeout(() => fitAddonRef.current?.fit(), 100);
     });

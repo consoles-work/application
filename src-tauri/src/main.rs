@@ -23,11 +23,12 @@ mod export;    // src/export.rs — экспорт/импорт .dchub
 
 // Подключаем публичные функции из модуля commands
 use commands::*;
-use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::Manager;
-use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState};
 
-static QUIT_DIALOG_ACTIVE: AtomicBool = AtomicBool::new(false);
+#[allow(dead_code)]
+pub static QUIT_DIALOG_ACTIVE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 // ── Главная функция ──
 // #[cfg_attr(...)] — это макрос (аннотация). Здесь он говорит:
@@ -37,18 +38,55 @@ pub fn run() {
     // tauri::Builder — паттерн "строитель" (builder pattern)
     // Каждый .method() добавляет конфигурацию и возвращает builder обратно
     tauri::Builder::default()
-        // Подключаем плагин для запуска внешних процессов
+        // Подключаем плагины
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
 
         // Инициализация при старте приложения
         .setup(|app| {
             // Инициализируем базу данных SQLite
-            // `?` — если db::init() вернёт ошибку, setup тоже вернёт ошибку
             db::init()?;
 
             // Инициализируем менеджер PTY-сессий
             pty_manager::init(app.handle().clone());
+
+            // ── Системный трей (надписи берём из языка пользователя) ──
+            let lang = db::get_setting_str("ui.language", "ru");
+            let (show_label, quit_label) = tray_labels(&lang);
+            let show_item = MenuItem::with_id(app, "show", show_label, true, None::<&str>)?;
+            let sep = PredefinedMenuItem::separator(app)?;
+            let quit_item = MenuItem::with_id(app, "quit", quit_label, true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&show_item, &sep, &quit_item])?;
+
+            TrayIconBuilder::with_id("main_tray")
+                .icon(app.default_window_icon().unwrap().clone())
+                .menu(&menu)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "show" => {
+                        if let Some(w) = app.get_webview_window("main") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
+                    }
+                    "quit" => app.exit(0),
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        if let Some(w) = app.get_webview_window("main") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
 
             println!("✅ consoles.work started successfully");
             Ok(())
@@ -111,29 +149,29 @@ pub fn run() {
             export_data,
             preview_import,
             apply_import,
+
+            // Перемещение консоли
+            move_console,
+
+            // Автозапуск
+            enable_autostart,
+            disable_autostart,
+            get_autostart_status,
+
+            // Локализация трея
+            update_tray_language,
         ])
 
-        // Перехватываем закрытие окна: всегда отменяем и просим фронт показать диалог
+        // Перехватываем закрытие окна
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
-                if QUIT_DIALOG_ACTIVE.swap(true, Ordering::SeqCst) {
-                    return; // диалог уже открыт
+                let close_to_tray = db::get_setting_bool("ui.closeToTray", true);
+                if close_to_tray {
+                    let _ = window.hide();
+                } else {
+                    window.app_handle().exit(0);
                 }
-                let app = window.app_handle().clone();
-                std::thread::spawn(move || {
-                    let confirmed = app
-                        .dialog()
-                        .message("Are you sure you want to quit?")
-                        .title("Quit")
-                        .kind(MessageDialogKind::Warning)
-                        .buttons(MessageDialogButtons::OkCancel)
-                        .blocking_show();
-                    QUIT_DIALOG_ACTIVE.store(false, Ordering::SeqCst);
-                    if confirmed {
-                        app.exit(0);
-                    }
-                });
             }
         })
 

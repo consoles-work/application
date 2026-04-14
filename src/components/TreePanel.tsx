@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { ChevronRight, ChevronDown, Search, X, Upload, Download } from "lucide-react";
+import { ask } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../stores/appStore";
-import { updateWorkspace, updateProject, updateConsole, setNodeDanger, cloneConsole, cloneProject } from "../lib/tauriCommands";
+import { updateWorkspace, updateProject, updateConsole, setNodeDanger, cloneConsole, cloneProject, moveConsole } from "../lib/tauriCommands";
 import { ContextMenu, type ContextMenuState } from "./ContextMenu";
 import { CreateWorkspaceDialog } from "./dialogs/CreateWorkspaceDialog";
 import { CreateProjectDialog } from "./dialogs/CreateProjectDialog";
@@ -28,9 +30,11 @@ export function TreePanel() {
     updateConsole: storeUpdateConsole,
     addConsole: storeAddConsole,
     addProject: storeAddProject,
+    moveConsoleToProject,
     openSession,
     sessions,
     setActiveSession,
+    reconnectSession,
     showToast,
   } = useAppStore();
 
@@ -47,6 +51,81 @@ export function TreePanel() {
   const [editConsole, setEditConsole] = useState<ConsoleConfig | null>(null);
   const [showExport, setShowExport] = useState(false);
   const [showImport, setShowImport] = useState(false);
+
+  // ── Drag-and-drop (mouse-based, работает в Tauri WebKit) ──
+  const draggingConsoleRef = useRef<{ id: string; name: string } | null>(null);
+  const [dragOverProjectId, setDragOverProjectId] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
+
+  // refs чтобы window listeners всегда видели актуальные данные
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
+  const handleDropOnProjectRef = useRef<((n: TreeNode) => void) | null>(null);
+  const handleClickRef = useRef<((n: TreeNode) => void) | null>(null);
+
+  const handleConsoleDragStart = (e: React.MouseEvent, node: TreeNode) => {
+    if (e.button !== 0 || renamingId) return;
+    e.preventDefault(); // блокируем text selection
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const THRESHOLD = 6;
+    let dragStarted = false;
+
+    // Найти проект под курсором по bounding rect — надёжно в Tauri WebKit
+    const getProjectUnder = (x: number, y: number): string | null => {
+      const projectEls = document.querySelectorAll("[data-nodetype='project']");
+      for (const el of projectEls) {
+        const rect = el.getBoundingClientRect();
+        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+          return el.getAttribute("data-nodeid");
+        }
+      }
+      return null;
+    };
+
+    const onMouseMove = (ev: MouseEvent) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+
+      if (!dragStarted && Math.sqrt(dx * dx + dy * dy) >= THRESHOLD) {
+        dragStarted = true;
+        draggingConsoleRef.current = { id: node.id, name: node.name };
+        setIsDragging(true);
+      }
+      if (!dragStarted) return;
+
+      setDragPos({ x: ev.clientX, y: ev.clientY });
+      setDragOverProjectId(getProjectUnder(ev.clientX, ev.clientY));
+    };
+
+    const onMouseUp = (ev: MouseEvent) => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+
+      if (!dragStarted) {
+        handleClickRef.current?.(node);
+        return;
+      }
+
+      const projId = getProjectUnder(ev.clientX, ev.clientY);
+
+      // Сначала вызываем дроп-хендлер (он читает draggingConsoleRef.current),
+      // только потом очищаем состояние
+      if (projId) {
+        const projNode = nodesRef.current.find((n) => n.id === projId && n.type === "project");
+        if (projNode) handleDropOnProjectRef.current?.(projNode);
+      }
+
+      setIsDragging(false);
+      setDragOverProjectId(null);
+      draggingConsoleRef.current = null;
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  };
 
   // ── Поиск по дереву ──
   const [searchQuery, setSearchQuery] = useState("");
@@ -173,6 +252,8 @@ export function TreePanel() {
     startRename(node);
   };
 
+  handleClickRef.current = handleClick;
+
   const handleToggle = (e: React.MouseEvent, node: TreeNode) => {
     e.stopPropagation();
     if (node.has_children || node.type !== "console") {
@@ -234,6 +315,32 @@ export function TreePanel() {
     }
   };
 
+  const handleDropOnProject = async (projectNode: TreeNode) => {
+    const dragging = draggingConsoleRef.current;
+    if (!dragging) return;
+    setDragOverProjectId(null);
+    // Проверяем, не в том же проекте ли консоль уже
+    const targetProject = workspaces.flatMap((ws) => ws.projects).find((p) => p.id === projectNode.id);
+    if (!targetProject) return;
+    if (targetProject.consoles.some((c) => c.id === dragging.id)) return;
+    // Подтверждение
+    const confirmed = await ask(
+      t("treePanel.moveConfirm", { name: dragging.name, project: projectNode.name }),
+      { title: t("treePanel.moveConfirmTitle"), kind: "info" }
+    );
+    if (!confirmed) return;
+    try {
+      await moveConsole(dragging.id, projectNode.id);
+      moveConsoleToProject(dragging.id, projectNode.id);
+      showToast("success", t("treePanel.toastConsoleMoved", { name: dragging.name, project: projectNode.name }));
+    } catch (e) {
+      showToast("error", t("treePanel.toastMoveError", { error: e }));
+    }
+  };
+
+  // Присваиваем refs после определения функций
+  handleDropOnProjectRef.current = handleDropOnProject;
+
   const handleCloneProject = async (node: TreeNode) => {
     try {
       const cloned = await cloneProject(node.id);
@@ -249,6 +356,14 @@ export function TreePanel() {
       showToast("success", t("treePanel.toastProjectCloned", { name: cloned.name }));
     } catch (e) {
       showToast("error", t("treePanel.toastCloneError", { error: e }));
+    }
+  };
+
+  const handleReconnectConsole = (node: TreeNode) => {
+    const session = sessions.find((s) => s.console_id === node.id);
+    if (session) {
+      reconnectSession(session.id);
+      setActiveSession(session.id);
     }
   };
 
@@ -346,15 +461,20 @@ export function TreePanel() {
           {nodes.map((node) => (
             <div
               key={`${node.type}-${node.id}`}
+              data-nodeid={node.id}
+              data-nodetype={node.type}
               className={`tree-item ${
                 selectedNode?.id === node.id && selectedNode?.type === node.type
                   ? "active"
                   : ""
-              }`}
+              } ${node.type === "project" && dragOverProjectId === node.id ? "ring-1 ring-inset ring-accent bg-accent/5" : ""
+              } ${node.type === "console" && !isDragging ? "cursor-grab" : ""
+              } ${isDragging && draggingConsoleRef.current?.id === node.id ? "opacity-40" : ""}`}
               style={{ paddingLeft: `${12 + node.depth * 16}px` }}
-              onClick={() => handleClick(node)}
-              onDoubleClick={() => handleDoubleClick(node)}
+              onClick={node.type !== "console" ? () => handleClick(node) : undefined}
+              onDoubleClick={() => { if (!isDragging) handleDoubleClick(node); }}
               onContextMenu={(e) => handleContextMenu(e, node)}
+              onMouseDown={node.type === "console" ? (e) => handleConsoleDragStart(e, node) : undefined}
             >
               {/* Expand/collapse */}
               <span
@@ -430,6 +550,7 @@ export function TreePanel() {
           onEditConsole={(node) => setEditConsole(node.data as ConsoleConfig)}
           onCloneConsole={handleCloneConsole}
           onCloneProject={handleCloneProject}
+          onReconnectConsole={handleReconnectConsole}
         />
       )}
 
@@ -457,6 +578,33 @@ export function TreePanel() {
       )}
       {showExport && <ExportDialog onClose={() => setShowExport(false)} />}
       {showImport && <ImportDialog onClose={() => setShowImport(false)} />}
+
+      {/* DnD ghost — следует за курсором */}
+      {isDragging && draggingConsoleRef.current && createPortal(
+        <>
+          {/* Глобальный cursor: grabbing */}
+          <style>{`* { cursor: grabbing !important; user-select: none !important; }`}</style>
+          <div
+            id="dnd-ghost"
+            style={{
+              position: "fixed",
+              left: dragPos.x + 12,
+              top: dragPos.y - 10,
+              pointerEvents: "none",
+              zIndex: 9999,
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-2 border border-accent shadow-xl text-xs text-accent font-medium opacity-95"
+          >
+            <span className="text-sm">🔗</span>
+            {draggingConsoleRef.current.name}
+            {dragOverProjectId
+              ? <span className="ml-1 text-2xs opacity-70">→ {nodes.find(n => n.id === dragOverProjectId)?.name ?? dragOverProjectId}</span>
+              : <span className="ml-1 text-2xs opacity-50">→ ?</span>
+            }
+          </div>
+        </>,
+        document.body
+      )}
     </>
   );
 }

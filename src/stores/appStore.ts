@@ -88,11 +88,13 @@ interface AppState {
   addConsole: (projectId: string, console_: ConsoleConfig) => void;
   updateConsole: (id: string, updates: Partial<ConsoleConfig>) => void;
   removeConsole: (id: string) => void;
+  moveConsoleToProject: (consoleId: string, targetProjectId: string) => void;
 
   // ── Actions: терминал ──
   openSession: (session: TerminalSession) => void;
   closeSession: (sessionId: string) => void;
   setActiveSession: (sessionId: string) => void;
+  reconnectSession: (sessionId: string) => void;
 
   // ── Actions: wiki ──
   setWikiPages: (pages: WikiPage[]) => void;
@@ -266,6 +268,34 @@ export const useAppStore = create<AppState>((set, get) => ({
       })),
     })),
 
+  moveConsoleToProject: (consoleId, targetProjectId) =>
+    set((state) => {
+      let movedConsole: ConsoleConfig | null = null;
+      const updated = state.workspaces.map((ws) => ({
+        ...ws,
+        projects: ws.projects.map((p) => {
+          const found = p.consoles.find((c) => c.id === consoleId);
+          if (found) {
+            movedConsole = { ...found, projectId: targetProjectId } as ConsoleConfig;
+            return { ...p, consoles: p.consoles.filter((c) => c.id !== consoleId) };
+          }
+          return p;
+        }),
+      }));
+      if (!movedConsole) return {};
+      const con = movedConsole;
+      return {
+        workspaces: updated.map((ws) => ({
+          ...ws,
+          projects: ws.projects.map((p) =>
+            p.id === targetProjectId
+              ? { ...p, consoles: [...p.consoles, con] }
+              : p
+          ),
+        })),
+      };
+    }),
+
   // ── Терминал ──
   openSession: (session) =>
     set((state) => ({
@@ -286,6 +316,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
 
   setActiveSession: (sessionId) => set({ activeSessionId: sessionId }),
+
+  reconnectSession: (sessionId) =>
+    set((state) => ({
+      sessions: state.sessions.map((s) =>
+        s.id === sessionId ? { ...s, reconnectKey: (s.reconnectKey ?? 0) + 1 } : s
+      ),
+    })),
 
   // ── Wiki ──
   setWikiPages: (pages) => set({ currentWikiPages: pages, activeWikiPageId: pages[0]?.id ?? null }),

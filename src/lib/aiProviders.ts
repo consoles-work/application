@@ -2,7 +2,7 @@
 // AI провайдеры: OpenAI, Anthropic
 // ══════════════════════════════════════════════
 
-export type ProviderId = "openai" | "anthropic";
+export type ProviderId = "openai" | "anthropic" | "ollama";
 
 export interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -111,7 +111,38 @@ export const AnthropicProvider: AiProvider = {
   },
 };
 
-export const AI_PROVIDERS: AiProvider[] = [OpenAiProvider, AnthropicProvider];
+export const OllamaProvider: AiProvider = {
+  id: "ollama",
+  name: "Ollama",
+  models: [], // динамический список, получается fetch-ом из localhost:11434/api/tags
+  defaultModel: "",
+
+  buildFetchParams(messages, model, _apiKey) {
+    return [
+      "http://localhost:11434/v1/chat/completions",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model, messages, stream: true }),
+      },
+    ];
+  },
+
+  // Формат ответа совместим с OpenAI
+  parseChunk(line) {
+    if (!line.startsWith("data: ")) return null;
+    const data = line.slice(6);
+    if (data === "[DONE]") return null;
+    try {
+      const json = JSON.parse(data);
+      return json.choices?.[0]?.delta?.content ?? null;
+    } catch {
+      return null;
+    }
+  },
+};
+
+export const AI_PROVIDERS: AiProvider[] = [OpenAiProvider, AnthropicProvider, OllamaProvider];
 
 export function getProvider(id: string): AiProvider {
   return AI_PROVIDERS.find((p) => p.id === id) ?? OpenAiProvider;

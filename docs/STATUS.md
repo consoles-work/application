@@ -1,6 +1,6 @@
 # DevConsole Hub — Статус проекта
 
-> Последнее обновление: 2026-04-02 (Этап 10.12 — SSH пароль + локализация экспорт/импорт)
+> Последнее обновление: 2026-04-13 (Этап 16 — переподключение консоли, убран native contextmenu, фикс fit терминала)
 
 ---
 
@@ -9,47 +9,48 @@
 ### Инфраструктура
 - Tauri 2.0 проект компилируется и запускается
 - Все npm-зависимости установлены (xterm.js, TipTap, lowlight, lucide-react, plugin-dialog)
-- Cargo.toml: rusqlite, portable-pty, uuid, dirs, chrono, tauri-plugin-dialog, aes-gcm, pbkdf2, sha2, hmac, rand
-- Tailwind настроен через CSS-переменные (10 тем, динамическая смена)
-- Capabilities: core:default, event listen/unlisten/emit, shell:open, dialog
+- Cargo.toml: rusqlite, portable-pty, uuid, dirs, chrono, tauri-plugin-dialog, aes-gcm, pbkdf2, sha2, hmac, rand, **tauri-plugin-autostart**
+- `tauri` feature: `tray-icon` (системный трей)
+- Tailwind настроен через CSS-переменные (13 тем, динамическая смена)
+- Capabilities: core:default, event listen/unlisten/emit, shell:open, dialog, **core:tray:default**, **autostart:allow-***
 
 ### Frontend (React + TypeScript)
 
 | Файл | Статус | Примечания |
 |------|--------|------------|
-| `src/types/index.ts` | ✅ Готово | Все интерфейсы: WikiPage (camelCase), isDanger/dangerLabel, SSH-поля (включая `sshPassphrase`, `sshPassword`), AppSettings, AiSession, AiMessage |
-| `src/stores/appStore.ts` | ✅ Готово | CRUD + Toast + Wiki + Settings + AI сессии; `toggleNodeExpanded` сохраняет состояние в SQLite |
-| `src/lib/tauriCommands.ts` | ✅ Готово | Все IPC-обёртки: дерево, PTY (с `sshKeyPath`/`sshPassphrase`/`sshPassword`), wiki, clone, settings, AI сессии, `setNodeExpanded`, `exportData`/`previewImport`/`applyImport` |
-| `src/lib/themes.ts` | ✅ Готово | 10 тем с UI-цветами и полной xterm-палитрой, resolveThemeId, applyTheme |
-| `src/components/Layout.tsx` | ✅ Готово | Трёхпанельный layout с resizable сплиттерами + кнопка Settings в titlebar |
-| `src/components/TreePanel.tsx` | ✅ Готово | Дерево + раскрытие по клику на строку + контекстное меню + inline rename (F2) + danger/ssh badge + клонирование + поиск по дереву + кнопки Export/Import |
-| `src/components/TerminalPanel.tsx` | ✅ Готово | xterm.js + PTY + danger-баннер + SSH + startup + динамические настройки; убрана дублирующая Bot-кнопка из таббара; индикатор-точка при выделении текста |
+| `src/types/index.ts` | ✅ Готово | Все интерфейсы: WikiPage (camelCase), isDanger/dangerLabel, SSH-поля (включая `sshPassphrase`, `sshPassword`), AppSettings, AiSession, AiMessage; **`reconnectKey` в `TerminalSession`** |
+| `src/stores/appStore.ts` | ✅ Готово | CRUD + Toast + Wiki + Settings + AI сессии; `toggleNodeExpanded` сохраняет состояние; **`moveConsoleToProject`**; **`reconnectSession`** |
+| `src/lib/tauriCommands.ts` | ✅ Готово | Все IPC-обёртки: дерево, PTY, wiki, clone, settings, AI сессии, `setNodeExpanded`, `exportData`/`previewImport`/`applyImport`, **`moveConsole`**, **`enableAutostart`/`disableAutostart`/`getAutostartStatus`** |
+| `src/lib/themes.ts` | ✅ Готово | 13 тем (10 тёмных + 3 светлых) с UI-цветами и полной xterm-палитрой, resolveThemeId, applyTheme |
+| `src/components/Layout.tsx` | ✅ Готово | Четырёхпанельный layout с resizable сплиттерами + кнопка Settings в titlebar |
+| `src/components/TreePanel.tsx` | ✅ Готово | Дерево + раскрытие + контекстное меню + inline rename (F2) + danger/ssh badge + клонирование + поиск + кнопки Export/Import + **drag-and-drop консолей (mouse-event, ghost-портал, подтверждение)** |
+| `src/components/TerminalPanel.tsx` | ✅ Готово | xterm.js + PTY + danger-баннер + SSH + startup + динамические настройки; индикатор-точка при выделении; **`reconnectKey` в key-пропе; повторные fit() на 100ms/400ms при открытии и 200ms при смене вкладки** |
 | `src/components/WikiPanel.tsx` | ✅ Готово | TipTap редактор + привязка к узлу + автосохранение debounce + теги + поиск по wiki (FTS5) |
 | `src/components/WikiToolbar.tsx` | ✅ Готово | H1/H2/H3, Bold/Italic/Code, списки, TaskList, CodeBlock, HR, Undo/Redo |
 | `src/components/CommandPalette.tsx` | ✅ Готово | Fuzzy-поиск по дереву, ↑↓/Enter/Esc, danger badge |
-| `src/components/SettingsDialog.tsx` | ✅ Готово | 4 вкладки: Данные, Терминал, Интерфейс, Агенты; раздельные API-ключи per-провайдер (`ai.apiKey.openai` / `ai.apiKey.anthropic`) |
+| `src/components/SettingsDialog.tsx` | ✅ Готово | 4 вкладки: Данные, Терминал, Интерфейс, Агенты; раздельные API-ключи per-провайдер; **автозапуск (чекбокс); поведение при закрытии (трей / завершить)** |
 | `src/components/Toast.tsx` | ✅ Готово | Success/error/info, автоисчезновение 3 сек |
-| `src/components/ContextMenu.tsx` | ✅ Готово | Workspace/Project/Console меню + danger-пометка + клонирование + подтверждение удаления (ask) |
+| `src/components/ContextMenu.tsx` | ✅ Готово | Workspace/Project/Console меню + клонирование + подтверждение удаления; **danger-пометка для console убрана** (перенесена в EditConsoleDialog); **пункт "Переподключить" для консолей с открытой сессией** |
 | `src/components/dialogs/CreateWorkspaceDialog.tsx` | ✅ Готово | Имя + emoji + цвет |
 | `src/components/dialogs/CreateProjectDialog.tsx` | ✅ Готово | Имя + Browse + shell + emoji + цвет + danger-чекбокс |
 | `src/components/dialogs/CreateConsoleDialog.tsx` | ✅ Готово | SSH по умолчанию; имя + SSH/Local + все SSH-поля + Browse для ключа + пароль сервера (show/hide) + passphrase только при выбранном ключе + startup + danger-чекбокс |
-| `src/components/dialogs/EditConsoleDialog.tsx` | ✅ Готово | Аналогично CreateConsoleDialog; SSH-пароль и passphrase по условию |
-| `src/components/dialogs/ExportDialog.tsx` | ✅ Готово | Полностью локализован; чекбоксы (дерево/wiki/AI), опциональный пароль, нативный save-диалог |
-| `src/components/dialogs/ImportDialog.tsx` | ✅ Готово | Полностью локализован; 3-шаговый диалог: выбор файла → пароль → превью + опции merge/replace |
-| `src/App.tsx` | ✅ Готово | Загрузка данных + настроек + применение темы при старте; восстановление видимости панелей из SQLite; Cmd+B/\\/P/, |
-| `src/styles/globals.css` | ✅ Готово | CSS-переменные для 10 тем + xterm.js + TipTap стили |
+| `src/components/dialogs/EditConsoleDialog.tsx` | ✅ Готово | Полностью аналогично CreateConsoleDialog; **добавлены danger-поля** (чекбокс + метка); вызывает `setNodeDanger` после `updateConsoleConfig` |
+| `src/components/dialogs/ExportDialog.tsx` | ✅ Готово | Полностью локализован; чекбоксы воркспейсов для выборочного экспорта; чекбоксы wiki/AI/**настройки**; опциональный пароль |
+| `src/components/dialogs/ImportDialog.tsx` | ✅ Готово | Полностью локализован; 3-шаговый: выбор файла → пароль → превью + опции merge/replace; **чекбокс применения настроек** (если файл содержит) |
+| `src/App.tsx` | ✅ Готово | Загрузка данных + настроек + применение темы при старте; восстановление видимости панелей; Cmd+B/\\/P/I/,; **глобальный запрет нативного contextmenu** |
+| `src/styles/globals.css` | ✅ Готово | CSS-переменные для 13 тем + xterm.js + TipTap стили |
 
 ### Backend (Rust)
 
 | Файл | Статус | Примечания |
 |------|--------|------------|
-| `src-tauri/src/main.rs` | ✅ Готово | 38 IPC-команд (включая `set_node_expanded`, `export_data`, `preview_import`, `apply_import`) |
-| `src-tauri/src/lib.rs` | ✅ Готово | Дубликат для мобильных/библиотечной сборки — синхронизирован с main.rs |
-| `src-tauri/src/commands.rs` | ✅ Готово | CRUD дерева, PTY, wiki, danger, clone, settings, AiSession + 8 команд, экспорт/импорт + 3 команды; `ssh_password` в ConsoleConfig и всех командах |
-| `src-tauri/src/db.rs` | ✅ Готово | Полный CRUD + FTS5 + клонирование + settings + SQLCipher + AI-сессии + `set_node_expanded` + `ssh_passphrase` + `ssh_password` (automigration) + `load_all_wiki_pages` + `delete_all_*` + `get_workspace_names` |
-| `src-tauri/src/export.rs` | ✅ Готово | Шифрованный формат `.dchub`: AES-256-GCM + PBKDF2-HMAC-SHA256 (100k iter); app-секрет + опциональный пользовательский пароль; верификационная фраза в payload; функции build/encrypt/decrypt/preview/apply |
-| `src-tauri/src/pty_manager.rs` | ✅ Готово | portable-pty: spawn/write/resize/kill; `sh -c` для команд с пробелами; UTF-8 локаль; SSH passphrase через `add_key_to_agent` (SSH_ASKPASS trick); SSH пароль сервера через SSH_ASKPASS_REQUIRE=force |
-| `src-tauri/build.rs` | ✅ Готово | Читает `.env` из корня проекта; встраивает `DB_ENCRYPTION_KEY` в бинарник через `env!()` |
+| `src-tauri/src/main.rs` | ✅ Готово | ~45 IPC-команд; **трей** (`TrayIconBuilder`); **`CloseRequested`** читает `ui.closeToTray` — hide или exit; **autostart-плагин** подключён |
+| `src-tauri/src/lib.rs` | ✅ Готово | Синхронизирован с main.rs (мобильная/библиотечная сборка) |
+| `src-tauri/src/commands.rs` | ✅ Готово | CRUD дерева, PTY, wiki, danger, clone, settings, AI (8 команд), экспорт/импорт (3 команды), **`move_console`**, **`enable_autostart`/`disable_autostart`/`get_autostart_status`** |
+| `src-tauri/src/db.rs` | ✅ Готово | Полный CRUD + FTS5 + клонирование + settings + SQLCipher + AI-сессии + `set_node_expanded` + `ssh_passphrase` + `ssh_password` + `move_console` + **`get_setting_bool`** + `load_all_wiki_pages` + `delete_all_*` + `get_workspace_names` |
+| `src-tauri/src/export.rs` | ✅ Готово | Формат `.dchub`: AES-256-GCM + PBKDF2 (100k iter); `workspace_ids` фильтр; верификационная фраза; **экспорт/импорт настроек**; **исправлен импорт wiki** (id_map для перепривязки страниц) |
+| `src-tauri/src/pty_manager.rs` | ✅ Готово | portable-pty: spawn/write/resize/kill; UTF-8 локаль; SSH passphrase через `add_key_to_agent`; SSH пароль сервера через SSH_ASKPASS_REQUIRE=force |
+| `src-tauri/build.rs` | ✅ Готово | Читает `.env`; встраивает `DB_ENCRYPTION_KEY` в бинарник через `env!()` |
 
 ### Frontend — AI панель
 
@@ -72,12 +73,12 @@
 | Cmd+P (Command Palette) | ✅ Готово |
 | Cmd+, (настройки) | ✅ Готово |
 | Cmd+I (toggle AI панели) | ✅ Готово |
-| Cmd+Shift+K (глобальный поиск wiki) | ❌ TODO |
-| Cmd+T (новая вкладка) | ❌ TODO |
-| Cmd+W (закрыть вкладку) | ❌ TODO |
-| Cmd+Tab / Cmd+Shift+Tab | ❌ TODO |
-| Cmd+1..9 (вкладка N) | ❌ TODO |
-| Delete (удалить узел) | ❌ TODO |
+| Cmd+Shift+K (глобальный поиск wiki) | ✅ Готово |
+| Cmd+T (новая вкладка для выбранной консоли) | ✅ Готово |
+| Cmd+W (закрыть вкладку) | ✅ Готово |
+| Cmd+Tab / Cmd+Shift+Tab | ✅ Готово |
+| Cmd+1..9 (вкладка N) | ✅ Готово |
+| Delete (удалить узел) | ❌ TODO (Post-MVP) |
 
 ---
 
@@ -85,15 +86,11 @@
 
 | Задача | Приоритет | Примечания |
 |--------|-----------|------------|
-| AI панель: drag-and-drop смены позиции | Средний | Сейчас кнопки Right/Bottom в заголовке |
-| AI панель: Ollama (локальные модели) | Средний | Без API-ключа, localhost:11434 |
 | AI панель: привязка сессий к узлу дерева | Низкий | Post-MVP |
-| AI панель: локализация (zh/fr/kk) | Низкий | AI-ключи добавлены; AiPanel-строки — fallback |
 | OS Keychain для API-ключей | Низкий | Сейчас в зашифрованной SQLite |
-| Горячие клавиши (Cmd+T/W/Tab/1-9/Delete) | Средний | Post-MVP |
-| `GlobalSearch.tsx` (Cmd+Shift+K) | Средний | Глобальный модал поиска с подсветкой |
+| Горячие клавиши: Delete (удалить узел) | Низкий | Post-MVP |
 | Wiki: блоки кода с кнопками | Низкий | TipTap NodeView: "Копировать" + "Вставить в терминал" |
-| Drag-and-drop в дереве | Отменено | — |
+| macOS Code Signing + Notarization | Низкий | Требует Apple Developer сертификат; инструкция в PLAN.md §12.3 |
 
 ### Post-MVP
 - Сплит-терминал (Ctrl+Shift+H / V)
@@ -104,6 +101,130 @@
 ---
 
 ## История изменений
+
+### 2026-04-13 — Этап 16: UX-фиксы
+
+**Переподключение консоли**
+- `types/index.ts`: добавлено поле `reconnectKey?: number` в `TerminalSession`
+- `stores/appStore.ts`: новое действие `reconnectSession(sessionId)` — инкрементирует `reconnectKey`
+- `TerminalPanel.tsx`: `key` компонента `TerminalView` теперь `${session.id}-${reconnectKey}` — при инкременте React пересоздаёт компонент, PTY корректно завершается через cleanup
+- `ContextMenu.tsx`: пункт "Переподключить" (↺) в меню консоли — показывается только если сессия уже открыта
+- `TreePanel.tsx`: обработчик `handleReconnectConsole` — вызывает `reconnectSession` + `setActiveSession`
+- Локализация на 5 языков: `contextMenu.reconnectConsole`
+
+**Убран нативный contextmenu WebKit ("Reload" при ПКМ на пустом месте)**
+- `App.tsx`: глобальный `document.addEventListener("contextmenu", e => e.preventDefault())` — блокирует нативное меню WebKit/браузера во всём приложении
+
+**Фикс размера терминала при первом открытии**
+- `TerminalPanel.tsx`: после `term.open()` + `fitAddon.fit()` добавлены повторные вызовы через 100ms и 400ms — WebKit в Tauri вычисляет финальные размеры с задержкой
+- Также добавлен второй `fit()` через 200ms при переключении на активную вкладку (`isActive` effect)
+
+---
+
+### 2026-04-07 — Этап 15: Исправления экспорта/импорта + настройки
+
+**Исправлен импорт wiki-страниц (баг с перепривязкой ID)**
+- `export.rs` → `apply_import()`: при импорте дерева теперь строится `HashMap<old_id, new_id>` для всех workspace/project/console
+- Wiki-страницы с `parent_type != "global"`: `parent_id` заменяется на новый через маппинг; если родитель не найден — страница пропускается
+- Wiki-страницы с `parent_type = "global"`: импортируются без изменений (как и раньше)
+- Если `include_tree = false`: страницы сохраняются с оригинальным `parent_id` (merge в ту же БД)
+- Прежде импортировались только глобальные страницы — теперь все
+
+**Подтверждён корректный импорт AI-чатов**
+- `apply_import()` правильно назначает новые UUID сессиям и сообщениям, корректно связывает через `session_id`
+
+**Экспорт/импорт настроек приложения**
+- `ExportPayload`: новое поле `settings: HashMap<String, String>` (с `#[serde(default)]` для обратной совместимости)
+- `ImportPreview`: новое поле `settings_count: usize`
+- `build_export_payload(include_settings: bool)`: если флаг — собирает все настройки через `get_all_settings()`
+- `apply_import(include_settings: bool)`: если флаг — применяет каждый key-value через `set_setting_value()`
+- `export_data` и `apply_import` Tauri-команды: новый параметр `include_settings`
+- `tauriCommands.ts`: `ImportPreview.settingsCount`, обновлены сигнатуры `exportData` / `applyImport`
+- `ExportDialog.tsx`: чекбокс «Настройки приложения» (по умолчанию выключен)
+- `ImportDialog.tsx`: строка статистики «Настроек: N» + чекбокс «Применить настройки» (только если файл содержит настройки)
+- Локализация: ключи `export.includeSettings`, `import.statsSettings`, `import.includeSettings` во все 5 локалей
+
+---
+
+### 2026-04-07 — Этапы 14 + 11: Локализация трея, GlobalSearch, Ollama, горячие клавиши, полная локализация
+
+**Локализация системного трея (Этап 14)**
+- `db.rs`: новая функция `get_setting_str(key, default) → String`
+- `commands.rs`: функция `tray_labels(lang) → (&str, &str)` с переводами на 5 языков; команда `update_tray_language`
+- `main.rs` + `lib.rs`: при старте читается `ui.language` из SQLite → правильные надписи трея с первого запуска; добавлен явный ID `"main_tray"` для `TrayIconBuilder`; команда зарегистрирована в обоих файлах
+- `tauriCommands.ts`: обёртка `updateTrayLanguage(lang)`
+- `SettingsDialog.tsx`: вызов `updateTrayLanguage(lang)` при смене языка (рядом с `i18n.changeLanguage`)
+
+**Полная локализация вкладки "Агенты" (11.A)**
+- `zh.json`, `fr.json`, `kk.json`: добавлены `agentsProvider`, `agentsApiKey`, `agentsModel`, `agentsPanelPosition`, `agentsPositionRight`, `agentsPositionBottom`, `agentsTestConnection`, `agentsTestSuccess`, `agentsTestError`
+
+**GlobalSearch — поиск по wiki (11.B)**
+- `GlobalSearch.tsx`: новый компонент — модал Cmd+Shift+K, debounce 300ms → `searchWiki()`, результаты с тегами и типом контекста, клавиатурная навигация, при выборе переключает узел дерева + ставит нужную страницу активной
+- `App.tsx`: хоткей `Cmd+Shift+K`, рендер `{showGlobalSearch && <GlobalSearch ... />}`
+- 5 локалей: секция `globalSearch` с 9 ключами
+
+**Горячие клавиши вкладок терминала (11.C)**
+- `App.tsx`: `Cmd+W` (закрыть вкладку), `Cmd+Tab/Shift+Tab` (след/пред вкладка), `Cmd+1-9` (вкладка N), `Cmd+T` (новая сессия для выбранной консоли)
+- Все читают стейт через `useAppStore.getState()` без stale closure
+
+**Ollama — локальные модели (11.D)**
+- `aiProviders.ts`: `OllamaProvider` с OpenAI-совместимым API (`localhost:11434/v1/chat/completions`); тип `ProviderId` расширен до `"openai" | "anthropic" | "ollama"`
+- `SettingsDialog.tsx` (`AgentsTab`): при выборе Ollama — API-ключ скрыт, динамический fetch моделей из `localhost:11434/api/tags`, loading/error состояния, test connection через `/api/tags`
+- 5 локалей: ключи `agentsOllamaNote`, `agentsOllamaLoading`, `agentsOllamaNoModels`, `agentsOllamaFetchError`, `agentsTestTesting`
+
+---
+
+### 2026-04-07 — Этап 13: Drag-and-drop + выборочный экспорт + danger в EditConsole
+
+**Drag-and-drop консолей между проектами (13.3)**
+- `db.rs`: новая функция `move_console(id, target_project_id)` — `UPDATE consoles SET project_id = ?`
+- `commands.rs`: Tauri-команда `move_console`; зарегистрирована в `main.rs` и `lib.rs`
+- `tauriCommands.ts`: обёртка `moveConsole(id, targetProjectId)`
+- `appStore.ts`: экшен `moveConsoleToProject` — удаляет консоль из старого проекта, вставляет в новый
+- `TreePanel.tsx`: **mouse-event DnD** (HTML5 DnD API не работает в Tauri WebKit):
+  - `onMouseDown` → `window.addEventListener("mousemove"/"mouseup")`; drag активируется после сдвига ≥ 6px
+  - Ghost-лейбл через `createPortal(document.body)` следует за курсором; показывает имя консоли и имя проекта-цели
+  - Hit-test по `querySelectorAll("[data-nodetype='project']")` + `getBoundingClientRect`
+  - Подсветка проекта-цели: `ring-accent + bg-accent/5`
+  - При отпускании — нативный `ask()` с подтверждением, затем `moveConsole` + toast
+  - Ключевой баг (исправлен): дроп-хендлер вызывается ДО очистки `draggingConsoleRef.current`
+- Локализация: `moveConfirm`, `moveConfirmTitle`, `toastConsoleMoved`, `toastMoveError` во все 5 локалей
+
+**Выборочный экспорт по воркспейсам (13.1)**
+- `export.rs`: `build_export_payload` принимает `workspace_ids: Option<&[String]>` — при None экспортирует все
+- `commands.rs`: `export_data` — новый параметр `workspace_ids: Option<Vec<String>>`; обновлён в `main.rs` и `lib.rs`
+- `tauriCommands.ts`: `exportData(..., workspaceIds?: string[])`
+- `ExportDialog.tsx`: когда `includeTree = true` — показывает список воркспейсов с чекбоксами; если все выбраны — передаёт `undefined`; если часть — передаёт массив ID; кнопка заблокирована если ничего не выбрано
+- Локализация: ключи `export.selectWorkspaces`, `export.noWorkspaces` во все 5 локалей
+
+**Danger-метка в EditConsoleDialog (13.2)**
+- `EditConsoleDialog.tsx`: добавлены `isDanger`/`dangerLabel` state из `ConsoleConfig`; секция danger (чекбокс + поле метки); при сохранении вызывает `setNodeDanger` + обновляет store
+- `ContextMenu.tsx`: убран пункт "Пометить/Снять пометку" для console; danger-пометка полностью переходит в диалог настроек
+- `TreePanel.tsx`: убрана передача `onToggleDanger` в ContextMenu для console
+
+---
+
+### 2026-04-07 — Этап 12: Системный трей + автозапуск (macOS)
+
+**Автозапуск (12.1)**
+- `Cargo.toml`: `tauri-plugin-autostart = "2"`
+- `main.rs` / `lib.rs`: `.plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))` — создаёт/удаляет `~/Library/LaunchAgents/com.devconsole-hub.plist`
+- `commands.rs`: три команды — `enable_autostart`, `disable_autostart`, `get_autostart_status`; зарегистрированы в обоих файлах
+- `capabilities/default.json`: `autostart:allow-enable`, `autostart:allow-disable`, `autostart:allow-is-enabled`
+- `tauriCommands.ts`: обёртки `enableAutostart`, `disableAutostart`, `getAutostartStatus`
+- `SettingsDialog.tsx`: чекбокс "Запускать при входе в систему" в InterfaceTab; при изменении сразу вызывает команду
+- Локализация: `autostart`, `autostartNote`, `autostartError` во все 5 локалей
+
+**Системный трей (12.2)**
+- `Cargo.toml`: `tauri = { features = ["tray-icon"] }`
+- `main.rs`: `TrayIconBuilder::new()` в `setup()` — иконка `icon.png`, контекстное меню: "Открыть DevConsole Hub" + сепаратор + "Выход"
+- Клик по иконке трея → `window.show() + set_focus()`; "Выход" → `app.exit(0)`
+- `CloseRequested`: заменён старый диалог подтверждения — теперь читает `get_setting_bool("ui.closeToTray", true)`; если true → `window.hide()`, если false → `app.exit(0)`
+- `capabilities/default.json`: `core:tray:default`
+- `SettingsDialog.tsx` (InterfaceTab): переключатель "При закрытии окна" — "Свернуть в трей" / "Завершить программу"; пишет `ui.closeToTray` через `set_setting`
+- Локализация: `closeBehavior`, `closeToTray`, `closeAndQuit` во все 5 локалей
+
+---
 
 ### 2026-04-02 — Этап 10.12: SSH пароль + локализация экспорт/импорт + UX
 
@@ -280,10 +401,10 @@
 | Настройки (Settings + темы) | 100% |
 | Система тем (13 тем: 10 тёмных + 3 светлых + random) | 100% |
 | Шифрование БД (SQLCipher + compile-time key) | 100% |
-| AI панель (OpenAI + Anthropic, стриминг, сессии в SQLite) | 95% (Ollama, drag-and-drop позиции — Post-MVP) |
+| AI панель (OpenAI + Anthropic + Ollama, стриминг, сессии в SQLite) | 98% (drag-and-drop позиции — Post-MVP) |
 | Экспорт/импорт (.dchub, AES-256-GCM) | 100% |
-| Поиск и навигация (дерево + wiki) | 85% (GlobalSearch-модал отсутствует) |
-| Локализация | 95% (все 5 языков полные; zh/fr/kk теперь с AI-ключами и export/import секциями) |
+| Поиск и навигация (дерево + wiki + GlobalSearch Cmd+Shift+K) | 100% |
+| Локализация | 100% (все 5 языков полные; вкладка Агенты, GlobalSearch, Ollama — везде) |
 | Post-MVP функции | 0% |
 
-**Общая готовность: ~99%** (MVP + AI с историей + UX + экспорт/импорт + SSH пароль + полная локализация)
+**Общая готовность: ~99.5%** (MVP + AI (OpenAI/Anthropic/Ollama) + GlobalSearch + горячие клавиши вкладок + локализация трея + полная локализация 5 языков)

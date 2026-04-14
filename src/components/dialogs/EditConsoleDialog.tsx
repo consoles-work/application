@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../../stores/appStore";
-import { updateConsoleConfig } from "../../lib/tauriCommands";
+import { updateConsoleConfig, setNodeDanger } from "../../lib/tauriCommands";
 import type { ConsoleConfig } from "../../types";
 import { useTranslation } from "react-i18next";
 
@@ -28,6 +28,9 @@ export function EditConsoleDialog({ console_, onClose }: Props) {
   const [showPassphrase, setShowPassphrase] = useState(false);
   const [sshPassword, setSshPassword] = useState(console_.sshPassword || "");
   const [showSshPassword, setShowSshPassword] = useState(false);
+
+  const [isDanger, setIsDanger] = useState(console_.isDanger ?? false);
+  const [dangerLabel, setDangerLabel] = useState(console_.dangerLabel || "PRODUCTION");
 
   const [loading, setLoading] = useState(false);
   const { updateConsole: storeUpdateConsole, showToast } = useAppStore();
@@ -71,6 +74,8 @@ export function EditConsoleDialog({ console_, onClose }: Props) {
         sshPassphrase,
         sshPassword
       );
+      const finalLabel = isDanger ? (dangerLabel.trim() || "PRODUCTION") : (console_.dangerLabel || "PRODUCTION");
+      await setNodeDanger(console_.id, "console", isDanger, finalLabel);
       storeUpdateConsole(console_.id, {
         name: name.trim(),
         startupCmd: startupCmd.trim() || undefined,
@@ -82,6 +87,8 @@ export function EditConsoleDialog({ console_, onClose }: Props) {
         sshExtraArgs: sshExtraArgs.trim(),
         sshPassphrase,
         sshPassword,
+        isDanger,
+        dangerLabel: finalLabel,
       } as any);
       showToast("success", t("dialogs.toastConsoleUpdated", { name: name.trim() }));
       onClose();
@@ -222,6 +229,30 @@ export function EditConsoleDialog({ console_, onClose }: Props) {
               rows={3}
               className="w-full px-3 py-2 rounded-lg bg-surface-0 border border-border text-xs text-text-primary outline-none focus:border-accent font-mono resize-none"
             />
+          </div>
+
+          {/* Danger section */}
+          <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface-0 p-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isDanger}
+                onChange={(e) => setIsDanger(e.target.checked)}
+                className="accent-red-400"
+              />
+              <span className="text-xs text-text-primary">{t("dialogs.markAsDanger")}</span>
+            </label>
+            {isDanger && (
+              <div>
+                <div className="text-2xs text-text-muted mb-1">{t("dialogs.dangerLabel")}</div>
+                <input
+                  value={dangerLabel}
+                  onChange={(e) => setDangerLabel(e.target.value)}
+                  placeholder="PRODUCTION"
+                  className="w-full px-2.5 py-1.5 rounded-md bg-surface-2 border border-red-500/40 text-xs text-text-primary outline-none focus:border-red-400 font-mono"
+                />
+              </div>
+            )}
           </div>
 
           {/* Buttons */}

@@ -22,6 +22,7 @@ export function ImportDialog({ onClose }: Props) {
   const [needsPassword, setNeedsPassword] = useState(false);
   const [includeWiki, setIncludeWiki] = useState(true);
   const [includeAi, setIncludeAi] = useState(true);
+  const [includeSettings, setIncludeSettings] = useState(false);
   const [mode, setMode] = useState<"merge" | "replace">("merge");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -92,6 +93,7 @@ export function ImportDialog({ onClose }: Props) {
         true,
         includeWiki,
         includeAi,
+        includeSettings,
         mode
       );
 
@@ -221,6 +223,12 @@ export function ImportDialog({ onClose }: Props) {
                   {preview.aiSessionCount} / {preview.aiMessageCount}
                 </span>
               </div>
+              {preview.settingsCount > 0 && (
+                <div className="flex justify-between text-text-secondary">
+                  <span>{t("import.statsSettings")}</span>
+                  <span className="text-text-primary font-mono">{preview.settingsCount}</span>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -248,6 +256,17 @@ export function ImportDialog({ onClose }: Props) {
                 />
                 <span className="text-xs text-text-primary">{t("export.includeAi")}</span>
               </label>
+              {preview.settingsCount > 0 && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeSettings}
+                    onChange={(e) => setIncludeSettings(e.target.checked)}
+                    className="accent-accent cursor-pointer"
+                  />
+                  <span className="text-xs text-text-primary">{t("import.includeSettings")}</span>
+                </label>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">
