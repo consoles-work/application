@@ -285,5 +285,13 @@
     "toastLoadError": "Data load error: {{error}}",
     "quitTitle": "Quit Application",
     "quitMessage": "Are you sure you want to quit?"
+  },
+  "terminalContextMenu": {
+    "copy": "Copy",
+    "paste": "Paste",
+    "selectAll": "Select all",
+    "clearLine": "Clear line",
+    "clearScreen": "Clear screen",
+    "reset": "Reset terminal"
   }
 }

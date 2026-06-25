@@ -285,5 +285,13 @@
     "toastLoadError": "Erreur de chargement des données: {{error}}",
     "quitTitle": "Quitter l'application",
     "quitMessage": "Voulez-vous vraiment quitter ?"
+  },
+  "terminalContextMenu": {
+    "copy": "Copier",
+    "paste": "Coller",
+    "selectAll": "Tout sélectionner",
+    "clearLine": "Effacer la ligne",
+    "clearScreen": "Effacer l’écran",
+    "reset": "Réinitialiser le terminal"
   }
 }

@@ -1,6 +1,6 @@
 # DevConsole Hub — Статус проекта
 
-> Последнее обновление: 2026-04-13 (Этап 16 — переподключение консоли, убран native contextmenu, фикс fit терминала)
+> Последнее обновление: 2026-06-25 (Этап 17 — контекстное меню терминала по ПКМ + восстановление залипших ANSI-цветов)
 
 ---
 
@@ -24,7 +24,7 @@
 | `src/lib/themes.ts` | ✅ Готово | 13 тем (10 тёмных + 3 светлых) с UI-цветами и полной xterm-палитрой, resolveThemeId, applyTheme |
 | `src/components/Layout.tsx` | ✅ Готово | Четырёхпанельный layout с resizable сплиттерами + кнопка Settings в titlebar |
 | `src/components/TreePanel.tsx` | ✅ Готово | Дерево + раскрытие + контекстное меню + inline rename (F2) + danger/ssh badge + клонирование + поиск + кнопки Export/Import + **drag-and-drop консолей (mouse-event, ghost-портал, подтверждение)** |
-| `src/components/TerminalPanel.tsx` | ✅ Готово | xterm.js + PTY + danger-баннер + SSH + startup + динамические настройки; индикатор-точка при выделении; **`reconnectKey` в key-пропе; повторные fit() на 100ms/400ms при открытии и 200ms при смене вкладки** |
+| `src/components/TerminalPanel.tsx` | ✅ Готово | xterm.js + PTY + danger-баннер + SSH + startup + динамические настройки; индикатор-точка при выделении; `reconnectKey` в key-пропе; повторные fit() на 100ms/400ms при открытии и 200ms при смене вкладки; **контекстное меню по ПКМ (`TerminalContextMenu`): Копировать / Вставить / Выделить всё / Очистить строку / Очистить экран / Сбросить терминал; горячие клавиши Cmd+C/Cmd+V; буфер через `navigator.clipboard`** |
 | `src/components/WikiPanel.tsx` | ✅ Готово | TipTap редактор + привязка к узлу + автосохранение debounce + теги + поиск по wiki (FTS5) |
 | `src/components/WikiToolbar.tsx` | ✅ Готово | H1/H2/H3, Bold/Italic/Code, списки, TaskList, CodeBlock, HR, Undo/Redo |
 | `src/components/CommandPalette.tsx` | ✅ Готово | Fuzzy-поиск по дереву, ↑↓/Enter/Esc, danger badge |
@@ -101,6 +101,29 @@
 ---
 
 ## История изменений
+
+### 2026-06-25 — Этап 17: Контекстное меню терминала + восстановление цветов
+
+**Контекстное меню по ПКМ в терминале**
+- `TerminalPanel.tsx`: новый компонент `TerminalContextMenu` (через `createPortal`, в стиле `ContextMenu.tsx`)
+- `TerminalView`: обработчик `onContextMenu` на контейнере открывает меню по координатам курсора; локальное состояние `ctxMenu`
+- Пункты меню:
+  - **Копировать** — выделение → буфер (`navigator.clipboard.writeText`); неактивен без выделения
+  - **Вставить** — буфер → PTY (`navigator.clipboard.readText` → `writeToPty`)
+  - **Выделить всё** — `term.selectAll()`
+  - **Очистить строку** — шлёт `Ctrl+E`+`Ctrl+U` (`\x05\x15`), чистит всю строку ввода независимо от позиции курсора
+  - **Очистить экран** — `term.clear()` (оставляет текущее приглашение)
+  - **Сбросить терминал** — `term.reset()` + `Ctrl+L` (`\x0c`) шеллу + повторный `fit()`
+- Горячие клавиши прямо в терминале (`attachCustomKeyEventHandler`): **Cmd+C** (при выделении) и **Cmd+V**. Привязаны только к `metaKey`, чтобы не перехватывать `Ctrl+C`/SIGINT
+- Буфер обмена реализован через браузерный `navigator.clipboard` (без отдельного Tauri-плагина). Если `readText` окажется заблокирован в WKWebView — fallback на `tauri-plugin-clipboard-manager`
+- Глобальный `preventDefault` на `contextmenu` в `App.tsx` не мешает: он лишь блокирует нативное меню WebKit, React-обработчик `onContextMenu` срабатывает штатно
+- Локализация на 5 языков: секция `terminalContextMenu` (copy/paste/selectAll/clearLine/clearScreen/reset)
+
+**Восстановление залипших ANSI/SGR-цветов**
+- Проблема: команда выводит escape для цвета и не сбрасывает его (`\x1b[0m`) или прерывается — приглашение шелла и дальнейший вывод наследуют «грязный» цвет (вплоть до невидимого текста)
+- Решение в меню: **Очистить экран** и **Сбросить терминал** — `term.reset()` сбрасывает внутреннее состояние xterm (включая залипший SGR), затем `Ctrl+L` заставляет шелл перерисовать чистое приглашение
+
+---
 
 ### 2026-04-13 — Этап 16: UX-фиксы
 

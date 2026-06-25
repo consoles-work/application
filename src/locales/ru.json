@@ -285,5 +285,13 @@
     "toastLoadError": "Ошибка загрузки данных: {{error}}",
     "quitTitle": "Выход из приложения",
     "quitMessage": "Вы уверены, что хотите выйти?"
+  },
+  "terminalContextMenu": {
+    "copy": "Копировать",
+    "paste": "Вставить",
+    "selectAll": "Выделить всё",
+    "clearLine": "Очистить строку",
+    "clearScreen": "Очистить экран",
+    "reset": "Сбросить терминал"
   }
 }

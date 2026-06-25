@@ -285,5 +285,13 @@
     "toastLoadError": "Деректерді жүктеу қатесі: {{error}}",
     "quitTitle": "Қолданбадан шығу",
     "quitMessage": "Шынымен шығасыз ба?"
+  },
+  "terminalContextMenu": {
+    "copy": "Көшіру",
+    "paste": "Қою",
+    "selectAll": "Барлығын таңдау",
+    "clearLine": "Жолды тазалау",
+    "clearScreen": "Экранды тазалау",
+    "reset": "Терминалды қалпына келтіру"
   }
 }

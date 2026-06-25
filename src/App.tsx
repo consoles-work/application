@@ -70,6 +70,28 @@ function App() {
     return () => document.removeEventListener("contextmenu", handler);
   }, []);
 
+  // Отключаем автокоррекцию, автозаглавные и проверку орфографии на всех input/textarea
+  useEffect(() => {
+    const disable = (el: Element) => {
+      el.setAttribute("autocorrect", "off");
+      el.setAttribute("autocapitalize", "none");
+      el.setAttribute("spellcheck", "false");
+    };
+    document.querySelectorAll("input, textarea").forEach(disable);
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (node.nodeType !== Node.ELEMENT_NODE) continue;
+          const el = node as Element;
+          if (el.matches("input, textarea")) disable(el);
+          el.querySelectorAll("input, textarea").forEach(disable);
+        }
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+
   // Глобальные горячие клавиши
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

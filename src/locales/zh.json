@@ -285,5 +285,13 @@
     "toastLoadError": "加载数据失败: {{error}}",
     "quitTitle": "退出应用",
     "quitMessage": "确定要退出吗？"
+  },
+  "terminalContextMenu": {
+    "copy": "复制",
+    "paste": "粘贴",
+    "selectAll": "全选",
+    "clearLine": "清除行",
+    "clearScreen": "清屏",
+    "reset": "重置终端"
   }
 }

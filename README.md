@@ -251,6 +251,7 @@ src-tauri/target/release/bundle/
 
 ```bash
 docker volume rm devconsole-hub-cargo-registry devconsole-hub-cargo-git devconsole-hub-target
+cargo clean 2>&1 && echo "done"
 ```
 
 ---
