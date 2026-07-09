@@ -205,19 +205,16 @@ function TerminalView({
       useAppStore.getState().setTerminalSelection(term.getSelection());
     });
 
-    // Cmd+C (при наличии выделения) — копировать, Cmd+V — вставить.
+    // Cmd+C (при наличии выделения) — копировать.
+    // Вставку (Cmd/Ctrl+V) НЕ перехватываем: xterm обрабатывает системное
+    // событие `paste` сам (через скрытый textarea), с поддержкой bracketed-paste.
+    // Дублировать её ручным readText→writeToPty нельзя — будет двойная вставка.
     // Только metaKey, чтобы не перехватывать Ctrl+C (SIGINT) в шелле.
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== "keydown" || !e.metaKey) return true;
       if (e.key === "c" && term.hasSelection()) {
         const sel = term.getSelection();
         if (sel) navigator.clipboard.writeText(sel).catch(() => {});
-        return false;
-      }
-      if (e.key === "v") {
-        navigator.clipboard.readText().then((text) => {
-          if (text && ptyIdRef.current !== null) writeToPty(ptyIdRef.current, text);
-        }).catch(() => {});
         return false;
       }
       return true;
@@ -346,7 +343,7 @@ function TerminalView({
   const menuPaste = async () => {
     try {
       const text = await navigator.clipboard.readText();
-      if (text && ptyIdRef.current !== null) writeToPty(ptyIdRef.current, text);
+      if (text) termRef.current?.paste(text);
     } catch {
       /* буфер недоступен */
     }

@@ -114,8 +114,9 @@
   - **Очистить строку** — шлёт `Ctrl+E`+`Ctrl+U` (`\x05\x15`), чистит всю строку ввода независимо от позиции курсора
   - **Очистить экран** — `term.clear()` (оставляет текущее приглашение)
   - **Сбросить терминал** — `term.reset()` + `Ctrl+L` (`\x0c`) шеллу + повторный `fit()`
-- Горячие клавиши прямо в терминале (`attachCustomKeyEventHandler`): **Cmd+C** (при выделении) и **Cmd+V**. Привязаны только к `metaKey`, чтобы не перехватывать `Ctrl+C`/SIGINT
-- Буфер обмена реализован через браузерный `navigator.clipboard` (без отдельного Tauri-плагина). Если `readText` окажется заблокирован в WKWebView — fallback на `tauri-plugin-clipboard-manager`
+- Горячая клавиша **Cmd+C** (при выделении) через `attachCustomKeyEventHandler` (только `metaKey`, чтобы не перехватывать `Ctrl+C`/SIGINT). Копирование — `navigator.clipboard.writeText`
+- **Вставка Cmd/Ctrl+V НЕ перехватывается** — её обрабатывает сам xterm через системное событие `paste` (с поддержкой bracketed-paste). Ручной `readText→writeToPty` убран: он давал двойную вставку (xterm вставлял ещё раз) и провоцировал системную плашку «paste» в WKWebView
+- Вставка из контекстного меню — `navigator.clipboard.readText()` → `term.paste(text)` (один проход, корректный bracketed-paste)
 - Глобальный `preventDefault` на `contextmenu` в `App.tsx` не мешает: он лишь блокирует нативное меню WebKit, React-обработчик `onContextMenu` срабатывает штатно
 - Локализация на 5 языков: секция `terminalContextMenu` (copy/paste/selectAll/clearLine/clearScreen/reset)
 
