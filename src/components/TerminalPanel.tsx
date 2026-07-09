@@ -239,7 +239,13 @@ function TerminalView({
       const keyPath = consoleConfig.sshKeyPath || "";
       const extraArgs = consoleConfig.sshExtraArgs || "";
 
-      let sshCmd = "ssh";
+      // accept-new: автоматически принимаем ключ нового (неизвестного) хоста и
+      // добавляем его в known_hosts без интерактивного вопроса. Без этого при первом
+      // подключении ssh спрашивает "Are you sure you want to continue connecting?",
+      // а с SSH_ASKPASS_REQUIRE=force (когда задан пароль) этот вопрос уходит в
+      // askpass-скрипт, получает пароль вместо "yes" и соединение молча обрывается.
+      // Если ключ известного хоста изменился — ssh всё равно откажет (защита от MITM).
+      let sshCmd = "ssh -o StrictHostKeyChecking=accept-new";
       if (port !== 22) sshCmd += ` -p ${port}`;
       if (keyPath) sshCmd += ` -i "${keyPath}"`;
       if (extraArgs) sshCmd += ` ${extraArgs}`;
