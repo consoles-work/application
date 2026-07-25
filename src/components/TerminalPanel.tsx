@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { listen } from "@tauri-apps/api/event";
+import { StickyNote, ChevronDown, ChevronRight } from "lucide-react";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../stores/appStore";
 import { spawnPty, writeToPty, resizePty, killPty } from "../lib/tauriCommands";
@@ -117,6 +118,7 @@ export function TerminalPanel() {
               isActive={session.id === activeSessionId}
               isDanger={con?.isDanger ?? false}
               dangerLabel={con?.dangerLabel ?? "DANGER"}
+              note={con?.note?.trim() ?? ""}
             />
           );
         })}
@@ -144,11 +146,13 @@ function TerminalView({
   isActive,
   isDanger,
   dangerLabel,
+  note,
 }: {
   session: TerminalSession;
   isActive: boolean;
   isDanger: boolean;
   dangerLabel: string;
+  note: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -158,6 +162,7 @@ function TerminalView({
 
   const { settings } = useAppStore();
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  const [noteExpanded, setNoteExpanded] = useState(false);
 
   // ── Применение настроек к уже запущенному терминалу ──
   useEffect(() => {
@@ -398,6 +403,28 @@ function TerminalView({
           <span className="text-red-300 font-bold text-xs tracking-widest uppercase">{dangerLabel}</span>
           <span className="text-red-400/50 text-xs">—</span>
           <DangerWarning label={dangerLabel} />
+        </div>
+      )}
+      {/* Note bar — клик разворачивает многострочную заметку целиком */}
+      {note && (
+        <div
+          className="shrink-0 flex items-start gap-2 px-3 py-1 bg-surface-1 border-b border-border cursor-pointer hover:bg-surface-2"
+          onClick={() => setNoteExpanded((v) => !v)}
+          title={noteExpanded ? undefined : note}
+        >
+          <StickyNote size={12} className="text-text-muted shrink-0 mt-0.5" />
+          <span
+            className={`flex-1 text-2xs text-text-secondary min-w-0 ${
+              noteExpanded ? "whitespace-pre-wrap max-h-24 overflow-y-auto" : "truncate"
+            }`}
+          >
+            {note}
+          </span>
+          {noteExpanded ? (
+            <ChevronDown size={12} className="text-text-muted shrink-0 mt-0.5" />
+          ) : (
+            <ChevronRight size={12} className="text-text-muted shrink-0 mt-0.5" />
+          )}
         </div>
       )}
       {/* Terminal container с красноватым фоном для опасных */}

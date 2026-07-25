@@ -50,6 +50,7 @@ export interface ConsoleConfig {
   sshExtraArgs: string;
   sshPassphrase: string;
   sshPassword: string;
+  note?: string; // произвольная заметка к подключению
 }
 
 // ── Wiki ──

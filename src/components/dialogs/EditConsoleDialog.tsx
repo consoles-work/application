@@ -17,6 +17,7 @@ export function EditConsoleDialog({ console_, onClose }: Props) {
     (console_.connectionType as "local" | "ssh") || "local"
   );
   const [startupCmd, setStartupCmd] = useState(console_.startupCmd || "");
+  const [note, setNote] = useState(console_.note || "");
 
   // SSH fields
   const [sshHost, setSshHost] = useState(console_.sshHost || "");
@@ -72,7 +73,8 @@ export function EditConsoleDialog({ console_, onClose }: Props) {
         sshKeyPath.trim(),
         sshExtraArgs.trim(),
         sshPassphrase,
-        sshPassword
+        sshPassword,
+        note
       );
       const finalLabel = isDanger ? (dangerLabel.trim() || "PRODUCTION") : (console_.dangerLabel || "PRODUCTION");
       await setNodeDanger(console_.id, "console", isDanger, finalLabel);
@@ -87,6 +89,7 @@ export function EditConsoleDialog({ console_, onClose }: Props) {
         sshExtraArgs: sshExtraArgs.trim(),
         sshPassphrase,
         sshPassword,
+        note,
         isDanger,
         dangerLabel: finalLabel,
       } as any);
@@ -228,6 +231,20 @@ export function EditConsoleDialog({ console_, onClose }: Props) {
               placeholder={connectionType === "ssh" ? t("dialogs.startupPlaceholderSsh") : t("dialogs.startupPlaceholderLocal")}
               rows={3}
               className="w-full px-3 py-2 rounded-lg bg-surface-0 border border-border text-xs text-text-primary outline-none focus:border-accent font-mono resize-none"
+            />
+          </div>
+
+          {/* Note */}
+          <div>
+            <div className="text-2xs text-text-muted mb-1">
+              {t("dialogs.note")} <span className="opacity-60">{t("dialogs.noteHint")}</span>
+            </div>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={t("dialogs.notePlaceholder")}
+              rows={3}
+              className="w-full px-3 py-2 rounded-lg bg-surface-0 border border-border text-xs text-text-primary outline-none focus:border-accent resize-y"
             />
           </div>
 

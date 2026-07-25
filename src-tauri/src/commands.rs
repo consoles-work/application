@@ -92,6 +92,9 @@ pub struct ConsoleConfig {
     pub ssh_extra_args: String,
     pub ssh_passphrase: String,
     pub ssh_password: String,
+    /// Произвольная заметка к подключению
+    #[serde(default)]
+    pub note: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -216,6 +219,7 @@ pub fn create_console(
     ssh_extra_args: Option<String>,
     ssh_passphrase: Option<String>,
     ssh_password: Option<String>,
+    note: Option<String>,
 ) -> Result<ConsoleConfig, String> {
     let id = uuid::Uuid::new_v4().to_string();
     let console = ConsoleConfig {
@@ -237,6 +241,7 @@ pub fn create_console(
         ssh_extra_args: ssh_extra_args.unwrap_or_default(),
         ssh_passphrase: ssh_passphrase.unwrap_or_default(),
         ssh_password: ssh_password.unwrap_or_default(),
+        note: note.unwrap_or_default(),
     };
 
     crate::db::save_console(&console)?;
@@ -263,12 +268,14 @@ pub fn update_console_config(
     ssh_extra_args: String,
     ssh_passphrase: String,
     ssh_password: String,
+    note: Option<String>,
 ) -> Result<(), String> {
     crate::db::update_console_config_fields(
         &id, &name, startup_cmd.as_deref(),
         &connection_type, &ssh_host, ssh_port,
         &ssh_user, &ssh_key_path, &ssh_extra_args,
         &ssh_passphrase, &ssh_password,
+        note.as_deref().unwrap_or_default(),
     )
 }
 

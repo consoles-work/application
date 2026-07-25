@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { ChevronRight, ChevronDown, Search, X, Upload, Download } from "lucide-react";
+import { ChevronRight, ChevronDown, Search, X, Upload, Download, StickyNote } from "lucide-react";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../stores/appStore";
 import { updateWorkspace, updateProject, updateConsole, setNodeDanger, cloneConsole, cloneProject, moveConsole } from "../lib/tauriCommands";
@@ -471,6 +471,7 @@ export function TreePanel() {
               } ${node.type === "console" && !isDragging ? "cursor-grab" : ""
               } ${isDragging && draggingConsoleRef.current?.id === node.id ? "opacity-40" : ""}`}
               style={{ paddingLeft: `${12 + node.depth * 16}px` }}
+              title={(node.data as { note?: string }).note?.trim() || undefined}
               onClick={node.type !== "console" ? () => handleClick(node) : undefined}
               onDoubleClick={() => { if (!isDragging) handleDoubleClick(node); }}
               onContextMenu={(e) => handleContextMenu(e, node)}
@@ -519,6 +520,11 @@ export function TreePanel() {
                 />
               ) : (
                 <span className="truncate flex-1 text-xs">{node.name}</span>
+              )}
+
+              {/* Индикатор заметки — сам текст показывается в тултипе всей строки */}
+              {(node.data as { note?: string }).note?.trim() && (
+                <StickyNote size={11} className="shrink-0 text-text-muted" />
               )}
 
               {/* Danger badge */}

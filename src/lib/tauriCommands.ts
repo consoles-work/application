@@ -90,7 +90,8 @@ export async function createConsole(
   sshKeyPath?: string,
   sshExtraArgs?: string,
   sshPassphrase?: string,
-  sshPassword?: string
+  sshPassword?: string,
+  note?: string
 ): Promise<ConsoleConfig> {
   return invoke<ConsoleConfig>("create_console", {
     projectId,
@@ -104,6 +105,7 @@ export async function createConsole(
     sshExtraArgs,
     sshPassphrase,
     sshPassword,
+    note,
   });
 }
 
@@ -122,7 +124,8 @@ export async function updateConsoleConfig(
   sshKeyPath: string,
   sshExtraArgs: string,
   sshPassphrase: string,
-  sshPassword: string
+  sshPassword: string,
+  note: string
 ): Promise<void> {
   return invoke("update_console_config", {
     id,
@@ -136,6 +139,7 @@ export async function updateConsoleConfig(
     sshExtraArgs,
     sshPassphrase,
     sshPassword,
+    note,
   });
 }
 

@@ -14,6 +14,7 @@ export function CreateConsoleDialog({ projectId, onClose }: Props) {
   const [name, setName] = useState("");
   const [connectionType, setConnectionType] = useState<"local" | "ssh">("ssh");
   const [startupCmd, setStartupCmd] = useState("");
+  const [note, setNote] = useState("");
 
   // SSH fields
   const [sshHost, setSshHost] = useState("");
@@ -66,7 +67,8 @@ export function CreateConsoleDialog({ projectId, onClose }: Props) {
         sshKeyPath.trim(),
         sshExtraArgs.trim(),
         sshPassphrase,
-        sshPassword
+        sshPassword,
+        note
       );
       const finalLabel = dangerLabel.trim() || "PRODUCTION";
       if (isDanger) {
@@ -84,6 +86,7 @@ export function CreateConsoleDialog({ projectId, onClose }: Props) {
         sshExtraArgs: sshExtraArgs.trim(),
         sshPassphrase,
         sshPassword,
+        note,
       });
       showToast("success", t("dialogs.toastConsoleCreated", { name: con.name }));
       onClose();
@@ -224,6 +227,20 @@ export function CreateConsoleDialog({ projectId, onClose }: Props) {
               placeholder={connectionType === "ssh" ? t("dialogs.startupPlaceholderSsh") : t("dialogs.startupPlaceholderLocal")}
               rows={3}
               className="w-full px-3 py-2 rounded-lg bg-surface-0 border border-border text-xs text-text-primary outline-none focus:border-accent font-mono resize-none"
+            />
+          </div>
+
+          {/* Note */}
+          <div>
+            <div className="text-2xs text-text-muted mb-1">
+              {t("dialogs.note")} <span className="opacity-60">{t("dialogs.noteHint")}</span>
+            </div>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={t("dialogs.notePlaceholder")}
+              rows={3}
+              className="w-full px-3 py-2 rounded-lg bg-surface-0 border border-border text-xs text-text-primary outline-none focus:border-accent resize-y"
             />
           </div>
 
