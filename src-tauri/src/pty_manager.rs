@@ -37,6 +37,41 @@ struct PtySession {
     master: Box<dyn portable_pty::MasterPty + Send>,
 }
 
+/// Достаёт из накопительного буфера всё, что уже является валидным UTF-8,
+/// оставляя в нём незавершённый хвост (макс. 3 байта) до следующего чтения.
+///
+/// Без этого многобайтовый символ, разрезанный границей чтения PTY,
+/// превращался бы в `U+FFFD` (`�`) — те самые «вопросики» в выводе.
+fn drain_utf8(pending: &mut Vec<u8>) -> String {
+    let mut out = String::new();
+    loop {
+        match std::str::from_utf8(pending) {
+            Ok(s) => {
+                out.push_str(s);
+                pending.clear();
+                return out;
+            }
+            Err(e) => {
+                let valid = e.valid_up_to();
+                // SAFETY: from_utf8 подтвердил валидность префикса [..valid]
+                out.push_str(unsafe { std::str::from_utf8_unchecked(&pending[..valid]) });
+                match e.error_len() {
+                    // Действительно битые байты (не UTF-8 вообще) — заменяем и идём дальше
+                    Some(len) => {
+                        out.push('\u{FFFD}');
+                        pending.drain(..valid + len);
+                    }
+                    // Последовательность оборвана концом буфера — ждём продолжения
+                    None => {
+                        pending.drain(..valid);
+                        return out;
+                    }
+                }
+            }
+        }
+    }
+}
+
 fn get_sessions() -> &'static Arc<Mutex<HashMap<u32, PtySession>>> {
     SESSIONS.get().expect("PTY manager not initialized")
 }
@@ -145,7 +180,15 @@ pub fn spawn(
     // переменные LANG/LC_CTYPE могут отсутствовать → кириллица показывается кракозябрами.
     // Сначала берём значение из системного окружения, иначе ставим UTF-8 по умолчанию.
     if !env_vars.contains_key("LANG") {
-        let lang = std::env::var("LANG").unwrap_or_else(|_| "en_US.UTF-8".to_string());
+        // Значение из системы годится, только если оно само UTF-8:
+        // при LANG=C/POSIX/en_US утилиты (ls, git, mc) выводят '?' вместо не-ASCII.
+        let lang = std::env::var("LANG")
+            .ok()
+            .filter(|v| {
+                let v = v.to_ascii_lowercase();
+                v.contains("utf-8") || v.contains("utf8")
+            })
+            .unwrap_or_else(|| "en_US.UTF-8".to_string());
         cmd.env("LANG", lang);
     }
     if !env_vars.contains_key("LC_CTYPE") {
@@ -191,15 +234,25 @@ pub fn spawn(
     let sessions = get_sessions().clone();
     std::thread::spawn(move || {
         let mut buf = [0u8; 4096];
+        // Незавершённый UTF-8-хвост, перенесённый с предыдущего чтения
+        let mut pending: Vec<u8> = Vec::with_capacity(4096 + 4);
         loop {
             match reader.read(&mut buf) {
                 Ok(0) => break, // PTY закрыт
                 Ok(n) => {
-                    let data = String::from_utf8_lossy(&buf[..n]).to_string();
-                    app_handle.emit("pty-output", PtyOutput { pty_id: id, data }).ok();
+                    pending.extend_from_slice(&buf[..n]);
+                    let data = drain_utf8(&mut pending);
+                    if !data.is_empty() {
+                        app_handle.emit("pty-output", PtyOutput { pty_id: id, data }).ok();
+                    }
                 }
                 Err(_) => break,
             }
+        }
+        // Хвост, который так и не дождался продолжения, — отдаём как есть
+        if !pending.is_empty() {
+            let data = String::from_utf8_lossy(&pending).into_owned();
+            app_handle.emit("pty-output", PtyOutput { pty_id: id, data }).ok();
         }
         // PTY завершился — убираем сессию
         if let Ok(mut map) = sessions.lock() {

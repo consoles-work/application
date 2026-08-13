@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { listen } from "@tauri-apps/api/event";
 import { StickyNote, ChevronDown, ChevronRight } from "lucide-react";
 import { ask } from "@tauri-apps/plugin-dialog";
@@ -199,6 +200,13 @@ function TerminalView({
 
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
+
+    // Unicode 11: корректная ширина emoji и CJK. Без него xterm считает их
+    // по таблицам Unicode 6 → рамки, таблицы и псевдографика съезжают на строку.
+    const unicode11 = new Unicode11Addon();
+    term.loadAddon(unicode11);
+    term.unicode.activeVersion = "11";
+
     term.open(containerRef.current);
     fitAddon.fit();
 
