@@ -579,3 +579,38 @@ pub fn update_tray_language(app: tauri::AppHandle, lang: String) -> Result<(), S
     }
     Ok(())
 }
+
+// ══════════════════════════════════════════════
+// Команды: локальный AI-движок (Claude Code CLI)
+// ══════════════════════════════════════════════
+
+/// Найти бинарь `claude` в системе. Возвращает путь или null.
+#[tauri::command]
+pub fn ai_detect_bin() -> Option<String> {
+    crate::ai_local::detect_bin()
+}
+
+/// Проверить бинарь: путь + `--version`. Токены не расходуются.
+#[tauri::command]
+pub fn ai_check(bin: Option<String>) -> Result<String, String> {
+    crate::ai_local::check(bin)
+}
+
+/// Запустить генерацию. Возвращается сразу — ответ приходит событиями
+/// `ai://chunk`, `ai://done`, `ai://error` с полем `sessionId`.
+#[tauri::command]
+pub fn ai_run(
+    app: tauri::AppHandle,
+    session_id: String,
+    model: String,
+    system: String,
+    prompt: String,
+) -> Result<(), String> {
+    crate::ai_local::run(app, session_id, model, system, prompt)
+}
+
+/// Прервать генерацию: убивает процесс сессии.
+#[tauri::command]
+pub fn ai_cancel(session_id: String) -> Result<(), String> {
+    crate::ai_local::cancel(&session_id)
+}

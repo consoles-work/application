@@ -21,6 +21,7 @@ import {
   type ChatMessage,
 } from "../lib/aiProviders";
 import { ask } from "@tauri-apps/plugin-dialog";
+import { listen } from "@tauri-apps/api/event";
 import {
   setSetting,
   createAiSession,
@@ -30,6 +31,8 @@ import {
   saveAiMessage,
   updateAiMessage,
   clearAiSession,
+  aiRun,
+  aiCancel,
 } from "../lib/tauriCommands";
 import type { AiMessage } from "../types";
 
@@ -39,9 +42,57 @@ let _abortController: AbortController | null = null;
 let _streamingMsgId: string | null = null;
 // ID последней загруженной сессии — предотвращает перезагрузку из БД при ремонте компонента
 let _loadedSessionId: string | null = null;
+// ID чат-сессии, которую сейчас стримит локальный CLI (фильтр событий ai://*)
+let _cliSessionId: string | null = null;
+
+/**
+ * Локальный CLI получает один промпт, а не массив сообщений, — историю
+ * приходится укладывать в текст. Одиночный вопрос отправляем как есть.
+ */
+function buildCliPrompt(history: ChatMessage[]): string {
+  if (history.length <= 1) return history[history.length - 1]?.content ?? "";
+  const transcript = history
+    .map((m) => (m.role === "user" ? `## Пользователь\n${m.content}` : `## Ассистент\n${m.content}`))
+    .join("\n\n");
+  return `Ниже — история диалога. Ответь на последнее сообщение пользователя.\n\n${transcript}`;
+}
 
 function uuid() {
   return crypto.randomUUID();
+}
+
+/**
+ * Дописывает последнее сообщение ассистента в БД и снимает флаг стриминга.
+ * Общая для HTTP-провайдеров (finally в handleSend) и для локального CLI
+ * (обработчик ai://done) — сохранение истории в обоих случаях ведёт фронт.
+ */
+async function finalizeAssistantMessage(sessionId: string) {
+  const state = useAppStore.getState();
+  const finalMessages = state.aiMessages;
+  const finalAssistant = finalMessages[finalMessages.length - 1];
+  if (finalAssistant?.role === "assistant" && _streamingMsgId) {
+    await updateAiMessage(_streamingMsgId, finalAssistant.content).catch(() => {});
+    // Автозаголовок если это первый ответ
+    const session = state.aiSessions.find((s) => s.id === sessionId);
+    if (finalMessages.length === 2 && session?.title === "Новый чат") {
+      const title = finalAssistant.content.trim().slice(0, 40).replace(/\n/g, " ") || "Чат";
+      await renameAiSession(sessionId, title).catch(() => {});
+      state.updateAiSessionTitle(sessionId, title);
+    }
+  }
+  _streamingMsgId = null;
+  state.setAiIsStreaming(false);
+}
+
+/** Дописать текст к последнему сообщению ассистента в UI */
+function appendToAssistant(chunk: string) {
+  useAppStore.getState().setAiMessages((m: ChatMessage[]) => {
+    const last = m[m.length - 1];
+    if (last?.role === "assistant") {
+      return [...m.slice(0, -1), { ...last, content: last.content + chunk }];
+    }
+    return m;
+  });
 }
 
 export function AiPanel() {
@@ -106,9 +157,73 @@ export function AiPanel() {
     if (renamingId) renameInputRef.current?.focus();
   }, [renamingId]);
 
+  // ── События локального движка (claude CLI) ──
+  // Подписка ставится один раз: слушатели фильтруют по _cliSessionId, поэтому
+  // пересоздавать их на каждую отправку не нужно (иначе чанки задвоятся).
+  useEffect(() => {
+    const unlisteners: Array<() => void> = [];
+    let disposed = false;
+    const add = (p: Promise<() => void>) =>
+      p.then((u) => (disposed ? u() : unlisteners.push(u))).catch(() => {});
+
+    add(
+      listen<{ sessionId: string; text: string }>("ai://chunk", (e) => {
+        if (e.payload.sessionId === _cliSessionId) appendToAssistant(e.payload.text);
+      })
+    );
+    add(
+      listen<{ sessionId: string; content: string; ok: boolean }>("ai://done", async (e) => {
+        if (e.payload.sessionId !== _cliSessionId) return;
+        const sid = _cliSessionId;
+        _cliSessionId = null;
+        // Финальный текст берём из payload: ai://done может опередить
+        // отрисовку последнего чанка. Пустой content бывает при отмене
+        // до первого токена — тогда оставляем накопленное.
+        if (e.payload.content.trim()) {
+          useAppStore.getState().setAiMessages((m) => {
+            const last = m[m.length - 1];
+            if (last?.role === "assistant") {
+              return [...m.slice(0, -1), { ...last, content: e.payload.content }];
+            }
+            return m;
+          });
+        }
+        await finalizeAssistantMessage(sid);
+      })
+    );
+    add(
+      listen<{ sessionId: string; message: string }>("ai://error", async (e) => {
+        if (e.payload.sessionId !== _cliSessionId) return;
+        const sid = _cliSessionId;
+        _cliSessionId = null;
+        useAppStore.getState().setAiMessages((m) => {
+          const last = m[m.length - 1];
+          if (last?.role === "assistant" && last.content === "") {
+            return [...m.slice(0, -1), { role: "assistant", content: `Ошибка: ${e.payload.message.slice(0, 500)}` }];
+          }
+          return m;
+        });
+        await finalizeAssistantMessage(sid);
+      })
+    );
+
+    return () => {
+      disposed = true;
+      unlisteners.forEach((u) => u());
+    };
+  }, []);
+
   const provider = getProvider(settings["ai.provider"] ?? "openai");
   const apiKey = settings[`ai.apiKey.${settings["ai.provider"] ?? "openai"}`] ?? settings["ai.apiKey"] ?? "";
-  const model = settings["ai.model"] ?? provider.defaultModel;
+  // ai.model один на все провайдеры и не сбрасывается при их переключении.
+  // Для CLI чужой алиас (напр. "gpt-4o") — жёсткая ошибка запуска, поэтому
+  // здесь откатываемся на модель по умолчанию. У HTTP-провайдеров имя модели
+  // может быть произвольным (кастомные деплойменты), их не трогаем.
+  const savedModel = settings["ai.model"] ?? "";
+  const model =
+    provider.isLocalCli && !provider.models.includes(savedModel)
+      ? provider.defaultModel
+      : savedModel || provider.defaultModel;
   const showContext = terminalSelection && terminalSelection !== dismissedSelection;
   const activeSession = aiSessions.find((s) => s.id === activeAiSessionId);
 
@@ -182,7 +297,8 @@ export function AiPanel() {
   const handleSend = useCallback(async () => {
     const text = aiInput.trim();
     if (!text && !showContext) return;
-    if (!apiKey) {
+    // Локальный CLI работает по подписке пользователя — ключ ему не нужен
+    if (!provider.isLocalCli && !apiKey) {
       showToast("error", "Укажите API-ключ в Настройках → Агенты");
       return;
     }
@@ -214,6 +330,31 @@ export function AiPanel() {
     setAiMessages((m) => [...m, { role: "assistant", content: "" }]);
     setAiIsStreaming(true);
 
+    // ── Локальный движок: процесс на Rust-стороне, ответ придёт событиями ──
+    if (provider.isLocalCli) {
+      _cliSessionId = activeAiSessionId;
+      try {
+        await aiRun(
+          activeAiSessionId,
+          model,
+          settings["ai.systemPrompt"] ?? "",
+          buildCliPrompt(newHistory)
+        );
+      } catch (e) {
+        _cliSessionId = null;
+        setAiMessages((m) => {
+          const last = m[m.length - 1];
+          if (last?.role === "assistant" && last.content === "") {
+            return [...m.slice(0, -1), { role: "assistant", content: `Ошибка: ${e}` }];
+          }
+          return m;
+        });
+        await finalizeAssistantMessage(activeAiSessionId);
+      }
+      // Дальше — обработчики ai://chunk|done|error
+      return;
+    }
+
     const controller = new AbortController();
     _abortController = controller;
 
@@ -223,15 +364,7 @@ export function AiPanel() {
         newHistory,
         model,
         apiKey,
-        (chunk) => {
-          setAiMessages((m) => {
-            const last = m[m.length - 1];
-            if (last?.role === "assistant") {
-              return [...m.slice(0, -1), { ...last, content: last.content + chunk }];
-            }
-            return m;
-          });
-        },
+        appendToAssistant,
         controller.signal
       );
     } catch (e: unknown) {
@@ -246,25 +379,16 @@ export function AiPanel() {
         });
       }
     } finally {
-      // Финализируем сообщение в БД
-      const finalMessages = useAppStore.getState().aiMessages;
-      const finalAssistant = finalMessages[finalMessages.length - 1];
-      if (finalAssistant?.role === "assistant" && _streamingMsgId) {
-        await updateAiMessage(_streamingMsgId, finalAssistant.content).catch(() => {});
-        // Автозаголовок если это первый ответ
-        if (finalMessages.length === 2 && activeSession?.title === "Новый чат") {
-          const title = finalAssistant.content.trim().slice(0, 40).replace(/\n/g, " ") || "Чат";
-          await renameAiSession(activeAiSessionId, title).catch(() => {});
-          updateAiSessionTitle(activeAiSessionId, title);
-        }
-      }
-      _streamingMsgId = null;
-      setAiIsStreaming(false);
+      await finalizeAssistantMessage(activeAiSessionId);
       _abortController = null;
     }
-  }, [aiInput, aiMessages, showContext, terminalSelection, apiKey, provider, model, activeAiSessionId, activeSession, setAiMessages, setAiInput, setAiIsStreaming, showToast, updateAiSessionTitle]);
+  }, [aiInput, aiMessages, showContext, terminalSelection, apiKey, provider, model, settings, activeAiSessionId, setAiMessages, setAiInput, setAiIsStreaming, showToast]);
 
   const handleStop = () => {
+    if (_cliSessionId) {
+      aiCancel(_cliSessionId).catch(() => {});
+      return;
+    }
     _abortController?.abort();
   };
 

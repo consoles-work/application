@@ -19,9 +19,10 @@
     "@tiptap/extension-task-list": "^2.6.0",
     "@tiptap/react": "^2.6.0",
     "@tiptap/starter-kit": "^2.6.0",
-    "@xterm/addon-fit": "^0.10.0",
-    "@xterm/addon-web-links": "^0.11.0",
-    "@xterm/xterm": "^5.5.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-unicode11": "^0.9.0",
+    "@xterm/addon-web-links": "^0.12.0",
+    "@xterm/xterm": "^6.0.0",
     "i18next": "^25.10.10",
     "lowlight": "^3.1.0",
     "lucide-react": "^0.400.0",
@@ -36,9 +37,14 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
     "autoprefixer": "^10.4.19",
-    "postcss": "^8.4.38",
+    "postcss": "^8.5.26",
     "tailwindcss": "^3.4.4",
     "typescript": "^5.5.0",
-    "vite": "^5.4.0"
+    "vite": "^6.4.3"
+  },
+  "overrides": {
+    "markdown-it": "^14.3.0",
+    "linkify-it": "^5.0.2",
+    "@babel/core": "^7.29.7"
   }
 }

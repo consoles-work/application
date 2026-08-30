@@ -4,6 +4,7 @@ import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../../stores/appStore";
 import { updateConsoleConfig, setNodeDanger } from "../../lib/tauriCommands";
 import type { ConsoleConfig } from "../../types";
+import { CopyConnectionButton } from "../CopyConnectionButton";
 import { useTranslation } from "react-i18next";
 
 interface Props {
@@ -216,6 +217,20 @@ export function EditConsoleDialog({ console_, onClose }: Props) {
                   placeholder="-A -C -L 8080:localhost:8080"
                   className="w-full px-2.5 py-1.5 rounded-md bg-surface-2 border border-border text-xs text-text-primary outline-none focus:border-accent font-mono" />
               </div>
+
+              {/* Копирование параметров подключения — по текущим значениям формы */}
+              <CopyConnectionButton
+                config={{
+                  ...console_,
+                  name,
+                  connectionType,
+                  sshHost,
+                  sshPort: parseInt(sshPort) || 22,
+                  sshUser,
+                  sshKeyPath,
+                  sshExtraArgs,
+                }}
+              />
 
             </div>
           )}

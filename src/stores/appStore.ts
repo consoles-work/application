@@ -297,25 +297,44 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
 
   // ── Терминал ──
+  // Активная вкладка и выбранный узел дерева держатся синхронно: вики и AI-панель
+  // читают контекст из selectedNode, поэтому переключение вкладки должно вести
+  // их за собой ровно так же, как клик по дереву. Побеждает последнее действие.
   openSession: (session) =>
     set((state) => ({
       sessions: [...state.sessions, session],
       activeSessionId: session.id,
+      selectedNode: { type: "console", id: session.console_id },
     })),
 
   closeSession: (sessionId) =>
     set((state) => {
       const remaining = state.sessions.filter((s) => s.id !== sessionId);
+      if (state.activeSessionId !== sessionId) {
+        return { sessions: remaining };
+      }
+      // Закрыли активную вкладку — фокус уходит на соседнюю, контекст за ней.
+      // Если вкладок не осталось, selectedNode оставляем как есть.
+      const next = remaining[remaining.length - 1] ?? null;
       return {
         sessions: remaining,
-        activeSessionId:
-          state.activeSessionId === sessionId
-            ? remaining[remaining.length - 1]?.id ?? null
-            : state.activeSessionId,
+        activeSessionId: next?.id ?? null,
+        selectedNode: next
+          ? { type: "console" as const, id: next.console_id }
+          : state.selectedNode,
       };
     }),
 
-  setActiveSession: (sessionId) => set({ activeSessionId: sessionId }),
+  setActiveSession: (sessionId) =>
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === sessionId);
+      return {
+        activeSessionId: sessionId,
+        selectedNode: session
+          ? { type: "console" as const, id: session.console_id }
+          : state.selectedNode,
+      };
+    }),
 
   reconnectSession: (sessionId) =>
     set((state) => ({

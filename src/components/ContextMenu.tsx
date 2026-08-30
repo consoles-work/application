@@ -9,7 +9,8 @@ import {
   deleteConsole,
 } from "../lib/tauriCommands";
 import { setNodeDanger } from "../lib/tauriCommands";
-import type { TreeNode } from "../types";
+import type { TreeNode, ConsoleConfig } from "../types";
+import { buildSshCommand } from "../lib/connectionString";
 import { useTranslation } from "react-i18next";
 
 export interface ContextMenuState {
@@ -173,6 +174,17 @@ export function ContextMenu({
     }
   };
 
+  const handleCopySshCommand = async () => {
+    onClose();
+    const config = menu.node.data as ConsoleConfig;
+    try {
+      await navigator.clipboard.writeText(buildSshCommand(config));
+      showToast("success", t("dialogs.copyConnectionDone"));
+    } catch (e) {
+      showToast("error", t("dialogs.copyConnectionError", { error: e }));
+    }
+  };
+
   const items = getMenuItems({
     node: menu.node,
     t,
@@ -190,6 +202,7 @@ export function ContextMenu({
     onCloneConsole: () => { onClose(); onCloneConsole(menu.node); },
     onCloneProject: () => { onClose(); onCloneProject(menu.node); },
     onReconnectConsole: () => { onClose(); onReconnectConsole(menu.node); },
+    onCopySshCommand: handleCopySshCommand,
     sessions,
   });
 
@@ -241,6 +254,7 @@ function getMenuItems(handlers: {
   onCloneConsole: () => void;
   onCloneProject: () => void;
   onReconnectConsole: () => void;
+  onCopySshCommand: () => void;
   sessions: { console_id: string }[];
 }): MenuItem[] {
   const { node, t } = handlers;
@@ -276,10 +290,12 @@ function getMenuItems(handlers: {
 
   // console
   const hasSession = handlers.sessions.some((s) => s.console_id === node.id);
+  const isSsh = (node.data as { connectionType?: string }).connectionType === "ssh";
   return [
     { label: t("contextMenu.runConsole"), icon: "▶", action: handlers.onRunConsole },
     ...(hasSession ? [{ label: t("contextMenu.reconnectConsole"), icon: "↺", action: handlers.onReconnectConsole } as MenuItem] : []),
     { label: t("contextMenu.connectionSettings"), icon: "⚙", action: handlers.onEditConsole },
+    ...(isSsh ? [{ label: t("contextMenu.copySshCommand"), icon: "⧉", action: handlers.onCopySshCommand } as MenuItem] : []),
     { label: t("contextMenu.cloneConsole"), icon: "⎘", action: handlers.onCloneConsole },
     "separator" as MenuItem,
     { label: t("contextMenu.rename"), icon: "✎", action: handlers.onRename },

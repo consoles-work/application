@@ -8,7 +8,8 @@
     "browse": "Шолу",
     "rename": "Атауын өзгерту",
     "nothingFound": "Ештеңе табылмады",
-    "error": "Қате: {{error}}"
+    "error": "Қате: {{error}}",
+    "copy": "Көшіру"
   },
   "layout": {
     "settingsTooltip": "Параметрлер (Cmd+,)"
@@ -61,7 +62,8 @@
     "toastDeleteError": "Жою қатесі: {{error}}",
     "toastOpeningVSCode": "VS Code-та ашылуда...",
     "toastOpenError": "Ашу мүмкін болмады: {{error}}",
-    "toastDangerError": "Қате: {{error}}"
+    "toastDangerError": "Қате: {{error}}",
+    "copySshCommand": "SSH-пәрменді көшіру"
   },
   "terminalPanel": {
     "selectConsole": "Ағашта консольді таңдаңыз →",
@@ -174,7 +176,13 @@
     "closeAndQuit": "Бағдарламаны жабу",
     "autostart": "Жүйеге кіргенде іске қосу",
     "autostartNote": "macOS-қа кіргенде бағдарлама автоматты іске қосылады",
-    "autostartError": "Автоіске қосу қатесі: {{error}}"
+    "autostartError": "Автоіске қосу қатесі: {{error}}",
+    "agentsClaudeBin": "claude бинарь файлының жолы",
+    "agentsClaudeBinPlaceholder": "мысалы ~/.local/bin/claude",
+    "agentsBinDetect": "Табу",
+    "agentsBinCheck": "Тексеру",
+    "agentsBinNotFound": "claude бинарі табылмады — жолды қолмен көрсетіңіз",
+    "agentsClaudeCliNote": "Жергілікті қозғалтқыш: claude бинарі ішкі процесс ретінде сіздің жазылымыңызбен жұмыс істейді. API кілті қажет емес. Құралдар мен сыртқы MCP-серверлер өшірілген."
   },
   "dialogs": {
     "newWorkspace": "Жаңа жұмыс кеңістігі",
@@ -223,7 +231,15 @@
     "toastDirSelectError": "Каталогты таңдау қатесі: {{error}}",
     "toastFileSelectError": "Файлды таңдау қатесі: {{error}}",
     "toastSshHostRequired": "SSH хостын көрсетіңіз",
-    "toastError": "Қате: {{error}}"
+    "toastError": "Қате: {{error}}",
+    "copyConnection": "Қосылу параметрлері",
+    "copyConnectionNote": "(құпиясөзсіз және passphrase-сіз)",
+    "copyConnectionDone": "Алмасу буферіне көшірілді",
+    "copyConnectionError": "Көшіру сәтсіз аяқталды: {{error}}",
+    "copyFormat": "Пішім",
+    "copyFormatCommand": "Дайын ssh-пәрмен",
+    "copyFormatTarget": "user@host:port",
+    "copyFormatParams": "Параметрлер тізімі"
   },
   "export": {
     "title": "Деректерді экспорттау",

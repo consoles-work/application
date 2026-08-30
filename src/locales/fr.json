@@ -8,7 +8,8 @@
     "browse": "Parcourir",
     "rename": "Renommer",
     "nothingFound": "Rien trouvé",
-    "error": "Erreur: {{error}}"
+    "error": "Erreur: {{error}}",
+    "copy": "Copier"
   },
   "layout": {
     "settingsTooltip": "Paramètres (Cmd+,)"
@@ -61,7 +62,8 @@
     "toastDeleteError": "Erreur de suppression: {{error}}",
     "toastOpeningVSCode": "Ouverture dans VS Code...",
     "toastOpenError": "Impossible d'ouvrir: {{error}}",
-    "toastDangerError": "Erreur: {{error}}"
+    "toastDangerError": "Erreur: {{error}}",
+    "copySshCommand": "Copier la commande SSH"
   },
   "terminalPanel": {
     "selectConsole": "Sélectionnez une console dans l'arbre →",
@@ -174,7 +176,13 @@
     "closeAndQuit": "Quitter l'application",
     "autostart": "Lancer à la connexion",
     "autostartNote": "L'application démarrera automatiquement lors de la connexion à macOS",
-    "autostartError": "Erreur de démarrage automatique: {{error}}"
+    "autostartError": "Erreur de démarrage automatique: {{error}}",
+    "agentsClaudeBin": "Chemin du binaire claude",
+    "agentsClaudeBinPlaceholder": "par ex. ~/.local/bin/claude",
+    "agentsBinDetect": "Détecter",
+    "agentsBinCheck": "Vérifier",
+    "agentsBinNotFound": "Binaire claude introuvable — indiquez le chemin manuellement",
+    "agentsClaudeCliNote": "Moteur local : le binaire claude s'exécute en sous-processus avec votre propre abonnement. Aucune clé API requise. Les outils et les serveurs MCP externes sont désactivés."
   },
   "dialogs": {
     "newWorkspace": "Nouvel espace de travail",
@@ -223,7 +231,15 @@
     "toastDirSelectError": "Erreur de sélection du répertoire: {{error}}",
     "toastFileSelectError": "Erreur de sélection du fichier: {{error}}",
     "toastSshHostRequired": "Veuillez spécifier l'hôte SSH",
-    "toastError": "Erreur: {{error}}"
+    "toastError": "Erreur: {{error}}",
+    "copyConnection": "Paramètres de connexion",
+    "copyConnectionNote": "(sans mot de passe ni phrase secrète)",
+    "copyConnectionDone": "Copié dans le presse-papiers",
+    "copyConnectionError": "Échec de la copie : {{error}}",
+    "copyFormat": "Format",
+    "copyFormatCommand": "Commande ssh prête",
+    "copyFormatTarget": "user@host:port",
+    "copyFormatParams": "Liste des paramètres"
   },
   "export": {
     "title": "Exporter les données",

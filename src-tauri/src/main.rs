@@ -20,6 +20,7 @@ mod commands;  // src/commands.rs — обработчики IPC-вызовов 
 mod db;        // src/db.rs — работа с SQLite
 mod pty_manager; // src/pty_manager.rs — управление терминальными сессиями
 mod export;    // src/export.rs — экспорт/импорт .dchub
+mod ai_local;  // src/ai_local.rs — локальный движок: claude CLI подпроцессом
 
 // Подключаем публичные функции из модуля commands
 use commands::*;
@@ -144,6 +145,12 @@ pub fn run() {
             save_ai_message,
             update_ai_message,
             clear_ai_session,
+
+            // Локальный AI-движок (claude CLI)
+            ai_detect_bin,
+            ai_check,
+            ai_run,
+            ai_cancel,
 
             // Экспорт/импорт
             export_data,

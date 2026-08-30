@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
+import { buildSshCommand } from "../lib/connectionString";
 import { listen } from "@tauri-apps/api/event";
 import { StickyNote, ChevronDown, ChevronRight } from "lucide-react";
 import { ask } from "@tauri-apps/plugin-dialog";
@@ -196,6 +197,9 @@ function TerminalView({
       cursorStyle,
       scrollback,
       theme: xtermTheme,
+      // Unicode-API (term.unicode) в xterm 6 помечен как proposed: без этого флага
+      // обращение к нему бросает исключение и терминал не успевает открыться.
+      allowProposedApi: true,
     });
 
     const fitAddon = new FitAddon();
@@ -246,27 +250,11 @@ function TerminalView({
     let sshPassphrase: string | undefined;
     let sshPassword: string | undefined;
     if (consoleConfig?.connectionType === "ssh") {
-      const host = consoleConfig.sshHost || "";
-      const port = consoleConfig.sshPort || 22;
-      const user = consoleConfig.sshUser || "";
-      const keyPath = consoleConfig.sshKeyPath || "";
-      const extraArgs = consoleConfig.sshExtraArgs || "";
-
-      // accept-new: автоматически принимаем ключ нового (неизвестного) хоста и
-      // добавляем его в known_hosts без интерактивного вопроса. Без этого при первом
-      // подключении ssh спрашивает "Are you sure you want to continue connecting?",
-      // а с SSH_ASKPASS_REQUIRE=force (когда задан пароль) этот вопрос уходит в
-      // askpass-скрипт, получает пароль вместо "yes" и соединение молча обрывается.
-      // Если ключ известного хоста изменился — ssh всё равно откажет (защита от MITM).
-      let sshCmd = "ssh -o StrictHostKeyChecking=accept-new";
-      if (port !== 22) sshCmd += ` -p ${port}`;
-      if (keyPath) sshCmd += ` -i "${keyPath}"`;
-      if (extraArgs) sshCmd += ` ${extraArgs}`;
-      sshCmd += user ? ` ${user}@${host}` : ` ${host}`;
-
-      shell = sshCmd;
+      // Команда собирается в connectionString.ts — тем же кодом, что и кнопка
+      // «Копировать» в диалоге, чтобы скопированное совпадало с выполняемым.
+      shell = buildSshCommand(consoleConfig);
       cwd = "";
-      sshKeyPath = keyPath || undefined;
+      sshKeyPath = consoleConfig.sshKeyPath || undefined;
       sshPassphrase = consoleConfig.sshPassphrase || undefined;
       sshPassword = consoleConfig.sshPassword || undefined;
     }

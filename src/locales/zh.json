@@ -8,7 +8,8 @@
     "browse": "浏览",
     "rename": "重命名",
     "nothingFound": "未找到任何内容",
-    "error": "错误: {{error}}"
+    "error": "错误: {{error}}",
+    "copy": "复制"
   },
   "layout": {
     "settingsTooltip": "设置 (Cmd+,)"
@@ -61,7 +62,8 @@
     "toastDeleteError": "删除失败: {{error}}",
     "toastOpeningVSCode": "正在 VS Code 中打开...",
     "toastOpenError": "无法打开: {{error}}",
-    "toastDangerError": "错误: {{error}}"
+    "toastDangerError": "错误: {{error}}",
+    "copySshCommand": "复制 SSH 命令"
   },
   "terminalPanel": {
     "selectConsole": "在树中选择控制台 →",
@@ -174,7 +176,13 @@
     "closeAndQuit": "退出程序",
     "autostart": "登录时启动",
     "autostartNote": "登录 macOS 时将自动启动应用",
-    "autostartError": "自动启动错误: {{error}}"
+    "autostartError": "自动启动错误: {{error}}",
+    "agentsClaudeBin": "claude 可执行文件路径",
+    "agentsClaudeBinPlaceholder": "例如 ~/.local/bin/claude",
+    "agentsBinDetect": "查找",
+    "agentsBinCheck": "检查",
+    "agentsBinNotFound": "未找到 claude 可执行文件 — 请手动指定路径",
+    "agentsClaudeCliNote": "本地引擎：claude 以子进程运行，使用你自己的订阅，无需 API 密钥。工具和外部 MCP 服务器均已禁用。"
   },
   "dialogs": {
     "newWorkspace": "新建工作区",
@@ -223,7 +231,15 @@
     "toastDirSelectError": "选择目录失败: {{error}}",
     "toastFileSelectError": "选择文件失败: {{error}}",
     "toastSshHostRequired": "请指定 SSH 主机",
-    "toastError": "错误: {{error}}"
+    "toastError": "错误: {{error}}",
+    "copyConnection": "连接参数",
+    "copyConnectionNote": "（不含密码和密钥口令）",
+    "copyConnectionDone": "已复制到剪贴板",
+    "copyConnectionError": "复制失败：{{error}}",
+    "copyFormat": "格式",
+    "copyFormatCommand": "完整 ssh 命令",
+    "copyFormatTarget": "user@host:port",
+    "copyFormatParams": "参数列表"
   },
   "export": {
     "title": "导出数据",

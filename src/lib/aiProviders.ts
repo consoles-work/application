@@ -1,8 +1,8 @@
 // ══════════════════════════════════════════════
-// AI провайдеры: OpenAI, Anthropic
+// AI провайдеры: OpenAI, Anthropic, Ollama, Claude CLI
 // ══════════════════════════════════════════════
 
-export type ProviderId = "openai" | "anthropic" | "ollama";
+export type ProviderId = "openai" | "anthropic" | "ollama" | "claude-cli";
 
 export interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -14,12 +14,19 @@ export interface AiProvider {
   name: string;
   models: string[];
   defaultModel: string;
-  buildFetchParams(
+  /**
+   * true — провайдер работает не через HTTP, а подпроцессом на Rust-стороне.
+   * У такого нет buildFetchParams/parseChunk: streamCompletion его не касается,
+   * AiPanel вызывает aiRun и слушает события ai://chunk|done|error.
+   * API-ключ ему тоже не нужен — используется подписка пользователя.
+   */
+  isLocalCli?: boolean;
+  buildFetchParams?(
     messages: ChatMessage[],
     model: string,
     apiKey: string
   ): [string, RequestInit];
-  parseChunk(line: string): string | null;
+  parseChunk?(line: string): string | null;
 }
 
 export const OpenAiProvider: AiProvider = {
@@ -142,7 +149,26 @@ export const OllamaProvider: AiProvider = {
   },
 };
 
-export const AI_PROVIDERS: AiProvider[] = [OpenAiProvider, AnthropicProvider, OllamaProvider];
+/**
+ * Claude Code CLI — локальный движок. Бинарь `claude` запускается подпроцессом
+ * из Rust (src-tauri/src/ai_local.rs) и работает по подписке пользователя,
+ * API-ключ не нужен. Ollama выше — тоже «локальный», но это обычный HTTP
+ * к localhost:11434, то есть тот же путь, что у OpenAI/Anthropic.
+ */
+export const ClaudeCliProvider: AiProvider = {
+  id: "claude-cli",
+  name: "Claude Code CLI",
+  models: ["sonnet", "opus", "haiku"],
+  defaultModel: "sonnet",
+  isLocalCli: true,
+};
+
+export const AI_PROVIDERS: AiProvider[] = [
+  OpenAiProvider,
+  AnthropicProvider,
+  OllamaProvider,
+  ClaudeCliProvider,
+];
 
 export function getProvider(id: string): AiProvider {
   return AI_PROVIDERS.find((p) => p.id === id) ?? OpenAiProvider;
@@ -156,6 +182,9 @@ export async function streamCompletion(
   onChunk: (text: string) => void,
   signal?: AbortSignal
 ): Promise<void> {
+  if (!provider.buildFetchParams || !provider.parseChunk) {
+    throw new Error(`Провайдер ${provider.name} не работает через HTTP`);
+  }
   const [url, init] = provider.buildFetchParams(messages, model, apiKey);
   const response = await fetch(url, { ...init, signal });
 
@@ -179,7 +208,7 @@ export async function streamCompletion(
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed) continue;
-      const text = provider.parseChunk(trimmed);
+      const text = provider.parseChunk!(trimmed);
       if (text) onChunk(text);
     }
   }

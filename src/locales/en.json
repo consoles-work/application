@@ -8,7 +8,8 @@
     "browse": "Browse",
     "rename": "Rename",
     "nothingFound": "Nothing found",
-    "error": "Error: {{error}}"
+    "error": "Error: {{error}}",
+    "copy": "Copy"
   },
   "layout": {
     "settingsTooltip": "Settings (Cmd+,)"
@@ -61,7 +62,8 @@
     "toastDeleteError": "Delete error: {{error}}",
     "toastOpeningVSCode": "Opening in VS Code...",
     "toastOpenError": "Could not open: {{error}}",
-    "toastDangerError": "Error: {{error}}"
+    "toastDangerError": "Error: {{error}}",
+    "copySshCommand": "Copy SSH command"
   },
   "terminalPanel": {
     "selectConsole": "Select a console in the tree →",
@@ -174,7 +176,13 @@
     "closeAndQuit": "Quit application",
     "autostart": "Launch at login",
     "autostartNote": "The app will start automatically when you log into macOS",
-    "autostartError": "Autostart error: {{error}}"
+    "autostartError": "Autostart error: {{error}}",
+    "agentsClaudeBin": "Path to claude binary",
+    "agentsClaudeBinPlaceholder": "e.g. ~/.local/bin/claude",
+    "agentsBinDetect": "Detect",
+    "agentsBinCheck": "Check",
+    "agentsBinNotFound": "claude binary not found — set the path manually",
+    "agentsClaudeCliNote": "Local engine: the claude binary runs as a subprocess on your own subscription. No API key needed. Tools and external MCP servers are disabled."
   },
   "dialogs": {
     "newWorkspace": "New Workspace",
@@ -223,7 +231,15 @@
     "toastDirSelectError": "Directory select error: {{error}}",
     "toastFileSelectError": "File select error: {{error}}",
     "toastSshHostRequired": "Please specify SSH host",
-    "toastError": "Error: {{error}}"
+    "toastError": "Error: {{error}}",
+    "copyConnection": "Connection parameters",
+    "copyConnectionNote": "(without password and passphrase)",
+    "copyConnectionDone": "Copied to clipboard",
+    "copyConnectionError": "Copy failed: {{error}}",
+    "copyFormat": "Format",
+    "copyFormatCommand": "Ready ssh command",
+    "copyFormatTarget": "user@host:port",
+    "copyFormatParams": "Parameter list"
   },
   "export": {
     "title": "Export data",

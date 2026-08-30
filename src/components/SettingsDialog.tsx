@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import { useAppStore } from "../stores/appStore";
-import { getDbInfo, setSetting, enableAutostart, disableAutostart, getAutostartStatus, updateTrayLanguage } from "../lib/tauriCommands";
+import { getDbInfo, setSetting, enableAutostart, disableAutostart, getAutostartStatus, updateTrayLanguage, aiDetectBin, aiCheck } from "../lib/tauriCommands";
 import type { DbInfo } from "../lib/tauriCommands";
 import { THEMES } from "../lib/themes";
 import { useTranslation } from "react-i18next";
@@ -301,6 +301,43 @@ function AgentsTab({
 
   const providerObj = AI_PROVIDERS.find((p) => p.id === provider) ?? AI_PROVIDERS[0];
   const isOllama = provider === "ollama";
+  // Локальный движок: бинарь claude подпроцессом, API-ключ не нужен
+  const isLocalCli = providerObj.isLocalCli === true;
+  const claudeBin = settings["ai.claudeBin"] ?? "";
+  const [binStatus, setBinStatus] = useState<string | null>(null);
+  const [binBusy, setBinBusy] = useState(false);
+
+  const handleDetectBin = async () => {
+    setBinBusy(true);
+    setBinStatus(null);
+    try {
+      const found = await aiDetectBin();
+      if (found) {
+        onChange("ai.claudeBin", found);
+        setBinStatus(found);
+      } else {
+        showToast("error", t("settings.agentsBinNotFound"));
+      }
+    } catch (e) {
+      showToast("error", t("settings.agentsTestError", { error: e }));
+    } finally {
+      setBinBusy(false);
+    }
+  };
+
+  const handleCheckBin = async () => {
+    setBinBusy(true);
+    setBinStatus(null);
+    try {
+      const info = await aiCheck(claudeBin || undefined);
+      setBinStatus(info);
+      showToast("success", t("settings.agentsTestSuccess"));
+    } catch (e) {
+      showToast("error", t("settings.agentsTestError", { error: e }));
+    } finally {
+      setBinBusy(false);
+    }
+  };
 
   // Динамическая загрузка моделей Ollama при выборе провайдера
   useEffect(() => {
@@ -319,11 +356,20 @@ function AgentsTab({
 
   const activeModels = isOllama ? ollamaModels : providerObj.models;
   const activeDefault = isOllama ? (ollamaModels[0] ?? "") : providerObj.defaultModel;
+  // ai.model общий для всех провайдеров: после переключения там может лежать
+  // чужой алиас. Подсвечиваем его, только если он есть у текущего провайдера
+  // (та же логика отката, что в AiPanel).
+  const selectedModel =
+    activeModels.length > 0 && !activeModels.includes(model) ? activeDefault : model || activeDefault;
 
   const handleTestConnection = async () => {
     setTesting(true);
     try {
-      if (isOllama) {
+      if (isLocalCli) {
+        const info = await aiCheck(claudeBin || undefined);
+        setBinStatus(info);
+        showToast("success", t("settings.agentsTestSuccess"));
+      } else if (isOllama) {
         const r = await fetch("http://localhost:11434/api/tags");
         if (r.ok) showToast("success", t("settings.agentsTestSuccess"));
         else showToast("error", t("settings.agentsTestError", { error: r.status }));
@@ -371,8 +417,8 @@ function AgentsTab({
         </div>
       </div>
 
-      {/* API Key — скрыт для Ollama */}
-      {!isOllama && (
+      {/* API Key — скрыт для Ollama и локального CLI (ключ им не нужен) */}
+      {!isOllama && !isLocalCli && (
         <div>
           <label className="block text-xs font-medium text-text-secondary mb-2">
             {t("settings.agentsApiKey")} <span className="text-text-muted font-mono text-2xs">({providerObj.name})</span>
@@ -400,6 +446,41 @@ function AgentsTab({
         <p className="text-2xs text-text-muted">{t("settings.agentsOllamaNote")}</p>
       )}
 
+      {/* Локальный движок: путь к бинарю claude */}
+      {isLocalCli && (
+        <div>
+          <label className="block text-xs font-medium text-text-secondary mb-2">
+            {t("settings.agentsClaudeBin")}
+          </label>
+          <div className="flex gap-2">
+            <input
+              value={claudeBin}
+              onChange={(e) => onChange("ai.claudeBin", e.target.value)}
+              placeholder={t("settings.agentsClaudeBinPlaceholder")}
+              className="flex-1 bg-surface-0 border border-border rounded-lg px-3 py-2 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-accent font-mono"
+            />
+            <button
+              onClick={handleDetectBin}
+              disabled={binBusy}
+              className="px-3 py-2 text-xs bg-surface-2 hover:bg-surface-3 border border-border rounded-lg text-text-secondary transition-colors disabled:opacity-50"
+            >
+              {t("settings.agentsBinDetect")}
+            </button>
+            <button
+              onClick={handleCheckBin}
+              disabled={binBusy}
+              className="px-3 py-2 text-xs bg-surface-2 hover:bg-surface-3 border border-border rounded-lg text-text-secondary transition-colors disabled:opacity-50"
+            >
+              {t("settings.agentsBinCheck")}
+            </button>
+          </div>
+          {binStatus && (
+            <p className="mt-2 text-2xs text-text-muted font-mono break-all">{binStatus}</p>
+          )}
+          <p className="mt-2 text-2xs text-text-muted">{t("settings.agentsClaudeCliNote")}</p>
+        </div>
+      )}
+
       {/* Model */}
       <div>
         <label className="block text-xs font-medium text-text-secondary mb-2">
@@ -419,7 +500,7 @@ function AgentsTab({
             <button
               key={m}
               className={`px-3 py-2 text-xs rounded-lg border transition-colors text-left ${
-                (model || activeDefault) === m
+                selectedModel === m
                   ? "bg-accent/15 border-accent text-accent"
                   : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
               }`}

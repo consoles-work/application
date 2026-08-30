@@ -5,6 +5,7 @@ mod commands;
 mod db;
 mod pty_manager;
 mod export;
+mod ai_local;
 
 use commands::*;
 use tauri::Manager;
@@ -101,6 +102,12 @@ pub fn run() {
             save_ai_message,
             update_ai_message,
             clear_ai_session,
+
+            // Локальный AI-движок (claude CLI)
+            ai_detect_bin,
+            ai_check,
+            ai_run,
+            ai_cancel,
             export_data,
             preview_import,
             apply_import,

@@ -378,3 +378,33 @@ export async function getAutostartStatus(): Promise<boolean> {
 export async function updateTrayLanguage(lang: string): Promise<void> {
   return invoke("update_tray_language", { lang });
 }
+
+// ── Локальный AI-движок (claude CLI) ──
+
+/** Найти бинарь `claude` в системе. null — если не найден. */
+export async function aiDetectBin(): Promise<string | null> {
+  return invoke<string | null>("ai_detect_bin");
+}
+
+/** Проверить бинарь: вернёт «путь — версия». Токены не расходуются. */
+export async function aiCheck(bin?: string): Promise<string> {
+  return invoke<string>("ai_check", { bin: bin || null });
+}
+
+/**
+ * Запустить генерацию. Возвращается сразу — ответ приходит событиями
+ * `ai://chunk`, `ai://done`, `ai://error` (payload.sessionId).
+ */
+export async function aiRun(
+  sessionId: string,
+  model: string,
+  system: string,
+  prompt: string
+): Promise<void> {
+  return invoke("ai_run", { sessionId, model, system, prompt });
+}
+
+/** Прервать генерацию: убивает процесс сессии. */
+export async function aiCancel(sessionId: string): Promise<void> {
+  return invoke("ai_cancel", { sessionId });
+}
