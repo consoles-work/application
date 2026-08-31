@@ -178,6 +178,7 @@ function TerminalView({
     term.options.scrollback = scrollback;
     term.options.cursorStyle = cursorStyle;
     term.options.theme = xtermTheme;
+    if (containerRef.current) containerRef.current.style.backgroundColor = xtermTheme.background;
     fitAddonRef.current?.fit();
   }, [settings]);
 
@@ -210,6 +211,11 @@ function TerminalView({
     const unicode11 = new Unicode11Addon();
     term.loadAddon(unicode11);
     term.unicode.activeVersion = "11";
+
+    // Фон темы xterm 6 кладёт на .xterm-scrollable-element — тот не покрывает ни
+    // padding, ни остаток высоты от деления на строку, а .xterm-viewport под ним
+    // чёрный из штатного CSS (там мы его гасим). Красим контейнер сами.
+    containerRef.current.style.backgroundColor = xtermTheme.background;
 
     term.open(containerRef.current);
     fitAddon.fit();

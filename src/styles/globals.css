@@ -329,6 +329,11 @@ body,
 
 .xterm-viewport {
   overflow-y: hidden !important;
+  /* Штатный CSS xterm жёстко красит viewport в #000, а фон темы с версии 6
+     уходит на .xterm-scrollable-element — тот не покрывает padding и остаток
+     от деления высоты на строку, и по краям проступает чёрная рамка.
+     Гасим фон, цвет темы кладёт на контейнер сам TerminalView. */
+  background-color: transparent !important;
 }
 
 .xterm-screen {
