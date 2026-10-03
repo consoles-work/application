@@ -40,6 +40,9 @@ sha2 = "0.10"
 hmac = "0.12"
 rand = "0.8"
 
+# ── Пароль на вход (Argon2id-хеш) ──
+argon2 = "0.5"
+
 [profile.release]
 # Оптимизация размера бинарника
 strip = true

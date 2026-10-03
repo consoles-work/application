@@ -182,7 +182,8 @@
     "agentsBinDetect": "查找",
     "agentsBinCheck": "检查",
     "agentsBinNotFound": "未找到 claude 可执行文件 — 请手动指定路径",
-    "agentsClaudeCliNote": "本地引擎：claude 以子进程运行，使用你自己的订阅，无需 API 密钥。工具和外部 MCP 服务器均已禁用。"
+    "agentsClaudeCliNote": "本地引擎：claude 以子进程运行，使用你自己的订阅，无需 API 密钥。工具和外部 MCP 服务器均已禁用。",
+    "tabSecurity": "安全"
   },
   "dialogs": {
     "newWorkspace": "新建工作区",
@@ -312,5 +313,30 @@
     "clearLine": "清除行",
     "clearScreen": "清屏",
     "reset": "重置终端"
+  },
+  "security": {
+    "subtitle": "请输入密码以解锁",
+    "placeholder": "密码",
+    "unlock": "解锁",
+    "wrong": "密码错误",
+    "statusOn": "启动密码已启用",
+    "statusOff": "启动密码已禁用",
+    "descOn": "启动时应用会要求输入密码，密码正确前不加载任何数据。",
+    "descOff": "应用直接打开。启用密码后，每次启动时都需要输入。",
+    "storage": "密码以不可逆的 Argon2id 哈希形式存储在加密数据库（SQLCipher）中，而非明文。忘记的密码无法恢复。",
+    "current": "当前密码",
+    "new": "新密码",
+    "password": "密码",
+    "confirm": "重复密码",
+    "enable": "启用密码",
+    "change": "修改密码",
+    "disable": "移除密码",
+    "errEmpty": "请输入新密码",
+    "errMismatch": "两次输入的密码不一致",
+    "errCurrent": "请输入当前密码",
+    "toastEnabled": "密码已启用",
+    "toastChanged": "密码已修改",
+    "toastDisabled": "密码已移除",
+    "dbEncrypted": "数据库已加密（SQLCipher，AES-256）"
   }
 }

@@ -391,7 +391,31 @@ pub fn get_settings() -> Result<std::collections::HashMap<String, String>, Strin
 /// Сохранить одну настройку
 #[tauri::command]
 pub fn set_setting(key: String, value: String) -> Result<(), String> {
+    // security.* меняются только через set_password (с проверкой текущего)
+    if key.starts_with(crate::security::PREFIX) {
+        return Err(format!("Key {key} is read-only"));
+    }
     crate::db::set_setting_value(&key, &value)
+}
+
+// ══════════════════════════════════════════════
+// Команды: Пароль на вход
+// ══════════════════════════════════════════════
+
+#[tauri::command]
+pub fn is_password_set() -> bool {
+    crate::security::is_set()
+}
+
+#[tauri::command]
+pub fn verify_password(password: String) -> Result<bool, String> {
+    crate::security::verify(&password)
+}
+
+/// Установка / смена / снятие (пустой `new_password`) пароля
+#[tauri::command]
+pub fn set_password(current: Option<String>, new_password: String) -> Result<(), String> {
+    crate::security::set_password(current, &new_password)
 }
 
 /// Получить информацию о файле базы данных

@@ -21,6 +21,7 @@ mod db;        // src/db.rs — работа с SQLite
 mod pty_manager; // src/pty_manager.rs — управление терминальными сессиями
 mod export;    // src/export.rs — экспорт/импорт .dchub
 mod ai_local;  // src/ai_local.rs — локальный движок: claude CLI подпроцессом
+mod security;  // src/security.rs — пароль на вход (Argon2id-хеш)
 
 // Подключаем публичные функции из модуля commands
 use commands::*;
@@ -132,6 +133,9 @@ pub fn run() {
             // Настройки
             get_settings,
             set_setting,
+            is_password_set,
+            verify_password,
+            set_password,
             get_db_info,
             quit_app,
             reset_quit_dialog,

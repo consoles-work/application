@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
+import { Shield, ShieldCheck, Loader2 } from "lucide-react";
 import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import { useAppStore } from "../stores/appStore";
-import { getDbInfo, setSetting, enableAutostart, disableAutostart, getAutostartStatus, updateTrayLanguage, aiDetectBin, aiCheck } from "../lib/tauriCommands";
+import { getDbInfo, setSetting, isPasswordSet, setPassword, enableAutostart, disableAutostart, getAutostartStatus, updateTrayLanguage, aiDetectBin, aiCheck } from "../lib/tauriCommands";
 import type { DbInfo } from "../lib/tauriCommands";
 import { THEMES } from "../lib/themes";
 import { useTranslation } from "react-i18next";
 import i18n from "../lib/i18n";
 import { AI_PROVIDERS, getProvider, streamCompletion } from "../lib/aiProviders";
 
-type Tab = "data" | "terminal" | "interface" | "agents";
+type Tab = "data" | "terminal" | "interface" | "agents" | "security";
 
 interface SettingsDialogProps {
   onClose: () => void;
@@ -56,7 +57,7 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
 
         {/* Tabs */}
         <div className="flex border-b border-border px-5 shrink-0">
-          {(["data", "terminal", "interface", "agents"] as Tab[]).map((tabKey) => (
+          {(["data", "terminal", "interface", "agents", "security"] as Tab[]).map((tabKey) => (
             <button
               key={tabKey}
               className={`py-2.5 px-3 text-xs border-b-2 transition-colors ${
@@ -72,6 +73,8 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
                 ? t("settings.tabTerminal")
                 : tabKey === "agents"
                 ? t("settings.tabAgents")
+                : tabKey === "security"
+                ? t("settings.tabSecurity")
                 : t("settings.tabInterface")}
             </button>
           ))}
@@ -91,6 +94,7 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
           {tab === "agents" && (
             <AgentsTab settings={settings} onChange={handleSetSetting} showToast={showToast} />
           )}
+          {tab === "security" && <SecurityTab showToast={showToast} />}
         </div>
       </div>
     </div>
@@ -681,6 +685,133 @@ function InterfaceTab({
             </button>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Вкладка "Безопасность" (пароль на вход) ─────────────────
+
+function SecurityTab({
+  showToast,
+}: {
+  showToast: (type: "success" | "error" | "info", msg: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [enabled, setEnabled] = useState<boolean | null>(null); // null — грузим
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const reload = () => isPasswordSet().then(setEnabled).catch(() => setEnabled(false));
+  useEffect(() => { reload(); }, []);
+
+  const clearFields = () => {
+    setCurrent("");
+    setNext("");
+    setConfirm("");
+  };
+
+  // Включение / смена пароля
+  const apply = async () => {
+    if (enabled && !current) return showToast("error", t("security.errCurrent"));
+    if (!next) return showToast("error", t("security.errEmpty"));
+    if (next !== confirm) return showToast("error", t("security.errMismatch"));
+    setBusy(true);
+    try {
+      await setPassword(enabled ? current : null, next);
+      clearFields();
+      showToast("success", enabled ? t("security.toastChanged") : t("security.toastEnabled"));
+      await reload();
+    } catch (e) {
+      showToast("error", `${e}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Снятие пароля
+  const disable = async () => {
+    if (!current) return showToast("error", t("security.errCurrent"));
+    setBusy(true);
+    try {
+      await setPassword(current, "");
+      clearFields();
+      showToast("success", t("security.toastDisabled"));
+      await reload();
+    } catch (e) {
+      showToast("error", `${e}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (enabled === null) {
+    return <Loader2 size={16} className="animate-spin text-text-muted" />;
+  }
+
+  const inputCls =
+    "w-full bg-surface-0 border border-border rounded px-3 py-1.5 text-xs text-text-primary outline-none focus:border-accent";
+
+  return (
+    <div className="space-y-4 max-w-sm">
+      <div className="flex items-center gap-2">
+        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${enabled ? "bg-success" : "bg-text-muted"}`} />
+        <div className="text-sm text-text-primary">
+          {enabled ? t("security.statusOn") : t("security.statusOff")}
+        </div>
+      </div>
+      <p className="text-2xs text-text-muted leading-relaxed">
+        {enabled ? t("security.descOn") : t("security.descOff")} {t("security.storage")}
+      </p>
+      <div className="flex items-center gap-1.5 text-2xs text-success">
+        <ShieldCheck size={12} />
+        {t("security.dbEncrypted")}
+      </div>
+
+      {enabled && (
+        <div>
+          <label className="block text-xs font-medium text-text-secondary mb-1">{t("security.current")}</label>
+          <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" className={inputCls} />
+        </div>
+      )}
+      <div>
+        <label className="block text-xs font-medium text-text-secondary mb-1">
+          {enabled ? t("security.new") : t("security.password")}
+        </label>
+        <input type="password" value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" className={inputCls} />
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-text-secondary mb-1">{t("security.confirm")}</label>
+        <input
+          type="password"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") apply(); }}
+          autoComplete="new-password"
+          className={inputCls}
+        />
+      </div>
+
+      <div className="flex gap-2 pt-1">
+        <button
+          onClick={apply}
+          disabled={busy}
+          className="flex-1 h-8 rounded bg-accent text-white text-xs flex items-center justify-center gap-1.5 hover:bg-accent-hover disabled:opacity-60"
+        >
+          {busy ? <Loader2 size={14} className="animate-spin" /> : <Shield size={14} />}
+          {enabled ? t("security.change") : t("security.enable")}
+        </button>
+        {enabled && (
+          <button
+            onClick={disable}
+            disabled={busy}
+            className="h-8 px-3 rounded border border-border text-xs text-text-secondary hover:text-danger hover:border-danger disabled:opacity-60"
+          >
+            {t("security.disable")}
+          </button>
+        )}
       </div>
     </div>
   );

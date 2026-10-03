@@ -338,6 +338,8 @@ pub fn apply_import(
 
     if include_settings && !payload.settings.is_empty() {
         for (key, value) in &payload.settings {
+            // Пароль на вход из чужого файла не подхватываем
+            if key.starts_with(crate::security::PREFIX) { continue; }
             crate::db::set_setting_value(key, value)?;
         }
     }

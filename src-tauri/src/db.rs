@@ -629,9 +629,11 @@ pub fn clone_project_by_id(id: &str) -> Result<Project, String> {
 // CRUD: Settings
 // ══════════════════════════════════════════════
 
+/// Все настройки, кроме служебных `security.*` (хеш пароля не уходит
+/// ни на фронт, ни в экспорт)
 pub fn get_all_settings() -> Result<HashMap<String, String>, String> {
     let db = get_db().lock().map_err(|e| e.to_string())?;
-    let mut stmt = db.prepare("SELECT key, value FROM settings")
+    let mut stmt = db.prepare("SELECT key, value FROM settings WHERE key NOT LIKE 'security.%'")
         .map_err(|e| e.to_string())?;
     let map: HashMap<String, String> = stmt.query_map([], |row| {
         Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))

@@ -6,6 +6,7 @@ mod db;
 mod pty_manager;
 mod export;
 mod ai_local;
+mod security;
 
 use commands::*;
 use tauri::Manager;
@@ -91,6 +92,9 @@ pub fn run() {
             clone_project,
             get_settings,
             set_setting,
+            is_password_set,
+            verify_password,
+            set_password,
             get_db_info,
             quit_app,
             reset_quit_dialog,

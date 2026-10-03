@@ -4,17 +4,40 @@ import { ToastContainer } from "./components/Toast";
 import { CommandPalette } from "./components/CommandPalette";
 import { GlobalSearch } from "./components/GlobalSearch";
 import { SettingsDialog } from "./components/SettingsDialog";
+import { LockScreen } from "./components/LockScreen";
 import { useAppStore } from "./stores/appStore";
-import { loadAllWorkspaces, getSettings, loadAiSessions, createAiSession } from "./lib/tauriCommands";
+import { loadAllWorkspaces, getSettings, loadAiSessions, createAiSession, isPasswordSet } from "./lib/tauriCommands";
 import { applyTheme } from "./lib/themes";
 import { useTranslation } from "react-i18next";
 import i18n from "./lib/i18n";
 
 // ══════════════════════════════════════
-// App — корневой компонент
+// App — корневой компонент: гейт пароля на вход
 // ══════════════════════════════════════
+// Пока пароль не введён, MainApp не монтируется — данные из БД
+// (дерево, wiki, AI-чаты) не загружаются и не рендерятся.
 
 function App() {
+  const [lock, setLock] = useState<"checking" | "locked" | "unlocked">("checking");
+
+  useEffect(() => {
+    // Тема и язык нужны уже экрану блокировки (служебные ключи security.* сюда не попадают)
+    getSettings().then((s) => {
+      applyTheme(s["ui.theme"] ?? "dark");
+      i18n.changeLanguage(s["ui.language"] ?? "ru");
+    }).catch(() => {});
+    isPasswordSet()
+      .then((set) => setLock(set ? "locked" : "unlocked"))
+      // Не смогли проверить — не пускаем без пароля
+      .catch(() => setLock("locked"));
+  }, []);
+
+  if (lock === "checking") return <div className="h-screen w-screen bg-surface-0" />;
+  if (lock === "locked") return <LockScreen onUnlock={() => setLock("unlocked")} />;
+  return <MainApp />;
+}
+
+function MainApp() {
   const { setWorkspaces, setSettings, toggleTreePanel, toggleWikiPanel, setShowTreePanel, setShowWikiPanel, showToast, toggleAiPanel, setShowAiPanel, setAiPanelPosition, setAiSessions, setActiveAiSessionId, setTreePanelWidth } = useAppStore();
   const { t } = useTranslation();
   const [showPalette, setShowPalette] = useState(false);

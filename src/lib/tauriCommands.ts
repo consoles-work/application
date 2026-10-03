@@ -236,6 +236,21 @@ export async function setSetting(key: string, value: string): Promise<void> {
   return invoke("set_setting", { key, value });
 }
 
+// ── Пароль на вход ──
+
+export async function isPasswordSet(): Promise<boolean> {
+  return invoke<boolean>("is_password_set");
+}
+
+export async function verifyPassword(password: string): Promise<boolean> {
+  return invoke<boolean>("verify_password", { password });
+}
+
+/** current — текущий пароль (null, если ещё не задан); пустой newPassword снимает защиту */
+export async function setPassword(current: string | null, newPassword: string): Promise<void> {
+  return invoke("set_password", { current, newPassword });
+}
+
 export async function getDbInfo(): Promise<DbInfo> {
   return invoke<DbInfo>("get_db_info");
 }

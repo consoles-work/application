@@ -182,7 +182,8 @@
     "agentsBinDetect": "Detect",
     "agentsBinCheck": "Check",
     "agentsBinNotFound": "claude binary not found — set the path manually",
-    "agentsClaudeCliNote": "Local engine: the claude binary runs as a subprocess on your own subscription. No API key needed. Tools and external MCP servers are disabled."
+    "agentsClaudeCliNote": "Local engine: the claude binary runs as a subprocess on your own subscription. No API key needed. Tools and external MCP servers are disabled.",
+    "tabSecurity": "Security"
   },
   "dialogs": {
     "newWorkspace": "New Workspace",
@@ -312,5 +313,30 @@
     "clearLine": "Clear line",
     "clearScreen": "Clear screen",
     "reset": "Reset terminal"
+  },
+  "security": {
+    "subtitle": "Enter password to unlock",
+    "placeholder": "Password",
+    "unlock": "Unlock",
+    "wrong": "Wrong password",
+    "statusOn": "Startup password is enabled",
+    "statusOff": "Startup password is disabled",
+    "descOn": "On launch the app asks for the password and loads no data until it is entered correctly.",
+    "descOff": "The app opens immediately. Enable a password to require it on launch.",
+    "storage": "The password is stored in the encrypted database (SQLCipher) as an irreversible Argon2id hash, not as plain text. A forgotten password cannot be recovered.",
+    "current": "Current password",
+    "new": "New password",
+    "password": "Password",
+    "confirm": "Repeat password",
+    "enable": "Enable password",
+    "change": "Change password",
+    "disable": "Remove password",
+    "errEmpty": "Enter a new password",
+    "errMismatch": "Passwords do not match",
+    "errCurrent": "Enter the current password",
+    "toastEnabled": "Password enabled",
+    "toastChanged": "Password changed",
+    "toastDisabled": "Password removed",
+    "dbEncrypted": "Database is encrypted (SQLCipher, AES-256)"
   }
 }
