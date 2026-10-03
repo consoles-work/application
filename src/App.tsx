@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Layout } from "./components/Layout";
 import { ToastContainer } from "./components/Toast";
 import { CommandPalette } from "./components/CommandPalette";
@@ -14,11 +14,20 @@ import i18n from "./lib/i18n";
 // ══════════════════════════════════════
 // App — корневой компонент: гейт пароля на вход
 // ══════════════════════════════════════
-// Пока пароль не введён, MainApp не монтируется — данные из БД
+// Пока пароль не введён при запуске, MainApp не монтируется — данные из БД
 // (дерево, wiki, AI-чаты) не загружаются и не рендерятся.
+// Автоблокировка по бездействию (ui.autoLockMinutes, 0 — выкл) MainApp НЕ
+// размонтирует, чтобы не оборвать PTY-сессии: заставка ложится поверх, а
+// интерфейс под ней получает `inert` (без фокуса и кликов).
+
+const ACTIVITY_EVENTS = ["mousemove", "mousedown", "keydown", "wheel", "touchstart"] as const;
 
 function App() {
   const [lock, setLock] = useState<"checking" | "locked" | "unlocked">("checking");
+  // MainApp смонтирован (пароль хотя бы раз введён или не задан)
+  const [mounted, setMounted] = useState(false);
+  const mainRef = useRef<HTMLDivElement | null>(null);
+  const autoLockMinutes = Math.max(0, parseInt(useAppStore((s) => s.settings["ui.autoLockMinutes"] ?? "0")) || 0);
 
   useEffect(() => {
     // Тема и язык нужны уже экрану блокировки (служебные ключи security.* сюда не попадают)
@@ -32,9 +41,61 @@ function App() {
       .catch(() => setLock("locked"));
   }, []);
 
+  useEffect(() => {
+    if (lock === "unlocked") setMounted(true);
+    // inert: под заставкой нельзя сфокусировать терминал/инпуты и кликнуть
+    mainRef.current?.toggleAttribute("inert", lock === "locked");
+  }, [lock]);
+
+  // Автоблокировка: время последнего действия пользователя сравниваем с порогом.
+  // Проверка по таймеру + при возврате окна (после сна / из трея таймеры
+  // WebKit могут не тикать, а метка времени остаётся честной).
+  useEffect(() => {
+    if (lock !== "unlocked" || autoLockMinutes <= 0) return;
+    let last = Date.now();
+    const bump = (e: Event) => {
+      // Движение мыши над неактивным окном — не активность
+      if (e.type === "mousemove" && !document.hasFocus()) return;
+      last = Date.now();
+    };
+    const check = () => {
+      if (Date.now() - last < autoLockMinutes * 60_000) return;
+      // Пароль могли снять в настройках — тогда блокировать нечем
+      isPasswordSet()
+        .then((set) => (set ? setLock("locked") : (last = Date.now())))
+        .catch(() => setLock("locked"));
+    };
+    const opts = { capture: true, passive: true };
+    ACTIVITY_EVENTS.forEach((ev) => window.addEventListener(ev, bump, opts));
+    window.addEventListener("focus", check);
+    document.addEventListener("visibilitychange", check);
+    const timer = window.setInterval(check, 10_000);
+    return () => {
+      ACTIVITY_EVENTS.forEach((ev) => window.removeEventListener(ev, bump, opts));
+      window.removeEventListener("focus", check);
+      document.removeEventListener("visibilitychange", check);
+      window.clearInterval(timer);
+    };
+  }, [lock, autoLockMinutes]);
+
   if (lock === "checking") return <div className="h-screen w-screen bg-surface-0" />;
-  if (lock === "locked") return <LockScreen onUnlock={() => setLock("unlocked")} />;
-  return <MainApp />;
+  return (
+    <>
+      {mounted && (
+        <div ref={mainRef} className="contents">
+          <MainApp />
+        </div>
+      )}
+      {lock === "locked" && (
+        // Поверх модалок (z-50) и drag-ghost дерева (9999). stopPropagation в
+        // React-обработчике не даёт клавишам дойти до window/document-слушателей
+        // горячих клавиш интерфейса под заставкой.
+        <div className="fixed inset-0 z-[10000]" onKeyDown={(e) => e.stopPropagation()}>
+          <LockScreen idle={mounted} onUnlock={() => setLock("unlocked")} />
+        </div>
+      )}
+    </>
+  );
 }
 
 function MainApp() {

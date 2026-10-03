@@ -94,7 +94,7 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
           {tab === "agents" && (
             <AgentsTab settings={settings} onChange={handleSetSetting} showToast={showToast} />
           )}
-          {tab === "security" && <SecurityTab showToast={showToast} />}
+          {tab === "security" && <SecurityTab settings={settings} onChange={handleSetSetting} showToast={showToast} />}
         </div>
       </div>
     </div>
@@ -693,8 +693,12 @@ function InterfaceTab({
 // ── Вкладка "Безопасность" (пароль на вход) ─────────────────
 
 function SecurityTab({
+  settings,
+  onChange,
   showToast,
 }: {
+  settings: Record<string, string>;
+  onChange: (key: string, value: string) => void;
   showToast: (type: "success" | "error" | "info", msg: string) => void;
 }) {
   const { t } = useTranslation();
@@ -813,6 +817,73 @@ function SecurityTab({
           </button>
         )}
       </div>
+
+      <AutoLockSetting
+        enabled={enabled}
+        value={settings["ui.autoLockMinutes"] ?? "0"}
+        onChange={(v) => onChange("ui.autoLockMinutes", v)}
+      />
+    </div>
+  );
+}
+
+// Порог автоблокировки по бездействию, минут (0 — выключено)
+const AUTO_LOCK_PRESETS = [0, 1, 5, 10, 15, 30, 60];
+
+function AutoLockSetting({
+  enabled,
+  value,
+  onChange,
+}: {
+  enabled: boolean;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+
+  const commit = (raw: string) => {
+    const n = Math.min(1440, Math.max(0, parseInt(raw) || 0));
+    setDraft(String(n));
+    if (String(n) !== value) onChange(String(n));
+  };
+  const current = parseInt(value) || 0;
+
+  return (
+    <div className={`pt-4 border-t border-border space-y-2 ${enabled ? "" : "opacity-50 pointer-events-none"}`}>
+      <label className="block text-xs font-medium text-text-secondary">{t("security.autoLock")}</label>
+      <div className="flex flex-wrap gap-1.5">
+        {AUTO_LOCK_PRESETS.map((m) => (
+          <button
+            key={m}
+            onClick={() => commit(String(m))}
+            className={`px-2.5 py-1 text-xs rounded border transition-colors ${
+              current === m
+                ? "bg-accent/15 border-accent text-accent"
+                : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
+            }`}
+          >
+            {m === 0 ? t("security.autoLockOff") : t("security.autoLockMinutes", { n: m })}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          min={0}
+          max={1440}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={(e) => commit(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") commit((e.target as HTMLInputElement).value); }}
+          className="w-20 bg-surface-0 border border-border rounded px-2 py-1 text-xs text-text-primary outline-none focus:border-accent"
+        />
+        <span className="text-xs text-text-secondary">{t("security.autoLockUnit")}</span>
+      </div>
+      <p className="text-2xs text-text-muted leading-relaxed">
+        {enabled ? t("security.autoLockHint") : t("security.autoLockNeedsPassword")}
+      </p>
     </div>
   );
 }

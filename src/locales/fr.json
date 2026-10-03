@@ -337,6 +337,13 @@
     "toastEnabled": "Mot de passe activé",
     "toastChanged": "Mot de passe modifié",
     "toastDisabled": "Mot de passe supprimé",
-    "dbEncrypted": "La base de données est chiffrée (SQLCipher, AES-256)"
+    "dbEncrypted": "La base de données est chiffrée (SQLCipher, AES-256)",
+    "lockedIdle": "Session verrouillée pour inactivité. Saisissez le mot de passe",
+    "autoLock": "Verrouillage automatique en cas d'inactivité",
+    "autoLockOff": "Désactivé",
+    "autoLockMinutes": "{{n}} min",
+    "autoLockUnit": "minutes (0 — désactivé)",
+    "autoLockHint": "Sans mouvement de souris ni frappe pendant ce délai, l'écran est verrouillé et le mot de passe doit être ressaisi. Les sessions de terminal continuent de fonctionner.",
+    "autoLockNeedsPassword": "Disponible lorsqu'un mot de passe est activé."
   }
 }

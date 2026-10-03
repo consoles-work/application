@@ -337,6 +337,13 @@
     "toastEnabled": "密码已启用",
     "toastChanged": "密码已修改",
     "toastDisabled": "密码已移除",
-    "dbEncrypted": "数据库已加密（SQLCipher，AES-256）"
+    "dbEncrypted": "数据库已加密（SQLCipher，AES-256）",
+    "lockedIdle": "会话因闲置已锁定，请输入密码",
+    "autoLock": "闲置时自动锁定",
+    "autoLockOff": "关闭",
+    "autoLockMinutes": "{{n}} 分钟",
+    "autoLockUnit": "分钟（0 — 关闭）",
+    "autoLockHint": "如果在此时间内没有鼠标移动或按键，屏幕将被锁定，需要重新输入密码。终端会话会继续运行。",
+    "autoLockNeedsPassword": "启用密码后可用。"
   }
 }

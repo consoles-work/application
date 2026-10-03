@@ -3,6 +3,7 @@
 // ══════════════════════════════════════════════════════════════════
 // Показывается на весь экран, пока пароль не введён верно; основной
 // интерфейс и данные до разблокировки не монтируются вовсе (см. App.tsx).
+// Тот же экран используется для автоблокировки по бездействию (App.tsx).
 // Пароль сверяется с Argon2id-хешем в БД через команду `verify_password`.
 // Фон — декоративный «терминал»: на canvas медленно ползут строки команд
 // цветами активной темы.
@@ -139,7 +140,8 @@ function TerminalBackground() {
   );
 }
 
-export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
+/** idle — экран показан автоблокировкой по бездействию, а не при запуске */
+export function LockScreen({ onUnlock, idle = false }: { onUnlock: () => void; idle?: boolean }) {
   const { t } = useTranslation();
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
@@ -179,7 +181,9 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
             <Lock size={24} />
           </div>
           <div className="text-lg font-semibold tracking-wide text-text-primary">consoles.work</div>
-          <div className="text-sm text-text-secondary -mt-2">{t("security.subtitle")}</div>
+          <div className="text-sm text-text-secondary -mt-2 text-center">
+            {idle ? t("security.lockedIdle") : t("security.subtitle")}
+          </div>
           <input
             type="password"
             value={password}

@@ -337,6 +337,13 @@
     "toastEnabled": "Password enabled",
     "toastChanged": "Password changed",
     "toastDisabled": "Password removed",
-    "dbEncrypted": "Database is encrypted (SQLCipher, AES-256)"
+    "dbEncrypted": "Database is encrypted (SQLCipher, AES-256)",
+    "lockedIdle": "Session locked due to inactivity. Enter password",
+    "autoLock": "Auto-lock when idle",
+    "autoLockOff": "Off",
+    "autoLockMinutes": "{{n}} min",
+    "autoLockUnit": "minutes (0 — off)",
+    "autoLockHint": "If there is no mouse movement or key press for this long, the screen is locked and the password must be entered again. Terminal sessions keep running.",
+    "autoLockNeedsPassword": "Available when a password is enabled."
   }
 }
