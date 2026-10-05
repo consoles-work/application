@@ -43,6 +43,12 @@ rand = "0.8"
 # ── Пароль на вход (Argon2id-хеш) ──
 argon2 = "0.5"
 
+# ── Один экземпляр приложения (только десктоп) ──
+# Повторный запуск (автозапуск + восстановление окон macOS при входе)
+# не плодит второй процесс, а фокусирует окно уже работающего
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-single-instance = "2"
+
 [profile.release]
 # Оптимизация размера бинарника
 strip = true

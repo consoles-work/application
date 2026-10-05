@@ -41,6 +41,15 @@ pub fn run() {
     // Каждый .method() добавляет конфигурацию и возвращает builder обратно
     tauri::Builder::default()
         // Подключаем плагины
+        // Должен быть первым плагином: второй экземпляр завершается сразу,
+        // а уже запущенный показывает и фокусирует своё окно
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.unminimize();
+                let _ = w.show();
+                let _ = w.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
