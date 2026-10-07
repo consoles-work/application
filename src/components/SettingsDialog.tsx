@@ -4,7 +4,7 @@ import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import { useAppStore } from "../stores/appStore";
 import { getDbInfo, setSetting, isPasswordSet, setPassword, enableAutostart, disableAutostart, getAutostartStatus, updateTrayLanguage, aiDetectBin, aiCheck } from "../lib/tauriCommands";
 import type { DbInfo } from "../lib/tauriCommands";
-import { THEMES } from "../lib/themes";
+import { THEMES, type AppTheme } from "../lib/themes";
 import { useTranslation } from "react-i18next";
 import i18n from "../lib/i18n";
 import { AI_PROVIDERS, getProvider, streamCompletion } from "../lib/aiProviders";
@@ -588,35 +588,30 @@ function InterfaceTab({
           {t("settings.theme")}
         </label>
         <div className="grid grid-cols-2 gap-2">
-          {THEMES.map((theme) => (
-            <button
-              key={theme.id}
-              className={`px-3 py-2 text-xs rounded-lg border transition-colors text-left flex items-center gap-2 ${
-                currentTheme === theme.id
-                  ? "bg-accent/15 border-accent text-accent"
-                  : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
-              }`}
-              onClick={() => onChange("ui.theme", theme.id)}
-            >
-              <span
-                className="w-3 h-3 rounded-full shrink-0 border border-white/20"
-                style={{ background: theme.xterm.cursor }}
-              />
-              {theme.label}
-            </button>
-          ))}
-          <button
-            className={`px-3 py-2 text-xs rounded-lg border transition-colors text-left flex items-center gap-2 ${
-              currentTheme === "random"
-                ? "bg-accent/15 border-accent text-accent"
-                : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
-            }`}
-            onClick={() => onChange("ui.theme", "random")}
-          >
-            <span className="text-base leading-none">🎲</span>
-            {t("settings.themeRandom")}
-          </button>
+          <ThemeGroup
+            label={t("settings.themesDark")}
+            themes={THEMES.filter((th) => th.dark)}
+            current={currentTheme}
+            onPick={(id) => onChange("ui.theme", id)}
+          />
+          <ThemeGroup
+            label={t("settings.themesLight")}
+            themes={THEMES.filter((th) => !th.dark)}
+            current={currentTheme}
+            onPick={(id) => onChange("ui.theme", id)}
+          />
         </div>
+        <button
+          className={`mt-2 w-full px-3 py-2 text-xs rounded-lg border transition-colors text-left flex items-center gap-2 ${
+            currentTheme === "random"
+              ? "bg-accent/15 border-accent text-accent"
+              : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
+          }`}
+          onClick={() => onChange("ui.theme", "random")}
+        >
+          <span className="text-base leading-none">🎲</span>
+          {t("settings.themeRandom")}
+        </button>
         {currentTheme === "random" && (
           <p className="text-2xs text-text-muted mt-2">
             {t("settings.themeRandomNote")}
@@ -884,6 +879,43 @@ function AutoLockSetting({
       <p className="text-2xs text-text-muted leading-relaxed">
         {enabled ? t("security.autoLockHint") : t("security.autoLockNeedsPassword")}
       </p>
+    </div>
+  );
+}
+
+function ThemeGroup({
+  label,
+  themes,
+  current,
+  onPick,
+}: {
+  label: string;
+  themes: AppTheme[];
+  current: string;
+  onPick: (id: string) => void;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-surface-1 p-2 self-start">
+      <div className="text-2xs uppercase tracking-wider text-text-muted mb-2 px-1">{label}</div>
+      <div className="space-y-1">
+        {themes.map((theme) => (
+          <button
+            key={theme.id}
+            className={`w-full px-3 py-2 text-xs rounded-lg border transition-colors text-left flex items-center gap-2 ${
+              current === theme.id
+                ? "bg-accent/15 border-accent text-accent"
+                : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
+            }`}
+            onClick={() => onPick(theme.id)}
+          >
+            <span
+              className="w-3 h-3 rounded-full shrink-0 border border-white/20"
+              style={{ background: theme.xterm.cursor }}
+            />
+            <span className="truncate">{theme.label}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

@@ -74,7 +74,7 @@ SSH passphrase автоподставляется через `ssh-add` с `SSH_A
 - **Терминал**: xterm.js (`@xterm/xterm`) подключён к PTY-бэкенду через события Tauri.
 - **AI-панель**: `AiPanel.tsx` — чат с историей в SQLite, стриминг SSE, позиция right/bottom (resizable). Провайдеры: OpenAI, Anthropic (`src/lib/aiProviders.ts`). API-ключи хранятся в зашифрованной SQLite как `ai.apiKey.openai` / `ai.apiKey.anthropic`.
 - **Локализация**: i18next, 5 языков (ru/en/zh/fr/kk), файлы `src/locales/*.json`.
-- **Темы**: 13 тем (10 тёмных + 3 светлых), CSS-переменные, мгновенная смена. Функции в `src/lib/themes.ts`.
+- **Темы**: 18 тем (9 тёмных + 9 светлых, флаг `dark` у темы), CSS-переменные, мгновенная смена. Функции в `src/lib/themes.ts`.
 
 ### Важные особенности IPC (camelCase)
 
@@ -98,7 +98,7 @@ HTML5 DnD API **не работает в Tauri WebKit** — использует
 
 ### Текущее состояние
 
-MVP завершён полностью. Все панели рабочие. PTY, SSH (key + passphrase + password), wiki, AI-чат (OpenAI + Anthropic + Ollama, история в SQLite), экспорт/импорт (.dchub, AES-256-GCM, выборочный по воркспейсам, wiki с корректной перепривязкой ID, AI-чаты, настройки приложения), drag-and-drop консолей между проектами, системный трей, автозапуск, 13 тем, 5 языков локализации, шифрование БД (SQLCipher) — всё реализовано.
+MVP завершён полностью. Все панели рабочие. PTY, SSH (key + passphrase + password), wiki, AI-чат (OpenAI + Anthropic + Ollama, история в SQLite), экспорт/импорт (.dchub, AES-256-GCM, выборочный по воркспейсам, wiki с корректной перепривязкой ID, AI-чаты, настройки приложения), drag-and-drop консолей между проектами, системный трей, автозапуск, 18 тем, 5 языков локализации, шифрование БД (SQLCipher) — всё реализовано.
 
 ### Чеклист добавления новой Tauri-команды
 
@@ -116,7 +116,7 @@ src/                              — Frontend (TypeScript + React)
   stores/appStore.ts              — Zustand store
   lib/
     tauriCommands.ts              — ВСЕ invoke()-вызовы (единственное место)
-    themes.ts                     — 13 тем UI + xterm-палитры
+    themes.ts                     — 18 тем UI + xterm-палитры + цвета водяного знака
     i18n.ts                       — локализация (i18next)
     aiProviders.ts                — OpenAI + Anthropic, стриминг SSE
   components/

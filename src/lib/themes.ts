@@ -13,9 +13,20 @@ export interface XtermTheme {
   brightBlue: string; brightMagenta: string; brightCyan: string; brightWhite: string;
 }
 
+// Водяной знак в правом нижнем углу терминала. Прозрачность задаётся в
+// TerminalPanel, здесь только чистые цвета: prod — для консолей с галочкой
+// «опасный», plain — для остальных. На тёмных темах берутся яркие варианты
+// палитры (brightRed/brightWhite), на светлых — red и цвет текста.
+export interface WatermarkColors {
+  prod: string;
+  plain: string;
+}
+
 export interface AppTheme {
   id: string;
   label: string;
+  dark: boolean;
+  watermark: WatermarkColors;
   xterm: XtermTheme;
 }
 
@@ -23,6 +34,8 @@ export const THEMES: AppTheme[] = [
   {
     id: "dark",
     label: "GitHub Dark",
+    dark: true,
+    watermark: { prod: "#ff7b72", plain: "#f0f6fc" },
     xterm: {
       background: "#0d1117", foreground: "#e6edf3", cursor: "#58a6ff",
       selectionBackground: "#264f78",
@@ -35,6 +48,8 @@ export const THEMES: AppTheme[] = [
   {
     id: "light",
     label: "GitHub Light",
+    dark: false,
+    watermark: { prod: "#cf222e", plain: "#1f2328" },
     xterm: {
       background: "#ffffff", foreground: "#1f2328", cursor: "#0969da",
       selectionBackground: "#b6d7ff",
@@ -47,6 +62,8 @@ export const THEMES: AppTheme[] = [
   {
     id: "dracula",
     label: "Dracula",
+    dark: true,
+    watermark: { prod: "#ff6e6e", plain: "#ffffff" },
     xterm: {
       background: "#282a36", foreground: "#f8f8f2", cursor: "#bd93f9",
       selectionBackground: "#44475a",
@@ -59,6 +76,8 @@ export const THEMES: AppTheme[] = [
   {
     id: "monokai",
     label: "Monokai",
+    dark: true,
+    watermark: { prod: "#ff4f6d", plain: "#f9f8f5" },
     xterm: {
       background: "#272822", foreground: "#f8f8f2", cursor: "#a6e22e",
       selectionBackground: "#49483e",
@@ -71,6 +90,8 @@ export const THEMES: AppTheme[] = [
   {
     id: "nord",
     label: "Nord",
+    dark: true,
+    watermark: { prod: "#e0727c", plain: "#eceff4" },
     xterm: {
       background: "#2e3440", foreground: "#eceff4", cursor: "#88c0d0",
       selectionBackground: "#4c566a",
@@ -83,6 +104,8 @@ export const THEMES: AppTheme[] = [
   {
     id: "solarized",
     label: "Solarized Dark",
+    dark: true,
+    watermark: { prod: "#ff5c57", plain: "#fdf6e3" },
     xterm: {
       background: "#002b36", foreground: "#839496", cursor: "#268bd2",
       selectionBackground: "#073642",
@@ -95,6 +118,8 @@ export const THEMES: AppTheme[] = [
   {
     id: "tokyo-night",
     label: "Tokyo Night",
+    dark: true,
+    watermark: { prod: "#f7768e", plain: "#c0caf5" },
     xterm: {
       background: "#1a1b2e", foreground: "#c0caf5", cursor: "#7aa2f7",
       selectionBackground: "#292e42",
@@ -107,6 +132,8 @@ export const THEMES: AppTheme[] = [
   {
     id: "catppuccin",
     label: "Catppuccin",
+    dark: true,
+    watermark: { prod: "#f38ba8", plain: "#cdd6f4" },
     xterm: {
       background: "#1e1e2e", foreground: "#cdd6f4", cursor: "#89b4fa",
       selectionBackground: "#45475a",
@@ -119,6 +146,8 @@ export const THEMES: AppTheme[] = [
   {
     id: "one-dark",
     label: "One Dark",
+    dark: true,
+    watermark: { prod: "#e06c75", plain: "#ffffff" },
     xterm: {
       background: "#282c34", foreground: "#abb2bf", cursor: "#61afef",
       selectionBackground: "#3e4452",
@@ -131,6 +160,8 @@ export const THEMES: AppTheme[] = [
   {
     id: "gruvbox",
     label: "Gruvbox Dark",
+    dark: true,
+    watermark: { prod: "#fb4934", plain: "#ebdbb2" },
     xterm: {
       background: "#282828", foreground: "#ebdbb2", cursor: "#fabd2f",
       selectionBackground: "#504945",
@@ -144,6 +175,8 @@ export const THEMES: AppTheme[] = [
   {
     id: "solarized-light",
     label: "Solarized Light",
+    dark: false,
+    watermark: { prod: "#dc322f", plain: "#657b83" },
     xterm: {
       background: "#fdf6e3", foreground: "#657b83", cursor: "#586e75",
       selectionBackground: "#eee8d5",
@@ -156,6 +189,8 @@ export const THEMES: AppTheme[] = [
   {
     id: "catppuccin-latte",
     label: "Catppuccin Latte",
+    dark: false,
+    watermark: { prod: "#d20f39", plain: "#4c4f69" },
     xterm: {
       background: "#eff1f5", foreground: "#4c4f69", cursor: "#dc8a78",
       selectionBackground: "#bcc0cc",
@@ -168,6 +203,8 @@ export const THEMES: AppTheme[] = [
   {
     id: "one-light",
     label: "One Light",
+    dark: false,
+    watermark: { prod: "#e45649", plain: "#383a42" },
     xterm: {
       background: "#fafafa", foreground: "#383a42", cursor: "#4078f2",
       selectionBackground: "#e5e5e5",
@@ -177,9 +214,79 @@ export const THEMES: AppTheme[] = [
       brightBlue: "#4078f2", brightMagenta: "#a626a4", brightCyan: "#0184bc", brightWhite: "#ffffff",
     },
   },
+  {
+    id: "gruvbox-light",
+    label: "Gruvbox Light",
+    dark: false,
+    watermark: { prod: "#cc241d", plain: "#3c3836" },
+    xterm: {
+      background: "#fbf1c7", foreground: "#3c3836", cursor: "#076678",
+      selectionBackground: "#d5c4a1",
+      black: "#3c3836", red: "#cc241d", green: "#98971a", yellow: "#d79921",
+      blue: "#458588", magenta: "#b16286", cyan: "#689d6a", white: "#7c6f64",
+      brightBlack: "#928374", brightRed: "#9d0006", brightGreen: "#79740e", brightYellow: "#b57614",
+      brightBlue: "#076678", brightMagenta: "#8f3f71", brightCyan: "#427b58", brightWhite: "#504945",
+    },
+  },
+  {
+    id: "everforest-light",
+    label: "Everforest Light",
+    dark: false,
+    watermark: { prod: "#f85552", plain: "#4c5960" },
+    xterm: {
+      background: "#f5f0da", foreground: "#4c5960", cursor: "#8da101",
+      selectionBackground: "#dbd6bb",
+      black: "#5c6a72", red: "#f85552", green: "#8da101", yellow: "#dfa000",
+      blue: "#3a94c5", magenta: "#df69ba", cyan: "#35a77c", white: "#939f91",
+      brightBlack: "#829181", brightRed: "#e66868", brightGreen: "#93b259", brightYellow: "#dfa000",
+      brightBlue: "#3a94c5", brightMagenta: "#df69ba", brightCyan: "#35a77c", brightWhite: "#4c5960",
+    },
+  },
+  {
+    id: "rose-pine-dawn",
+    label: "Rosé Pine Dawn",
+    dark: false,
+    watermark: { prod: "#b4637a", plain: "#575279" },
+    xterm: {
+      background: "#fffaf3", foreground: "#575279", cursor: "#286983",
+      selectionBackground: "#dfdad9",
+      black: "#575279", red: "#b4637a", green: "#286983", yellow: "#ea9d34",
+      blue: "#56949f", magenta: "#907aa9", cyan: "#d7827e", white: "#797593",
+      brightBlack: "#9893a5", brightRed: "#b4637a", brightGreen: "#286983", brightYellow: "#ea9d34",
+      brightBlue: "#56949f", brightMagenta: "#907aa9", brightCyan: "#d7827e", brightWhite: "#575279",
+    },
+  },
+  {
+    id: "ayu-light",
+    label: "Ayu Light",
+    dark: false,
+    watermark: { prod: "#e65050", plain: "#5c6773" },
+    xterm: {
+      background: "#fcfcfc", foreground: "#5c6773", cursor: "#fa8d3e",
+      selectionBackground: "#d1e4f4",
+      black: "#000000", red: "#ea6c6d", green: "#6cbf43", yellow: "#eca944",
+      blue: "#3199e1", magenta: "#9e75c7", cyan: "#46ba94", white: "#8a9199",
+      brightBlack: "#686868", brightRed: "#f07171", brightGreen: "#86b300", brightYellow: "#f2ae49",
+      brightBlue: "#399ee6", brightMagenta: "#a37acc", brightCyan: "#4cbf99", brightWhite: "#5c6773",
+    },
+  },
+  {
+    id: "tokyo-day",
+    label: "Tokyo Night Day",
+    dark: false,
+    watermark: { prod: "#f52a65", plain: "#343b58" },
+    xterm: {
+      background: "#e9eaef", foreground: "#343b58", cursor: "#2e7de9",
+      selectionBackground: "#b7c1e3",
+      black: "#343b58", red: "#f52a65", green: "#587539", yellow: "#8c6c3e",
+      blue: "#2e7de9", magenta: "#9854f1", cyan: "#007197", white: "#6172b0",
+      brightBlack: "#a1a6c5", brightRed: "#f52a65", brightGreen: "#587539", brightYellow: "#8c6c3e",
+      brightBlue: "#2e7de9", brightMagenta: "#9854f1", brightCyan: "#007197", brightWhite: "#343b58",
+    },
+  },
 ];
 
-// Темы доступные для случайного выбора (все 10)
+// Темы доступные для случайного выбора (все)
 export const SELECTABLE_THEMES = THEMES;
 
 let _randomThemeId: string | null = null;

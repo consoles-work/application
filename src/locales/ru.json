@@ -143,6 +143,8 @@
     "cursorBar": "Линия",
     "theme": "Тема",
     "themeRandom": "Случайная",
+    "themesDark": "Тёмные",
+    "themesLight": "Светлые",
     "themeRandomNote": "При каждом запуске выбирается случайная тема из 10",
     "language": "Язык",
     "langRu": "🇷🇺 Русский",

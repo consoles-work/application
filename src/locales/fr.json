@@ -143,6 +143,8 @@
     "cursorBar": "Barre",
     "theme": "Thème",
     "themeRandom": "Aléatoire",
+    "themesDark": "Sombres",
+    "themesLight": "Claires",
     "themeRandomNote": "Un thème aléatoire parmi 10 est choisi à chaque démarrage",
     "language": "Langue",
     "langRu": "🇷🇺 Русский",

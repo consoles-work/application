@@ -120,6 +120,7 @@ export function TerminalPanel() {
               isActive={session.id === activeSessionId}
               isDanger={con?.isDanger ?? false}
               dangerLabel={con?.dangerLabel ?? "DANGER"}
+              consoleName={con?.name ?? ""}
               note={con?.note?.trim() ?? ""}
             />
           );
@@ -148,12 +149,14 @@ function TerminalView({
   isActive,
   isDanger,
   dangerLabel,
+  consoleName,
   note,
 }: {
   session: TerminalSession;
   isActive: boolean;
   isDanger: boolean;
   dangerLabel: string;
+  consoleName: string;
   note: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -165,6 +168,18 @@ function TerminalView({
   const { settings } = useAppStore();
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [noteExpanded, setNoteExpanded] = useState(false);
+
+  // Водяной знак: у опасной консоли с меткой — крупная метка, иначе — имя консоли
+  // помельче. Цвет из темы (prod/plain), чтобы на тёмных темах не было тёмных надписей.
+  const watermarkTheme = getThemeById(resolveThemeId(settings["ui.theme"] ?? "dark"));
+  const watermarkColors = watermarkTheme.watermark;
+  // На тёмном фоне та же прозрачность читается заметно бледнее — поднимаем её
+  const watermarkOpacity = isDanger
+    ? (watermarkTheme.dark ? 0.26 : 0.18)
+    : (watermarkTheme.dark ? 0.14 : 0.08);
+  const trimmedLabel = dangerLabel.trim();
+  const showLabel = isDanger && trimmedLabel !== "";
+  const watermarkText = showLabel ? trimmedLabel : consoleName.trim();
 
   // ── Применение настроек к уже запущенному терминалу ──
   useEffect(() => {
@@ -436,18 +451,30 @@ function TerminalView({
       >
         <div ref={containerRef} className="h-full w-full" />
         {/* Фон xterm непрозрачный, поэтому водяной знак — полупрозрачный слой поверх,
-            не перехватывающий мышь. Плюс красная рамка по периметру терминала. */}
-        {isDanger && (
+            не перехватывающий мышь. У опасных консолей ещё красная рамка по периметру. */}
+        {(isDanger || watermarkText) && (
           <div
             className="pointer-events-none select-none absolute inset-0 flex items-end justify-end p-4"
-            style={{ boxShadow: "inset 0 0 0 2px rgba(220,38,38,0.55), inset 0 0 40px rgba(220,38,38,0.12)" }}
+            style={
+              isDanger
+                ? { boxShadow: "inset 0 0 0 2px rgba(220,38,38,0.55), inset 0 0 40px rgba(220,38,38,0.12)" }
+                : undefined
+            }
           >
-            <span
-              className="font-black uppercase tracking-widest leading-none"
-              style={{ fontSize: "clamp(28px, 6vw, 72px)", color: "rgba(220,38,38,0.16)" }}
-            >
-              {dangerLabel}
-            </span>
+            {watermarkText && (
+              <span
+                className={`leading-none truncate max-w-full ${
+                  showLabel ? "font-black uppercase tracking-widest" : "font-bold tracking-wide"
+                }`}
+                style={{
+                  fontSize: showLabel ? "clamp(28px, 6vw, 72px)" : "clamp(20px, 3.5vw, 44px)",
+                  color: isDanger ? watermarkColors.prod : watermarkColors.plain,
+                  opacity: watermarkOpacity,
+                }}
+              >
+                {watermarkText}
+              </span>
+            )}
           </div>
         )}
       </div>

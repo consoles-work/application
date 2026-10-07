@@ -143,6 +143,8 @@
     "cursorBar": "Bar",
     "theme": "Theme",
     "themeRandom": "Random",
+    "themesDark": "Dark",
+    "themesLight": "Light",
     "themeRandomNote": "A random theme from 10 is chosen on each launch",
     "language": "Language",
     "langRu": "🇷🇺 Русский",

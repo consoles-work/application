@@ -143,6 +143,8 @@
     "cursorBar": "竖线",
     "theme": "主题",
     "themeRandom": "随机",
+    "themesDark": "深色",
+    "themesLight": "浅色",
     "themeRandomNote": "每次启动从 10 个主题中随机选择",
     "language": "语言",
     "langRu": "🇷🇺 Русский",

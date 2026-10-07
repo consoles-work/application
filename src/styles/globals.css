@@ -232,6 +232,91 @@
   --resizer: #d4d4d4;
 }
 
+[data-theme="gruvbox-light"] {
+  --surface-0: #fbf1c7;
+  --surface-1: #f2e5bc;
+  --surface-2: #ebdbb2;
+  --surface-3: #d5c4a1;
+  --border: #bdae93;
+  --text-primary: #3c3836;
+  --text-secondary: #665c54;
+  --text-muted: #928374;
+  --accent: 7 102 120;
+  --accent-hover: 66 123 88;
+  --accent-subtle: #d5e5e2;
+  --scrollbar: #bdae93;
+  --scrollbar-hover: #928374;
+  --resizer: #bdae93;
+}
+
+[data-theme="everforest-light"] {
+  --surface-0: #f5f0da;
+  --surface-1: #efe9d2;
+  --surface-2: #e8e3c8;
+  --surface-3: #dbd6bb;
+  --border: #cfc9ab;
+  --text-primary: #4c5960;
+  --text-secondary: #6a7a80;
+  --text-muted: #9aa599;
+  --accent: 141 161 1;
+  --accent-hover: 53 167 124;
+  --accent-subtle: #e2eacb;
+  --scrollbar: #cfc9ab;
+  --scrollbar-hover: #9aa599;
+  --resizer: #cfc9ab;
+}
+
+[data-theme="rose-pine-dawn"] {
+  --surface-0: #fffaf3;
+  --surface-1: #faf4ed;
+  --surface-2: #f2e9e1;
+  --surface-3: #e4dad2;
+  --border: #dfdad9;
+  --text-primary: #575279;
+  --text-secondary: #797593;
+  --text-muted: #9893a5;
+  --accent: 40 105 131;
+  --accent-hover: 86 148 159;
+  --accent-subtle: #dfe7ea;
+  --scrollbar: #dfdad9;
+  --scrollbar-hover: #9893a5;
+  --resizer: #dfdad9;
+}
+
+[data-theme="ayu-light"] {
+  --surface-0: #fcfcfc;
+  --surface-1: #f3f4f5;
+  --surface-2: #ebedef;
+  --surface-3: #dfe1e4;
+  --border: #d3d7db;
+  --text-primary: #5c6773;
+  --text-secondary: #8a9199;
+  --text-muted: #abb0b6;
+  --accent: 250 141 62;
+  --accent-hover: 245 174 73;
+  --accent-subtle: #ffe9d6;
+  --scrollbar: #d3d7db;
+  --scrollbar-hover: #abb0b6;
+  --resizer: #d3d7db;
+}
+
+[data-theme="tokyo-day"] {
+  --surface-0: #e9eaef;
+  --surface-1: #e1e2e7;
+  --surface-2: #d6d8df;
+  --surface-3: #c4c8d4;
+  --border: #b7bccb;
+  --text-primary: #343b58;
+  --text-secondary: #6172b0;
+  --text-muted: #848cb5;
+  --accent: 46 125 233;
+  --accent-hover: 0 113 151;
+  --accent-subtle: #cdd7f5;
+  --scrollbar: #b7bccb;
+  --scrollbar-hover: #848cb5;
+  --resizer: #b7bccb;
+}
+
 /* ── Базовые стили ── */
 * {
   margin: 0;
