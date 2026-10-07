@@ -431,10 +431,25 @@ function TerminalView({
       )}
       {/* Terminal container с красноватым фоном для опасных */}
       <div
-        className="flex-1 overflow-hidden p-1"
+        className="relative flex-1 overflow-hidden p-1"
         style={isDanger ? { backgroundColor: "rgba(220,38,38,0.045)" } : undefined}
       >
         <div ref={containerRef} className="h-full w-full" />
+        {/* Фон xterm непрозрачный, поэтому водяной знак — полупрозрачный слой поверх,
+            не перехватывающий мышь. Плюс красная рамка по периметру терминала. */}
+        {isDanger && (
+          <div
+            className="pointer-events-none select-none absolute inset-0 flex items-end justify-end p-4"
+            style={{ boxShadow: "inset 0 0 0 2px rgba(220,38,38,0.55), inset 0 0 40px rgba(220,38,38,0.12)" }}
+          >
+            <span
+              className="font-black uppercase tracking-widest leading-none"
+              style={{ fontSize: "clamp(28px, 6vw, 72px)", color: "rgba(220,38,38,0.16)" }}
+            >
+              {dangerLabel}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
