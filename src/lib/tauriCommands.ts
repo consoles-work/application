@@ -91,7 +91,8 @@ export async function createConsole(
   sshExtraArgs?: string,
   sshPassphrase?: string,
   sshPassword?: string,
-  note?: string
+  note?: string,
+  hosting?: string
 ): Promise<ConsoleConfig> {
   return invoke<ConsoleConfig>("create_console", {
     projectId,
@@ -106,6 +107,7 @@ export async function createConsole(
     sshPassphrase,
     sshPassword,
     note,
+    hosting,
   });
 }
 
@@ -125,7 +127,8 @@ export async function updateConsoleConfig(
   sshExtraArgs: string,
   sshPassphrase: string,
   sshPassword: string,
-  note: string
+  note: string,
+  hosting: string
 ): Promise<void> {
   return invoke("update_console_config", {
     id,
@@ -140,6 +143,7 @@ export async function updateConsoleConfig(
     sshPassphrase,
     sshPassword,
     note,
+    hosting,
   });
 }
 
@@ -318,6 +322,10 @@ export interface ImportPreview {
   aiMessageCount: number;
   settingsCount: number;
   hasPassword: boolean;
+}
+
+export async function saveTextFile(filePath: string, content: string): Promise<void> {
+  return invoke("save_text_file", { filePath, content });
 }
 
 export async function exportData(

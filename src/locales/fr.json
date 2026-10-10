@@ -34,6 +34,16 @@
     "moveConfirm": "Déplacer la console «{{name}}» vers le projet «{{project}}» ?",
     "moveConfirmTitle": "Déplacer la console"
   },
+  "serversReport": {
+    "title": "Serveurs : {{name}}",
+    "exportedAt": "Date d'export",
+    "total": "Total des serveurs",
+    "name": "Nom",
+    "host": "Hôte",
+    "port": "Port",
+    "user": "Utilisateur",
+    "hosting": "Hébergement"
+  },
   "contextMenu": {
     "addProject": "Ajouter un projet",
     "addConsole": "Ajouter une console",
@@ -46,6 +56,7 @@
     "markAsDangerous": "⚠ Marquer comme dangereux...",
     "deleteProject": "Supprimer le projet",
     "runConsole": "Exécuter",
+    "openNewInstance": "Ouvrir une autre instance",
     "reconnectConsole": "Reconnecter",
     "connectionSettings": "Paramètres de connexion...",
     "cloneConsole": "Dupliquer la console",
@@ -63,12 +74,17 @@
     "toastOpeningVSCode": "Ouverture dans VS Code...",
     "toastOpenError": "Impossible d'ouvrir: {{error}}",
     "toastDangerError": "Erreur: {{error}}",
-    "copySshCommand": "Copier la commande SSH"
+    "copySshCommand": "Copier la commande SSH",
+    "exportServers": "Exporter les serveurs (.md)",
+    "toastServersExported": "Liste des serveurs enregistrée",
+    "toastNoServers": "Aucun serveur SSH ici",
+    "toastServersExportError": "Erreur d'export : {{error}}"
   },
   "terminalPanel": {
     "selectConsole": "Sélectionnez une console dans l'arbre →",
     "closeTabConfirm": "Fermer l'onglet «{{title}}»?",
     "closeTabTitle": "Fermer l'onglet",
+    "closeGroupConfirm": "Fermer «{{title}}» et toutes ses instances ({{count}})?",
     "ptyError": "Erreur de démarrage PTY: {{error}}",
     "noTerminals": "Aucun terminal ouvert",
     "clickConsole": "Cliquez sur une console dans l'arbre de projets à gauche",
@@ -218,6 +234,9 @@
     "note": "Note",
     "noteHint": "(texte libre)",
     "notePlaceholder": "Ex. : serveur de production facturation, accès VPN uniquement",
+    "hosting": "Hébergement",
+    "hostingHint": "(facultatif)",
+    "hostingPlaceholder": "Ex. : Hetzner, DigitalOcean, AWS eu-central-1",
     "startupPlaceholderLocal": "cd /app\nnpm run dev",
     "startupPlaceholderSsh": "cd /var/www/app\ntail -f logs/app.log",
     "markAsDanger": "⚠ Marquer comme dangereux (production)",

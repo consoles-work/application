@@ -95,6 +95,9 @@ pub struct ConsoleConfig {
     /// Произвольная заметка к подключению
     #[serde(default)]
     pub note: String,
+    /// Где хостится сервер (провайдер/дата-центр), необязательно
+    #[serde(default)]
+    pub hosting: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -220,6 +223,7 @@ pub fn create_console(
     ssh_passphrase: Option<String>,
     ssh_password: Option<String>,
     note: Option<String>,
+    hosting: Option<String>,
 ) -> Result<ConsoleConfig, String> {
     let id = uuid::Uuid::new_v4().to_string();
     let console = ConsoleConfig {
@@ -242,6 +246,7 @@ pub fn create_console(
         ssh_passphrase: ssh_passphrase.unwrap_or_default(),
         ssh_password: ssh_password.unwrap_or_default(),
         note: note.unwrap_or_default(),
+        hosting: hosting.unwrap_or_default(),
     };
 
     crate::db::save_console(&console)?;
@@ -269,6 +274,7 @@ pub fn update_console_config(
     ssh_passphrase: String,
     ssh_password: String,
     note: Option<String>,
+    hosting: Option<String>,
 ) -> Result<(), String> {
     crate::db::update_console_config_fields(
         &id, &name, startup_cmd.as_deref(),
@@ -276,6 +282,7 @@ pub fn update_console_config(
         &ssh_user, &ssh_key_path, &ssh_extra_args,
         &ssh_passphrase, &ssh_password,
         note.as_deref().unwrap_or_default(),
+        hosting.as_deref().unwrap_or_default(),
     )
 }
 
@@ -492,6 +499,12 @@ pub fn clear_ai_session(session_id: String) -> Result<(), String> {
 // ══════════════════════════════════════════════
 // Команды: Экспорт/импорт
 // ══════════════════════════════════════════════
+
+/// Записать текстовый файл по пути (публичный экспорт списка серверов в .md)
+#[tauri::command]
+pub fn save_text_file(file_path: String, content: String) -> Result<(), String> {
+    std::fs::write(&file_path, content).map_err(|e| e.to_string())
+}
 
 /// Экспортировать данные в зашифрованный .dchub файл (пишет файл по пути)
 #[tauri::command]

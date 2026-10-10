@@ -1,16 +1,17 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { open as shellOpen } from "@tauri-apps/plugin-shell";
-import { ask } from "@tauri-apps/plugin-dialog";
+import { ask, save } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../stores/appStore";
 import {
   deleteWorkspace,
   deleteProject,
   deleteConsole,
 } from "../lib/tauriCommands";
-import { setNodeDanger } from "../lib/tauriCommands";
+import { setNodeDanger, saveTextFile } from "../lib/tauriCommands";
 import type { TreeNode, ConsoleConfig } from "../types";
 import { buildSshCommand } from "../lib/connectionString";
+import { buildServersMarkdown } from "../lib/serversMarkdown";
 import { useTranslation } from "react-i18next";
 
 export interface ContextMenuState {
@@ -50,8 +51,9 @@ export function ContextMenu({
     removeProject,
     removeConsole,
     openSession,
+    activateConsole,
     sessions,
-    setActiveSession,
+    workspaces,
     showToast,
   } = useAppStore();
   const { t } = useTranslation();
@@ -148,10 +150,7 @@ export function ContextMenu({
 
   const handleRunConsole = () => {
     onClose();
-    const existing = sessions.find((s) => s.console_id === menu.node.id);
-    if (existing) {
-      setActiveSession(existing.id);
-    } else {
+    if (!activateConsole(menu.node.id)) {
       openSession({
         id: `session-${Date.now()}`,
         console_id: menu.node.id,
@@ -159,6 +158,17 @@ export function ContextMenu({
         is_active: true,
       });
     }
+  };
+
+  // Ещё один экземпляр той же консоли — отдельный PTY в подвкладке
+  const handleOpenNewInstance = () => {
+    onClose();
+    openSession({
+      id: `session-${Date.now()}`,
+      console_id: menu.node.id,
+      title: menu.node.name,
+      is_active: true,
+    });
   };
 
   const handleToggleDanger = async () => {
@@ -185,6 +195,36 @@ export function ContextMenu({
     }
   };
 
+  // Публичный экспорт списка серверов узла (воркспейс/проект) в .md
+  const handleExportServers = async () => {
+    onClose();
+    const { node } = menu;
+    let markdown: string | null = null;
+    if (node.type === "workspace") {
+      const ws = workspaces.find((w) => w.id === node.id);
+      if (ws) markdown = buildServersMarkdown({ type: "workspace", data: ws }, t);
+    } else if (node.type === "project") {
+      const proj = workspaces.flatMap((w) => w.projects).find((p) => p.id === node.id);
+      if (proj) markdown = buildServersMarkdown({ type: "project", data: proj }, t);
+    }
+    if (!markdown) {
+      showToast("info", t("contextMenu.toastNoServers"));
+      return;
+    }
+    try {
+      const safeName = node.name.replace(/[\\/:*?"<>|]+/g, "_").trim() || "servers";
+      const filePath = await save({
+        defaultPath: `${safeName}-servers.md`,
+        filters: [{ name: "Markdown", extensions: ["md"] }],
+      });
+      if (!filePath) return;
+      await saveTextFile(filePath, markdown);
+      showToast("success", t("contextMenu.toastServersExported"));
+    } catch (e) {
+      showToast("error", t("contextMenu.toastServersExportError", { error: e }));
+    }
+  };
+
   const items = getMenuItems({
     node: menu.node,
     t,
@@ -197,12 +237,14 @@ export function ContextMenu({
     onOpenVSCode: handleOpenInVSCode,
     onOpenFinder: handleOpenInFinder,
     onRunConsole: handleRunConsole,
+    onOpenNewInstance: handleOpenNewInstance,
     onToggleDanger: handleToggleDanger,
     onEditConsole: () => { onClose(); onEditConsole(menu.node); },
     onCloneConsole: () => { onClose(); onCloneConsole(menu.node); },
     onCloneProject: () => { onClose(); onCloneProject(menu.node); },
     onReconnectConsole: () => { onClose(); onReconnectConsole(menu.node); },
     onCopySshCommand: handleCopySshCommand,
+    onExportServers: handleExportServers,
     sessions,
   });
 
@@ -249,12 +291,14 @@ function getMenuItems(handlers: {
   onOpenVSCode: () => void;
   onOpenFinder: () => void;
   onRunConsole: () => void;
+  onOpenNewInstance: () => void;
   onToggleDanger: () => void;
   onEditConsole: () => void;
   onCloneConsole: () => void;
   onCloneProject: () => void;
   onReconnectConsole: () => void;
   onCopySshCommand: () => void;
+  onExportServers: () => void;
   sessions: { console_id: string }[];
 }): MenuItem[] {
   const { node, t } = handlers;
@@ -263,6 +307,7 @@ function getMenuItems(handlers: {
   if (node.type === "workspace") {
     return [
       { label: t("contextMenu.addProject"), icon: "+", action: handlers.onCreateProject },
+      { label: t("contextMenu.exportServers"), icon: "⇩", action: handlers.onExportServers },
       "separator",
       { label: t("contextMenu.rename"), icon: "✎", action: handlers.onRename },
       "separator",
@@ -277,6 +322,7 @@ function getMenuItems(handlers: {
       "separator",
       { label: t("contextMenu.openInVSCode"), icon: "⎋", action: handlers.onOpenVSCode },
       { label: t("contextMenu.openInFinder"), icon: "⌂", action: handlers.onOpenFinder },
+      { label: t("contextMenu.exportServers"), icon: "⇩", action: handlers.onExportServers },
       "separator",
       data.isDanger
         ? { label: t("contextMenu.removeDangerFlag"), icon: "✓", action: handlers.onToggleDanger }
@@ -293,6 +339,7 @@ function getMenuItems(handlers: {
   const isSsh = (node.data as { connectionType?: string }).connectionType === "ssh";
   return [
     { label: t("contextMenu.runConsole"), icon: "▶", action: handlers.onRunConsole },
+    ...(hasSession ? [{ label: t("contextMenu.openNewInstance"), icon: "⧉", action: handlers.onOpenNewInstance } as MenuItem] : []),
     ...(hasSession ? [{ label: t("contextMenu.reconnectConsole"), icon: "↺", action: handlers.onReconnectConsole } as MenuItem] : []),
     { label: t("contextMenu.connectionSettings"), icon: "⚙", action: handlers.onEditConsole },
     ...(isSsh ? [{ label: t("contextMenu.copySshCommand"), icon: "⧉", action: handlers.onCopySshCommand } as MenuItem] : []),

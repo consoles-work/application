@@ -98,7 +98,7 @@ HTML5 DnD API **не работает в Tauri WebKit** — использует
 
 ### Текущее состояние
 
-MVP завершён полностью. Все панели рабочие. PTY, SSH (key + passphrase + password), wiki, AI-чат (OpenAI + Anthropic + Ollama, история в SQLite), экспорт/импорт (.dchub, AES-256-GCM, выборочный по воркспейсам, wiki с корректной перепривязкой ID, AI-чаты, настройки приложения), drag-and-drop консолей между проектами, системный трей, автозапуск, 18 тем, 5 языков локализации, шифрование БД (SQLCipher) — всё реализовано.
+MVP завершён полностью. Все панели рабочие. PTY, SSH (key + passphrase + password), wiki, AI-чат (OpenAI + Anthropic + Ollama, история в SQLite), экспорт/импорт (.dchub, AES-256-GCM, выборочный по воркспейсам, wiki с корректной перепривязкой ID, AI-чаты, настройки приложения), публичный экспорт списка серверов в .md (без секретов, поле «Хостинг» `consoles.hosting`), drag-and-drop консолей между проектами, системный трей, один экземпляр приложения (`tauri-plugin-single-instance`), автозапуск, 18 тем, 5 языков локализации, шифрование БД (SQLCipher) — всё реализовано.
 
 ### Чеклист добавления новой Tauri-команды
 
@@ -119,6 +119,7 @@ src/                              — Frontend (TypeScript + React)
     themes.ts                     — 18 тем UI + xterm-палитры + цвета водяного знака
     i18n.ts                       — локализация (i18next)
     aiProviders.ts                — OpenAI + Anthropic, стриминг SSE
+    serversMarkdown.ts            — публичный Markdown-отчёт по серверам (ПКМ воркспейса/проекта)
   components/
     Layout.tsx                    — 4 панели + resizable-сплиттеры
     TreePanel.tsx                 — дерево + поиск + Export/Import кнопки
@@ -134,7 +135,7 @@ src/                              — Frontend (TypeScript + React)
   styles/globals.css              — CSS-переменные тем
 
 src-tauri/src/                    — Backend (Rust)
-  main.rs                         — точка входа, регистрация команд (десктоп), ~38 команд
+  main.rs                         — точка входа, регистрация команд (десктоп), ~50 команд
   lib.rs                          — то же для мобильных платформ (синхронизирован с main.rs)
   commands.rs                     — #[tauri::command] функции + Rust-структуры
   db.rs                           — SQLite CRUD через rusqlite (SQLCipher)

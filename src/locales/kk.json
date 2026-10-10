@@ -34,6 +34,16 @@
     "moveConfirm": "«{{name}}» консолін «{{project}}» жобасына жылжыту керек пе?",
     "moveConfirmTitle": "Консолді жылжыту"
   },
+  "serversReport": {
+    "title": "Серверлер: {{name}}",
+    "exportedAt": "Экспорт күні",
+    "total": "Барлық серверлер",
+    "name": "Атауы",
+    "host": "Сервер",
+    "port": "Порт",
+    "user": "Пайдаланушы",
+    "hosting": "Хостинг"
+  },
   "contextMenu": {
     "addProject": "Жоба қосу",
     "addConsole": "Консоль қосу",
@@ -46,6 +56,7 @@
     "markAsDangerous": "⚠ Қауіпті деп белгілеу...",
     "deleteProject": "Жобаны жою",
     "runConsole": "Іске қосу",
+    "openNewInstance": "Тағы бір данасын ашу",
     "reconnectConsole": "Қайта қосылу",
     "connectionSettings": "Қосылым параметрлері...",
     "cloneConsole": "Консольді көшіру",
@@ -63,12 +74,17 @@
     "toastOpeningVSCode": "VS Code-та ашылуда...",
     "toastOpenError": "Ашу мүмкін болмады: {{error}}",
     "toastDangerError": "Қате: {{error}}",
-    "copySshCommand": "SSH-пәрменді көшіру"
+    "copySshCommand": "SSH-пәрменді көшіру",
+    "exportServers": "Серверлерді экспорттау (.md)",
+    "toastServersExported": "Серверлер тізімі сақталды",
+    "toastNoServers": "Мұнда SSH-серверлер жоқ",
+    "toastServersExportError": "Экспорт қатесі: {{error}}"
   },
   "terminalPanel": {
     "selectConsole": "Ағашта консольді таңдаңыз →",
     "closeTabConfirm": "«{{title}}» қойындысын жабу?",
     "closeTabTitle": "Қойындыны жабу",
+    "closeGroupConfirm": "«{{title}}» және оның барлық даналарын ({{count}}) жабу?",
     "ptyError": "PTY іске қосу қатесі: {{error}}",
     "noTerminals": "Ашық терминалдар жоқ",
     "clickConsole": "Сол жақтағы жоба ағашындағы консольді басыңыз",
@@ -218,6 +234,9 @@
     "note": "Ескертпе",
     "noteHint": "(еркін мәтін)",
     "notePlaceholder": "Мысалы: биллингтің прод-сервері, тек VPN арқылы қолжетімді",
+    "hosting": "Хостинг",
+    "hostingHint": "(міндетті емес)",
+    "hostingPlaceholder": "Мысалы: Hetzner, DigitalOcean, AWS eu-central-1",
     "startupPlaceholderLocal": "cd /app\nnpm run dev",
     "startupPlaceholderSsh": "cd /var/www/app\ntail -f logs/app.log",
     "markAsDanger": "⚠ Қауіпті деп белгілеу (өндіріс)",

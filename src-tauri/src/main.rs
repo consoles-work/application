@@ -167,6 +167,7 @@ pub fn run() {
 
             // Экспорт/импорт
             export_data,
+            save_text_file,
             preview_import,
             apply_import,
 

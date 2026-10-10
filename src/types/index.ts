@@ -51,6 +51,7 @@ export interface ConsoleConfig {
   sshPassphrase: string;
   sshPassword: string;
   note?: string; // произвольная заметка к подключению
+  hosting?: string; // где хостится сервер (провайдер), необязательно
 }
 
 // ── Wiki ──
@@ -76,6 +77,7 @@ export interface TerminalSession {
   is_active: boolean;
   pty_id?: number; // ID процесса на Rust-стороне
   reconnectKey?: number; // инкрементируется для перезапуска PTY
+  instance?: number; // номер экземпляра консоли (1, 2, …) — подпись подвкладки
 }
 
 // ── Типы ──

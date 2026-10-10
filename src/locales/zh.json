@@ -34,6 +34,16 @@
     "moveConfirm": "将控制台 «{{name}}» 移动到项目 «{{project}}»？",
     "moveConfirmTitle": "移动控制台"
   },
+  "serversReport": {
+    "title": "服务器：{{name}}",
+    "exportedAt": "导出时间",
+    "total": "服务器总数",
+    "name": "名称",
+    "host": "主机",
+    "port": "端口",
+    "user": "用户",
+    "hosting": "托管商"
+  },
   "contextMenu": {
     "addProject": "添加项目",
     "addConsole": "添加控制台",
@@ -46,6 +56,7 @@
     "markAsDangerous": "⚠ 标记为危险...",
     "deleteProject": "删除项目",
     "runConsole": "运行",
+    "openNewInstance": "再打开一个实例",
     "reconnectConsole": "重新连接",
     "connectionSettings": "连接设置...",
     "cloneConsole": "复制控制台",
@@ -63,12 +74,17 @@
     "toastOpeningVSCode": "正在 VS Code 中打开...",
     "toastOpenError": "无法打开: {{error}}",
     "toastDangerError": "错误: {{error}}",
-    "copySshCommand": "复制 SSH 命令"
+    "copySshCommand": "复制 SSH 命令",
+    "exportServers": "导出服务器列表 (.md)",
+    "toastServersExported": "服务器列表已保存",
+    "toastNoServers": "此处没有 SSH 服务器",
+    "toastServersExportError": "导出错误：{{error}}"
   },
   "terminalPanel": {
     "selectConsole": "在树中选择控制台 →",
     "closeTabConfirm": "关闭标签页 «{{title}}»？",
     "closeTabTitle": "关闭标签页",
+    "closeGroupConfirm": "关闭 «{{title}}» 及其所有实例（{{count}}）？",
     "ptyError": "PTY 启动错误: {{error}}",
     "noTerminals": "没有打开的终端",
     "clickConsole": "点击左侧项目树中的控制台",
@@ -218,6 +234,9 @@
     "note": "备注",
     "noteHint": "(自由文本)",
     "notePlaceholder": "例如：计费生产服务器，仅限 VPN 访问",
+    "hosting": "托管商",
+    "hostingHint": "(可选)",
+    "hostingPlaceholder": "例如：Hetzner、DigitalOcean、AWS eu-central-1",
     "startupPlaceholderLocal": "cd /app\nnpm run dev",
     "startupPlaceholderSsh": "cd /var/www/app\ntail -f logs/app.log",
     "markAsDanger": "⚠ 标记为危险（生产环境）",

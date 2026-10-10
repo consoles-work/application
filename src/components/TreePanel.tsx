@@ -32,8 +32,7 @@ export function TreePanel() {
     addProject: storeAddProject,
     moveConsoleToProject,
     openSession,
-    sessions,
-    setActiveSession,
+    activateConsole,
     reconnectSession,
     showToast,
   } = useAppStore();
@@ -162,9 +161,8 @@ export function TreePanel() {
   const handleSearchSelect = (node: typeof allNodes[0]) => {
     selectNode({ type: node.type as "workspace" | "project" | "console", id: node.id });
     if (node.type === "console") {
-      const existing = sessions.find((s) => s.console_id === node.id);
-      if (existing) setActiveSession(existing.id);
-      else openSession({ id: `session-${Date.now()}`, console_id: node.id, title: node.name, is_active: true });
+      if (!activateConsole(node.id))
+        openSession({ id: `session-${Date.now()}`, console_id: node.id, title: node.name, is_active: true });
     }
     setSearchQuery("");
     setSearchActive(false);
@@ -232,10 +230,7 @@ export function TreePanel() {
     selectNode({ type: node.type, id: node.id });
 
     if (node.type === "console") {
-      const existing = sessions.find((s) => s.console_id === node.id);
-      if (existing) {
-        setActiveSession(existing.id);
-      } else {
+      if (!activateConsole(node.id)) {
         openSession({
           id: `session-${Date.now()}`,
           console_id: node.id,
@@ -360,10 +355,10 @@ export function TreePanel() {
   };
 
   const handleReconnectConsole = (node: TreeNode) => {
-    const session = sessions.find((s) => s.console_id === node.id);
-    if (session) {
-      reconnectSession(session.id);
-      setActiveSession(session.id);
+    // Переподключаем тот экземпляр консоли, с которым работали последним
+    if (activateConsole(node.id)) {
+      const { activeSessionId } = useAppStore.getState();
+      if (activeSessionId) reconnectSession(activeSessionId);
     }
   };
 

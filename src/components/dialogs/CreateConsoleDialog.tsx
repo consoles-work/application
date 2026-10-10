@@ -15,6 +15,7 @@ export function CreateConsoleDialog({ projectId, onClose }: Props) {
   const [connectionType, setConnectionType] = useState<"local" | "ssh">("ssh");
   const [startupCmd, setStartupCmd] = useState("");
   const [note, setNote] = useState("");
+  const [hosting, setHosting] = useState("");
 
   // SSH fields
   const [sshHost, setSshHost] = useState("");
@@ -68,7 +69,8 @@ export function CreateConsoleDialog({ projectId, onClose }: Props) {
         sshExtraArgs.trim(),
         sshPassphrase,
         sshPassword,
-        note
+        note,
+        hosting.trim()
       );
       const finalLabel = dangerLabel.trim() || "PRODUCTION";
       if (isDanger) {
@@ -87,6 +89,7 @@ export function CreateConsoleDialog({ projectId, onClose }: Props) {
         sshPassphrase,
         sshPassword,
         note,
+        hosting: hosting.trim(),
       });
       showToast("success", t("dialogs.toastConsoleCreated", { name: con.name }));
       onClose();
@@ -227,6 +230,19 @@ export function CreateConsoleDialog({ projectId, onClose }: Props) {
               placeholder={connectionType === "ssh" ? t("dialogs.startupPlaceholderSsh") : t("dialogs.startupPlaceholderLocal")}
               rows={3}
               className="w-full px-3 py-2 rounded-lg bg-surface-0 border border-border text-xs text-text-primary outline-none focus:border-accent font-mono resize-none"
+            />
+          </div>
+
+          {/* Hosting */}
+          <div>
+            <div className="text-2xs text-text-muted mb-1">
+              {t("dialogs.hosting")} <span className="opacity-60">{t("dialogs.hostingHint")}</span>
+            </div>
+            <input
+              value={hosting}
+              onChange={(e) => setHosting(e.target.value)}
+              placeholder={t("dialogs.hostingPlaceholder")}
+              className="w-full px-3 py-2 rounded-lg bg-surface-0 border border-border text-xs text-text-primary outline-none focus:border-accent"
             />
           </div>
 

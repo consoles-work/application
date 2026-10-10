@@ -30,6 +30,9 @@ interface AppState {
   // ── Терминальные сессии (runtime) ──
   sessions: TerminalSession[];
   activeSessionId: string | null;
+  // Последний активный экземпляр каждой консоли — к нему ведёт клик по
+  // консоли в дереве и по верхней вкладке, когда экземпляров несколько
+  lastSessionByConsole: Record<string, string>;
 
   // ── Wiki ──
   currentWikiPages: WikiPage[];
@@ -95,6 +98,8 @@ interface AppState {
   closeSession: (sessionId: string) => void;
   setActiveSession: (sessionId: string) => void;
   reconnectSession: (sessionId: string) => void;
+  // Активировать последний экземпляр консоли; false — если у неё нет открытых сессий
+  activateConsole: (consoleId: string) => boolean;
 
   // ── Actions: wiki ──
   setWikiPages: (pages: WikiPage[]) => void;
@@ -131,6 +136,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedNode: null,
   sessions: [],
   activeSessionId: null,
+  lastSessionByConsole: {},
   currentWikiPages: [],
   activeWikiPageId: null,
   showTreePanel: true,
@@ -300,25 +306,59 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Активная вкладка и выбранный узел дерева держатся синхронно: вики и AI-панель
   // читают контекст из selectedNode, поэтому переключение вкладки должно вести
   // их за собой ровно так же, как клик по дереву. Побеждает последнее действие.
+  // Экземпляры одной консоли держим в массиве подряд: так порядок sessions
+  // совпадает с визуальным (вкладка → подвкладки) и Cmd+Tab идёт по порядку.
   openSession: (session) =>
-    set((state) => ({
-      sessions: [...state.sessions, session],
-      activeSessionId: session.id,
-      selectedNode: { type: "console", id: session.console_id },
-    })),
+    set((state) => {
+      const group = state.sessions.filter((s) => s.console_id === session.console_id);
+      const instance =
+        session.instance ?? Math.max(0, ...group.map((s) => s.instance ?? 1)) + 1;
+      const added = { ...session, instance };
+      let lastIdx = -1;
+      state.sessions.forEach((s, i) => {
+        if (s.console_id === session.console_id) lastIdx = i;
+      });
+      const sessions =
+        lastIdx === -1
+          ? [...state.sessions, added]
+          : [...state.sessions.slice(0, lastIdx + 1), added, ...state.sessions.slice(lastIdx + 1)];
+      return {
+        sessions,
+        activeSessionId: added.id,
+        selectedNode: { type: "console", id: added.console_id },
+        lastSessionByConsole: { ...state.lastSessionByConsole, [added.console_id]: added.id },
+      };
+    }),
 
   closeSession: (sessionId) =>
     set((state) => {
+      const closed = state.sessions.find((s) => s.id === sessionId);
+      if (!closed) return {};
       const remaining = state.sessions.filter((s) => s.id !== sessionId);
-      if (state.activeSessionId !== sessionId) {
-        return { sessions: remaining };
+      const siblings = remaining.filter((s) => s.console_id === closed.console_id);
+
+      // Если закрыли запомненный экземпляр — помним соседний из той же группы
+      const lastSessionByConsole = { ...state.lastSessionByConsole };
+      if (lastSessionByConsole[closed.console_id] === sessionId) {
+        if (siblings.length > 0) {
+          lastSessionByConsole[closed.console_id] = siblings[siblings.length - 1].id;
+        } else {
+          delete lastSessionByConsole[closed.console_id];
+        }
       }
-      // Закрыли активную вкладку — фокус уходит на соседнюю, контекст за ней.
+
+      if (state.activeSessionId !== sessionId) {
+        return { sessions: remaining, lastSessionByConsole };
+      }
+      // Закрыли активную вкладку — фокус сначала на другой экземпляр той же
+      // консоли, иначе на последнюю вкладку; контекст идёт за ней.
       // Если вкладок не осталось, selectedNode оставляем как есть.
-      const next = remaining[remaining.length - 1] ?? null;
+      const next =
+        (siblings.length > 0 ? siblings[siblings.length - 1] : remaining[remaining.length - 1]) ?? null;
       return {
         sessions: remaining,
         activeSessionId: next?.id ?? null,
+        lastSessionByConsole,
         selectedNode: next
           ? { type: "console" as const, id: next.console_id }
           : state.selectedNode,
@@ -333,8 +373,21 @@ export const useAppStore = create<AppState>((set, get) => ({
         selectedNode: session
           ? { type: "console" as const, id: session.console_id }
           : state.selectedNode,
+        lastSessionByConsole: session
+          ? { ...state.lastSessionByConsole, [session.console_id]: session.id }
+          : state.lastSessionByConsole,
       };
     }),
+
+  activateConsole: (consoleId) => {
+    const { sessions, lastSessionByConsole, setActiveSession } = get();
+    const target =
+      sessions.find((s) => s.id === lastSessionByConsole[consoleId]) ??
+      sessions.find((s) => s.console_id === consoleId);
+    if (!target) return false;
+    setActiveSession(target.id);
+    return true;
+  },
 
   reconnectSession: (sessionId) =>
     set((state) => ({

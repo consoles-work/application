@@ -122,6 +122,7 @@ pub fn run() {
             ai_run,
             ai_cancel,
             export_data,
+            save_text_file,
             preview_import,
             apply_import,
             move_console,

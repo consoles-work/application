@@ -34,6 +34,16 @@
     "moveConfirm": "Move console «{{name}}» to project «{{project}}»?",
     "moveConfirmTitle": "Move console"
   },
+  "serversReport": {
+    "title": "Servers: {{name}}",
+    "exportedAt": "Exported at",
+    "total": "Total servers",
+    "name": "Name",
+    "host": "Host",
+    "port": "Port",
+    "user": "User",
+    "hosting": "Hosting"
+  },
   "contextMenu": {
     "addProject": "Add project",
     "addConsole": "Add console",
@@ -46,6 +56,7 @@
     "markAsDangerous": "⚠ Mark as dangerous...",
     "deleteProject": "Delete project",
     "runConsole": "Run",
+    "openNewInstance": "Open another instance",
     "reconnectConsole": "Reconnect",
     "connectionSettings": "Connection settings...",
     "cloneConsole": "Duplicate console",
@@ -63,12 +74,17 @@
     "toastOpeningVSCode": "Opening in VS Code...",
     "toastOpenError": "Could not open: {{error}}",
     "toastDangerError": "Error: {{error}}",
-    "copySshCommand": "Copy SSH command"
+    "copySshCommand": "Copy SSH command",
+    "exportServers": "Export servers (.md)",
+    "toastServersExported": "Server list saved",
+    "toastNoServers": "No SSH servers here",
+    "toastServersExportError": "Export error: {{error}}"
   },
   "terminalPanel": {
     "selectConsole": "Select a console in the tree →",
     "closeTabConfirm": "Close tab «{{title}}»?",
     "closeTabTitle": "Close tab",
+    "closeGroupConfirm": "Close «{{title}}» and all its instances ({{count}})?",
     "ptyError": "PTY launch error: {{error}}",
     "noTerminals": "No open terminals",
     "clickConsole": "Click a console in the project tree on the left",
@@ -218,6 +234,9 @@
     "note": "Note",
     "noteHint": "(free-form text)",
     "notePlaceholder": "E.g.: billing production server, VPN access only",
+    "hosting": "Hosting",
+    "hostingHint": "(optional)",
+    "hostingPlaceholder": "E.g.: Hetzner, DigitalOcean, AWS eu-central-1",
     "startupPlaceholderLocal": "cd /app\nnpm run dev",
     "startupPlaceholderSsh": "cd /var/www/app\ntail -f logs/app.log",
     "markAsDanger": "⚠ Mark as dangerous (production)",

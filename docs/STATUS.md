@@ -1,6 +1,6 @@
 # DevConsole Hub — Статус проекта
 
-> Последнее обновление: 2026-10-03 (Этап 18 — пароль на вход; этап 19 — ключ БД из пароля, запланирован)
+> Последнее обновление: 2026-10-10 (экспорт серверов в Markdown, поле «Хостинг», экземпляры консоли, водяной знак, 18 тем, один экземпляр приложения; этап 19 — ключ БД из пароля, запланирован)
 
 ---
 
@@ -9,9 +9,9 @@
 ### Инфраструктура
 - Tauri 2.0 проект компилируется и запускается
 - Все npm-зависимости установлены (xterm.js, TipTap, lowlight, lucide-react, plugin-dialog)
-- Cargo.toml: rusqlite, portable-pty, uuid, dirs, chrono, tauri-plugin-dialog, aes-gcm, pbkdf2, sha2, hmac, rand, **tauri-plugin-autostart**
+- Cargo.toml: rusqlite, portable-pty, uuid, dirs, chrono, tauri-plugin-dialog, aes-gcm, pbkdf2, sha2, hmac, rand, **tauri-plugin-autostart**, argon2, **tauri-plugin-single-instance**
 - `tauri` feature: `tray-icon` (системный трей)
-- Tailwind настроен через CSS-переменные (13 тем, динамическая смена)
+- Tailwind настроен через CSS-переменные (18 тем, динамическая смена)
 - Capabilities: core:default, event listen/unlisten/emit, shell:open, dialog, **core:tray:default**, **autostart:allow-***
 
 ### Frontend (React + TypeScript)
@@ -21,7 +21,9 @@
 | `src/types/index.ts` | ✅ Готово | Все интерфейсы: WikiPage (camelCase), isDanger/dangerLabel, SSH-поля (включая `sshPassphrase`, `sshPassword`), AppSettings, AiSession, AiMessage; **`reconnectKey` в `TerminalSession`** |
 | `src/stores/appStore.ts` | ✅ Готово | CRUD + Toast + Wiki + Settings + AI сессии; `toggleNodeExpanded` сохраняет состояние; **`moveConsoleToProject`**; **`reconnectSession`** |
 | `src/lib/tauriCommands.ts` | ✅ Готово | Все IPC-обёртки: дерево, PTY, wiki, clone, settings, AI сессии, `setNodeExpanded`, `exportData`/`previewImport`/`applyImport`, **`moveConsole`**, **`enableAutostart`/`disableAutostart`/`getAutostartStatus`** |
-| `src/lib/themes.ts` | ✅ Готово | 13 тем (10 тёмных + 3 светлых) с UI-цветами и полной xterm-палитрой, resolveThemeId, applyTheme |
+| `src/lib/themes.ts` | ✅ Готово | 18 тем (9 тёмных + 9 светлых, флаг `dark`) с UI-цветами, полной xterm-палитрой и цветами водяного знака (`watermark.prod` / `watermark.plain`), resolveThemeId, applyTheme |
+| `src/lib/connectionString.ts` | ✅ Готово | `buildSshCommand` и другие форматы строки подключения (команда / `user@host:port` / список параметров) |
+| `src/lib/serversMarkdown.ts` | ✅ Готово | `buildServersMarkdown` — публичный Markdown-отчёт по SSH-серверам воркспейса/проекта; колонка «Хостинг» только если заполнена |
 | `src/components/Layout.tsx` | ✅ Готово | Четырёхпанельный layout с resizable сплиттерами + кнопка Settings в titlebar |
 | `src/components/TreePanel.tsx` | ✅ Готово | Дерево + раскрытие + контекстное меню + inline rename (F2) + danger/ssh badge + клонирование + поиск + кнопки Export/Import + **drag-and-drop консолей (mouse-event, ghost-портал, подтверждение)** |
 | `src/components/TerminalPanel.tsx` | ✅ Готово | xterm.js + PTY + danger-баннер + SSH + startup + динамические настройки; индикатор-точка при выделении; `reconnectKey` в key-пропе; повторные fit() на 100ms/400ms при открытии и 200ms при смене вкладки; **контекстное меню по ПКМ (`TerminalContextMenu`): Копировать / Вставить / Выделить всё / Очистить строку / Очистить экран / Сбросить терминал; горячие клавиши Cmd+C/Cmd+V; буфер через `navigator.clipboard`** |
@@ -30,7 +32,7 @@
 | `src/components/CommandPalette.tsx` | ✅ Готово | Fuzzy-поиск по дереву, ↑↓/Enter/Esc, danger badge |
 | `src/components/SettingsDialog.tsx` | ✅ Готово | 4 вкладки: Данные, Терминал, Интерфейс, Агенты; раздельные API-ключи per-провайдер; **автозапуск (чекбокс); поведение при закрытии (трей / завершить)** |
 | `src/components/Toast.tsx` | ✅ Готово | Success/error/info, автоисчезновение 3 сек |
-| `src/components/ContextMenu.tsx` | ✅ Готово | Workspace/Project/Console меню + клонирование + подтверждение удаления; **danger-пометка для console убрана** (перенесена в EditConsoleDialog); **пункт "Переподключить" для консолей с открытой сессией** |
+| `src/components/ContextMenu.tsx` | ✅ Готово | Workspace/Project/Console меню + клонирование + подтверждение удаления; **danger-пометка для console убрана** (перенесена в EditConsoleDialog); **пункт "Переподключить" для консолей с открытой сессией**; «Открыть ещё экземпляр»; «Скопировать SSH-команду»; **«Экспорт серверов (.md)» для воркспейса и проекта** |
 | `src/components/dialogs/CreateWorkspaceDialog.tsx` | ✅ Готово | Имя + emoji + цвет |
 | `src/components/dialogs/CreateProjectDialog.tsx` | ✅ Готово | Имя + Browse + shell + emoji + цвет + danger-чекбокс |
 | `src/components/dialogs/CreateConsoleDialog.tsx` | ✅ Готово | SSH по умолчанию; имя + SSH/Local + все SSH-поля + Browse для ключа + пароль сервера (show/hide) + passphrase только при выбранном ключе + startup + danger-чекбокс |
@@ -38,15 +40,15 @@
 | `src/components/dialogs/ExportDialog.tsx` | ✅ Готово | Полностью локализован; чекбоксы воркспейсов для выборочного экспорта; чекбоксы wiki/AI/**настройки**; опциональный пароль |
 | `src/components/dialogs/ImportDialog.tsx` | ✅ Готово | Полностью локализован; 3-шаговый: выбор файла → пароль → превью + опции merge/replace; **чекбокс применения настроек** (если файл содержит) |
 | `src/App.tsx` | ✅ Готово | Загрузка данных + настроек + применение темы при старте; восстановление видимости панелей; Cmd+B/\\/P/I/,; **глобальный запрет нативного contextmenu** |
-| `src/styles/globals.css` | ✅ Готово | CSS-переменные для 13 тем + xterm.js + TipTap стили |
+| `src/styles/globals.css` | ✅ Готово | CSS-переменные для 18 тем + xterm.js + TipTap стили; фон `.xterm-viewport` прозрачный (цвет темы кладётся на контейнер) |
 
 ### Backend (Rust)
 
 | Файл | Статус | Примечания |
 |------|--------|------------|
-| `src-tauri/src/main.rs` | ✅ Готово | ~45 IPC-команд; **трей** (`TrayIconBuilder`); **`CloseRequested`** читает `ui.closeToTray` — hide или exit; **autostart-плагин** подключён |
+| `src-tauri/src/main.rs` | ✅ Готово | ~50 IPC-команд; **single-instance** (первый плагин, фокусирует уже открытое окно); **трей** (`TrayIconBuilder`); **`CloseRequested`** читает `ui.closeToTray` — hide или exit; **autostart-плагин** подключён |
 | `src-tauri/src/lib.rs` | ✅ Готово | Синхронизирован с main.rs (мобильная/библиотечная сборка) |
-| `src-tauri/src/commands.rs` | ✅ Готово | CRUD дерева, PTY, wiki, danger, clone, settings, AI (8 команд), экспорт/импорт (3 команды), **`move_console`**, **`enable_autostart`/`disable_autostart`/`get_autostart_status`** |
+| `src-tauri/src/commands.rs` | ✅ Готово | CRUD дерева, PTY, wiki, danger, clone, settings, AI (8 команд), экспорт/импорт (3 команды), **`move_console`**, **`enable_autostart`/`disable_autostart`/`get_autostart_status`**, `ai_detect_bin`/`ai_check`/`ai_run`/`ai_cancel`, **`save_text_file`** |
 | `src-tauri/src/db.rs` | ✅ Готово | Полный CRUD + FTS5 + клонирование + settings + SQLCipher + AI-сессии + `set_node_expanded` + `ssh_passphrase` + `ssh_password` + `move_console` + **`get_setting_bool`** + `load_all_wiki_pages` + `delete_all_*` + `get_workspace_names` |
 | `src-tauri/src/export.rs` | ✅ Готово | Формат `.dchub`: AES-256-GCM + PBKDF2 (100k iter); `workspace_ids` фильтр; верификационная фраза; **экспорт/импорт настроек**; **исправлен импорт wiki** (id_map для перепривязки страниц) |
 | `src-tauri/src/pty_manager.rs` | ✅ Готово | portable-pty: spawn/write/resize/kill; UTF-8 локаль; SSH passphrase через `add_key_to_agent`; SSH пароль сервера через SSH_ASKPASS_REQUIRE=force |
@@ -102,6 +104,68 @@
 ---
 
 ## История изменений
+
+### 2026-10-10 — Экспорт списка серверов в Markdown + поле «Хостинг» *(в рабочем дереве, не закоммичено)*
+
+**Поле «Хостинг» у консоли**
+- Необязательное поле «где хостится сервер» в `CreateConsoleDialog` / `EditConsoleDialog` (перед «Заметкой»)
+- БД: колонка `consoles.hosting TEXT NOT NULL DEFAULT ''`, для существующих баз — `ALTER TABLE` в `db::init()`; поле копируется при клонировании консоли и проекта
+- `ConsoleConfig.hosting` с `#[serde(default)]` — переносится в `.dchub`, старые файлы импортируются без него
+- `create_console` / `update_console_config` принимают `hosting`
+
+**Публичный экспорт серверов (.md)**
+- `ContextMenu.tsx`: пункт «Экспорт серверов (.md)» у воркспейса и проекта (у консоли нет); системный диалог сохранения, имя по умолчанию `<узел>-servers.md`
+- `src/lib/serversMarkdown.ts`: заголовок, дата, число серверов, таблица «Название / Сервер / Порт / Пользователь» (по проектам для воркспейса); колонка «Хостинг» — только если заполнена хотя бы у одного сервера
+- Попадают только SSH-консоли с хостом; пароли, passphrase и пути к ключам не выгружаются. Нет серверов — тост вместо диалога
+- Новая Rust-команда `save_text_file(file_path, content)` (зарегистрирована в `main.rs` и `lib.rs`)
+- Локализация на 5 языков: `serversReport.*`, `contextMenu.exportServers` / `toastServers*` / `toastNoServers`, `dialogs.hosting*`
+
+### Экземпляры консоли в подвкладках *(в рабочем дереве, не закоммичено)*
+
+- Одну консоль можно открыть несколько раз: ПКМ → «Открыть ещё экземпляр» или `Cmd+T` на уже открытой консоли — отдельный PTY, подвкладка с номером экземпляра
+- `appStore.ts`: `TerminalSession.instance`, `lastSessionByConsole`, `activateConsole(consoleId)` — клик по консоли в дереве, CommandPalette и `Cmd+1…9` ведут к последнему активному экземпляру; экземпляры держатся в `sessions` подряд, поэтому `Cmd+Tab` идёт по визуальному порядку
+- «Переподключить» перезапускает последний активный экземпляр; закрытие группы спрашивает подтверждение (`contextMenu.closeGroupConfirm`)
+
+### 2026-10-07 — Водяной знак в терминале + 18 тем
+
+- `TerminalPanel.tsx`: полупрозрачный слой поверх xterm (`pointer-events: none`). У опасной консоли — крупная danger-метка и красная рамка по периметру, у обычной — имя консоли помельче
+- Цвет водяного знака берётся из темы (`watermark.prod` / `watermark.plain`), прозрачность выше на тёмных темах
+- `themes.ts`: добавлены 5 светлых тем (Gruvbox Light, Everforest Light, Rosé Pine Dawn, Ayu Light, Tokyo Night Day), у каждой темы флаг `dark`; GitHub Light переведена в светлые. Итого 9 тёмных + 9 светлых
+- Settings → Интерфейс: темы сгруппированы в блоки «Тёмные» / «Светлые» (`settings.themesDark` / `themesLight`), «Случайная» — отдельной кнопкой
+
+### 2026-10-05 — Один экземпляр приложения
+
+- `tauri-plugin-single-instance` — первым плагином в `main.rs` и `lib.rs`: повторный запуск сразу завершается, а уже запущенное окно разворачивается, показывается и получает фокус (в т.ч. если было скрыто в трей)
+
+### 2026-10-03 — Автоблокировка по бездействию
+
+- См. этап 18 ниже: порог `ui.autoLockMinutes`, заставка поверх интерфейса без размонтирования
+
+### 2026-08-31 — Чёрная рамка вокруг терминала
+
+- Штатный CSS xterm 6 красит `.xterm-viewport` в `#000`, а фон темы уходит на `.xterm-scrollable-element`, который не покрывает padding — по краям проступала чёрная рамка. Фон viewport погашен в `globals.css`, цвет темы `TerminalView` кладёт на контейнер
+
+### 2026-08-30 — Claude Code CLI, копирование подключения, UTF-8
+
+- **Claude Code CLI** — четвёртый AI-провайдер (`claude-cli`): `src-tauri/src/ai_local.rs` запускает локальный бинарь `claude` подпроцессом и стримит события; API-ключ не нужен, инструменты и внешние MCP отключены. Settings → Агенты: путь к бинарю, «Найти» / «Проверить». Команды `ai_detect_bin`, `ai_check`, `ai_run`, `ai_cancel`
+- **Копирование параметров подключения**: `CopyConnectionButton.tsx` в `EditConsoleDialog` (форматы: ssh-команда, `user@host:port`, список параметров — без пароля и passphrase) и пункт «Скопировать SSH-команду» в ПКМ консоли; логика в `src/lib/connectionString.ts`
+- Подробности — `docs/PLAN_wiki-ssh-localai.md`
+
+### 2026-08-13 — Фикс UTF-8 в PTY
+
+- `pty_manager.rs`: вывод PTY накапливается в буфере, на фронт уходит только валидный UTF-8 префикс — символ, разрезанный границей чтения, больше не превращается в `�`
+- Системный `LANG` используется, только если он сам UTF-8; иначе (`C`/`POSIX`) подставляется UTF-8 локаль, чтобы `ls`, `git`, `mc` не выводили `?` вместо кириллицы
+
+### 2026-07-25 — Заметка к консоли
+
+- Поле `note` у консоли (колонка `consoles.note`, миграция `ALTER TABLE`), многострочное поле в диалогах создания/редактирования
+- В дереве — значок 🗒 и текст заметки во всплывающей подсказке; в терминале — сворачиваемая полоса с заметкой над xterm
+
+### 2026-07-09 — SSH: `StrictHostKeyChecking=accept-new`
+
+- SSH запускается с `-o StrictHostKeyChecking=accept-new`: без этого при первом подключении вопрос «Are you sure you want to continue connecting?» с `SSH_ASKPASS_REQUIRE=force` уходил в askpass-скрипт, получал пароль вместо `yes`, и соединение молча обрывалось. Изменившийся ключ известного хоста по-прежнему блокируется
+
+---
 
 ### 2026-10-03 — Этап 18: Пароль на вход
 
@@ -435,10 +499,10 @@
 | SSH-подключение (passphrase + пароль сервера + SSH_ASKPASS) | 100% |
 | Wiki / TipTap (редактор + теги + поиск) | 100% |
 | Настройки (Settings + темы) | 100% |
-| Система тем (13 тем: 10 тёмных + 3 светлых + random) | 100% |
+| Система тем (18 тем: 9 тёмных + 9 светлых + random) | 100% |
 | Шифрование БД (SQLCipher + compile-time key) | 100% |
-| AI панель (OpenAI + Anthropic + Ollama, стриминг, сессии в SQLite) | 98% (drag-and-drop позиции — Post-MVP) |
-| Экспорт/импорт (.dchub, AES-256-GCM) | 100% |
+| AI панель (OpenAI + Anthropic + Ollama + Claude Code CLI, стриминг, сессии в SQLite) | 98% (drag-and-drop позиции — Post-MVP) |
+| Экспорт/импорт (.dchub, AES-256-GCM) + публичный экспорт серверов (.md) | 100% |
 | Поиск и навигация (дерево + wiki + GlobalSearch Cmd+Shift+K) | 100% |
 | Локализация | 100% (все 5 языков полные; вкладка Агенты, GlobalSearch, Ollama — везде) |
 | Post-MVP функции | 0% |

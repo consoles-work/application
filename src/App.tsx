@@ -213,32 +213,31 @@ function MainApp() {
         setActiveSession(sessions[next].id);
       }
 
-      // Cmd+1..9 — перейти на вкладку N
+      // Cmd+1..9 — перейти на верхнюю вкладку N (консоль, её последний экземпляр)
       if (mod && !e.shiftKey && e.key >= "1" && e.key <= "9") {
         const n = parseInt(e.key) - 1;
-        const { sessions, setActiveSession } = useAppStore.getState();
-        if (sessions[n]) {
+        const { sessions, activateConsole } = useAppStore.getState();
+        const consoleIds = [...new Set(sessions.map((s) => s.console_id))];
+        if (consoleIds[n]) {
           e.preventDefault();
-          setActiveSession(sessions[n].id);
+          activateConsole(consoleIds[n]);
         }
       }
 
-      // Cmd+T — открыть новую сессию для выбранной консоли
+      // Cmd+T — открыть новую сессию для выбранной консоли; если она уже
+      // открыта — ещё один экземпляр в подвкладке
       if (mod && !e.shiftKey && e.key === "t") {
         e.preventDefault();
-        const { selectedNode, sessions, openSession, workspaces } = useAppStore.getState();
+        const { selectedNode, openSession, workspaces } = useAppStore.getState();
         if (selectedNode?.type === "console") {
-          const alreadyOpen = sessions.find((s) => s.console_id === selectedNode.id);
-          if (!alreadyOpen) {
-            let consoleName = selectedNode.id;
-            for (const ws of workspaces) {
-              for (const proj of ws.projects) {
-                const con = proj.consoles.find((c) => c.id === selectedNode.id);
-                if (con) { consoleName = con.name; break; }
-              }
+          let consoleName = selectedNode.id;
+          for (const ws of workspaces) {
+            for (const proj of ws.projects) {
+              const con = proj.consoles.find((c) => c.id === selectedNode.id);
+              if (con) { consoleName = con.name; break; }
             }
-            openSession({ id: `session-${Date.now()}`, console_id: selectedNode.id, title: consoleName, is_active: true });
           }
+          openSession({ id: `session-${Date.now()}`, console_id: selectedNode.id, title: consoleName, is_active: true });
         }
       }
     };

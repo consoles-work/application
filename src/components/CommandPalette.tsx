@@ -9,7 +9,7 @@ interface CommandPaletteProps {
 }
 
 export function CommandPalette({ onClose }: CommandPaletteProps) {
-  const { getFlatTree, selectNode, openSession, sessions, setActiveSession } = useAppStore();
+  const { getFlatTree, selectNode, openSession, activateConsole } = useAppStore();
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -35,9 +35,8 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
   const handleSelect = (node: TreeNode) => {
     selectNode({ type: node.type, id: node.id });
     if (node.type === "console") {
-      const existing = sessions.find((s) => s.console_id === node.id);
-      if (existing) setActiveSession(existing.id);
-      else openSession({ id: `session-${Date.now()}`, console_id: node.id, title: node.name, is_active: true });
+      if (!activateConsole(node.id))
+        openSession({ id: `session-${Date.now()}`, console_id: node.id, title: node.name, is_active: true });
     }
     onClose();
   };

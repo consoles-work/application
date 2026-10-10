@@ -34,6 +34,16 @@
     "moveConfirm": "Переместить консоль «{{name}}» в проект «{{project}}»?",
     "moveConfirmTitle": "Переместить консоль"
   },
+  "serversReport": {
+    "title": "Серверы: {{name}}",
+    "exportedAt": "Дата экспорта",
+    "total": "Всего серверов",
+    "name": "Название",
+    "host": "Сервер",
+    "port": "Порт",
+    "user": "Пользователь",
+    "hosting": "Хостинг"
+  },
   "contextMenu": {
     "addProject": "Добавить проект",
     "addConsole": "Добавить консоль",
@@ -46,6 +56,7 @@
     "markAsDangerous": "⚠ Пометить как опасный...",
     "deleteProject": "Удалить проект",
     "runConsole": "Запустить",
+    "openNewInstance": "Открыть ещё экземпляр",
     "reconnectConsole": "Переподключить",
     "connectionSettings": "Настройки подключения...",
     "cloneConsole": "Дублировать консоль",
@@ -63,12 +74,17 @@
     "toastOpeningVSCode": "Открытие в VS Code...",
     "toastOpenError": "Не удалось открыть: {{error}}",
     "toastDangerError": "Ошибка: {{error}}",
-    "copySshCommand": "Скопировать SSH-команду"
+    "copySshCommand": "Скопировать SSH-команду",
+    "exportServers": "Экспорт серверов (.md)",
+    "toastServersExported": "Список серверов сохранён",
+    "toastNoServers": "В этой папке нет SSH-серверов",
+    "toastServersExportError": "Ошибка экспорта: {{error}}"
   },
   "terminalPanel": {
     "selectConsole": "Выберите консоль в дереве →",
     "closeTabConfirm": "Закрыть вкладку «{{title}}»?",
     "closeTabTitle": "Закрыть вкладку",
+    "closeGroupConfirm": "Закрыть «{{title}}» вместе со всеми экземплярами ({{count}})?",
     "ptyError": "Ошибка запуска PTY: {{error}}",
     "noTerminals": "Нет открытых терминалов",
     "clickConsole": "Кликните на консоль в дереве проектов слева",
@@ -218,6 +234,9 @@
     "note": "Заметка",
     "noteHint": "(произвольный текст)",
     "notePlaceholder": "Например: прод-сервер биллинга, доступ только через VPN",
+    "hosting": "Хостинг",
+    "hostingHint": "(необязательно)",
+    "hostingPlaceholder": "Например: Hetzner, DigitalOcean, AWS eu-central-1",
     "startupPlaceholderLocal": "cd /app\nnpm run dev",
     "startupPlaceholderSsh": "cd /var/www/app\ntail -f logs/app.log",
     "markAsDanger": "⚠ Пометить как опасный (продакшн)",

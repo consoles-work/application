@@ -39,46 +39,86 @@ function findProjectForConsole(consoleId: string): Project | undefined {
   return undefined;
 }
 
+// Подпись экземпляра: первый — просто имя консоли, следующие — «имя #N»
+function tabTitle(session: TerminalSession): string {
+  const n = session.instance ?? 1;
+  return n > 1 ? `${session.title} #${n}` : session.title;
+}
+
 // ══════════════════════════════════════
 // TerminalPanel — вкладки + терминалы
 // ══════════════════════════════════════
 
 export function TerminalPanel() {
-  const { sessions, activeSessionId, setActiveSession, closeSession, terminalSelection, showAiPanel } =
-    useAppStore();
+  const {
+    sessions,
+    activeSessionId,
+    setActiveSession,
+    activateConsole,
+    closeSession,
+    terminalSelection,
+    showAiPanel,
+  } = useAppStore();
   const { t } = useTranslation();
+
+  // Верхние вкладки — уникальные консоли, нижние — экземпляры активной консоли.
+  // sessions хранит экземпляры одной консоли подряд, порядок групп = порядок открытия.
+  const groups: { consoleId: string; items: TerminalSession[] }[] = [];
+  for (const s of sessions) {
+    const g = groups.find((x) => x.consoleId === s.console_id);
+    if (g) g.items.push(s);
+    else groups.push({ consoleId: s.console_id, items: [s] });
+  }
+  const activeSession = sessions.find((s) => s.id === activeSessionId);
+  const activeGroup = groups.find((g) => g.consoleId === activeSession?.console_id);
 
   const handleCloseTab = async (e: React.MouseEvent, session: TerminalSession) => {
     e.stopPropagation();
-    const confirmed = await ask(t("terminalPanel.closeTabConfirm", { title: session.title }), {
+    const confirmed = await ask(t("terminalPanel.closeTabConfirm", { title: tabTitle(session) }), {
       title: t("terminalPanel.closeTabTitle"),
       kind: "warning",
     });
     if (confirmed) closeSession(session.id);
   };
 
+  // Крестик на верхней вкладке закрывает консоль целиком — все её экземпляры
+  const handleCloseGroup = async (e: React.MouseEvent, items: TerminalSession[]) => {
+    if (items.length === 1) return handleCloseTab(e, items[0]);
+    e.stopPropagation();
+    const confirmed = await ask(
+      t("terminalPanel.closeGroupConfirm", { title: items[0].title, count: items.length }),
+      { title: t("terminalPanel.closeTabTitle"), kind: "warning" }
+    );
+    if (confirmed) items.forEach((s) => closeSession(s.id));
+  };
+
   return (
     <div className="h-full flex flex-col bg-surface-0">
-      {/* ── Вкладки ── */}
+      {/* ── Вкладки (консоли) ── */}
       <div className="h-9 flex items-center bg-surface-1 border-b border-border shrink-0 overflow-x-auto">
-        {sessions.map((session) => {
-          const con = findConsoleById(session.console_id);
+        {groups.map(({ consoleId, items }) => {
+          const con = findConsoleById(consoleId);
           const isDanger = con?.isDanger ?? false;
           const dangerLabel = con?.dangerLabel ?? "DANGER";
-          const isActive = session.id === activeSessionId;
+          const isActive = consoleId === activeSession?.console_id;
 
           return (
             <div
-              key={session.id}
+              key={consoleId}
               className={`terminal-tab ${isActive ? "active" : ""} ${
                 isDanger ? "border-b-red-500/60" : ""
               }`}
-              onClick={() => setActiveSession(session.id)}
+              onClick={() => activateConsole(consoleId)}
             >
               {isDanger && (
                 <span className="text-red-400 text-xs mr-1">⚠</span>
               )}
-              <span className="truncate max-w-[120px]">{session.title}</span>
+              <span className="truncate max-w-[120px]">{items[0].title}</span>
+              {items.length > 1 && (
+                <span className="text-2xs px-1 rounded bg-surface-3 text-text-muted font-mono shrink-0">
+                  {items.length}
+                </span>
+              )}
               {isDanger && (
                 <span className="ml-1 text-2xs px-1 rounded bg-red-500/20 text-red-400 font-mono shrink-0">
                   {dangerLabel}
@@ -87,7 +127,7 @@ export function TerminalPanel() {
               <button
                 className="ml-1.5 text-text-muted hover:text-danger text-xs shrink-0"
                 style={{ opacity: isActive ? 0.6 : 0 }}
-                onClick={(e) => handleCloseTab(e, session)}
+                onClick={(e) => handleCloseGroup(e, items)}
               >
                 ×
               </button>
@@ -108,6 +148,31 @@ export function TerminalPanel() {
           </div>
         )}
       </div>
+
+      {/* ── Подвкладки (экземпляры активной консоли), только если их больше одного ── */}
+      {activeGroup && activeGroup.items.length > 1 && (
+        <div className="h-7 flex items-center bg-surface-0 border-b border-border shrink-0 overflow-x-auto">
+          {activeGroup.items.map((session) => {
+            const isActive = session.id === activeSessionId;
+            return (
+              <div
+                key={session.id}
+                className={`terminal-tab py-1 ${isActive ? "active" : ""}`}
+                onClick={() => setActiveSession(session.id)}
+              >
+                <span className="truncate max-w-[140px]">{tabTitle(session)}</span>
+                <button
+                  className="ml-1.5 text-text-muted hover:text-danger text-xs shrink-0"
+                  style={{ opacity: isActive ? 0.6 : 0 }}
+                  onClick={(e) => handleCloseTab(e, session)}
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* ── Терминальные инстансы (все рендерятся, только активный виден) ── */}
       <div className="flex-1 overflow-hidden relative">
