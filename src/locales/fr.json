@@ -388,6 +388,18 @@
     "deleteConfirm": "Supprimer la commande rapide « {{label}} » ?",
     "toastCommandRequired": "Saisissez une commande",
     "runDangerTitle": "Console dangereuse",
-    "runDangerConfirm": "Cette console est marquée {{label}}.\nExécuter la commande ?\n\n{{command}}"
+    "runDangerConfirm": "Cette console est marquée {{label}}.\nExécuter la commande ?\n\n{{command}}",
+    "color": "Couleur du bouton",
+    "colorHint": "Par exemple, le rouge permet de signaler les commandes dangereuses",
+    "preview": "Aperçu du bouton",
+    "colors": {
+      "none": "Sans couleur",
+      "green": "Vert",
+      "blue": "Bleu",
+      "yellow": "Jaune",
+      "orange": "Orange",
+      "red": "Rouge",
+      "purple": "Violet"
+    }
   }
 }

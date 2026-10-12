@@ -111,6 +111,9 @@ pub struct QuickCommand {
     pub command: String,
     #[serde(default)]
     pub description: String,
+    /// Цвет кнопки (ключ палитры: "red", "green", ...), пусто — обычная
+    #[serde(default)]
+    pub color: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

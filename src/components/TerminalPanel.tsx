@@ -5,7 +5,8 @@ import { FitAddon } from "@xterm/addon-fit";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { buildSshCommand } from "../lib/connectionString";
 import { listen } from "@tauri-apps/api/event";
-import { StickyNote, ChevronDown, ChevronRight, Zap, Settings2 } from "lucide-react";
+import { StickyNote, ChevronDown, ChevronRight, Zap, Settings2, Play } from "lucide-react";
+import { quickCommandHex } from "../lib/quickCommandColors";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../stores/appStore";
 import { spawnPty, writeToPty, resizePty, killPty } from "../lib/tauriCommands";
@@ -629,10 +630,16 @@ function QuickCommandsBar({
       }}
     >
       <Zap size={12} className="text-text-muted shrink-0 mr-0.5" />
-      {commands.map((cmd) => (
+      {commands.map((cmd) => {
+        const hex = quickCommandHex(cmd.color);
+        return (
         <button
           key={cmd.id}
-          className="shrink-0 max-w-[200px] truncate px-2 py-0.5 rounded-md text-2xs text-text-primary bg-surface-2 border border-border hover:border-accent/60 hover:bg-surface-3"
+          className={`shrink-0 max-w-[200px] flex items-center gap-1 px-2 py-0.5 rounded-md text-2xs text-text-primary border ${
+            hex ? "hover:brightness-125" : "bg-surface-2 border-border hover:border-accent/60 hover:bg-surface-3"
+          }`}
+          // Цветная кнопка: полупрозрачный фон (~15%) и рамка (~60%) цвета палитры
+          style={hex ? { backgroundColor: `${hex}26`, borderColor: `${hex}99` } : undefined}
           onMouseEnter={(e) => showHint(cmd, e.currentTarget)}
           onMouseLeave={hideHint}
           onClick={() => {
@@ -644,9 +651,15 @@ function QuickCommandsBar({
             onEdit(cmd);
           }}
         >
-          {cmd.label}
+          <Play
+            size={10}
+            className={`shrink-0 fill-current ${hex ? "" : "text-accent"}`}
+            style={hex ? { color: hex } : undefined}
+          />
+          <span className="truncate">{cmd.label}</span>
         </button>
-      ))}
+        );
+      })}
       {hover && <QuickCommandHint cmd={hover.cmd} rect={hover.rect} hint={t("quickCommands.barHint")} />}
       <button
         className="ml-auto shrink-0 p-1 rounded text-text-muted hover:text-text-primary hover:bg-surface-3"

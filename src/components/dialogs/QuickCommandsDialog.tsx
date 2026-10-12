@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { ask } from "@tauri-apps/plugin-dialog";
-import { Pencil, Trash2, ArrowUp, ArrowDown, Plus } from "lucide-react";
+import { Pencil, Trash2, ArrowUp, ArrowDown, Plus, Play, Ban } from "lucide-react";
 import { useAppStore } from "../../stores/appStore";
 import { setConsoleQuickCommands } from "../../lib/tauriCommands";
-import type { QuickCommand } from "../../types";
+import type { QuickCommand, QuickCommandColor } from "../../types";
+import { QUICK_COMMAND_COLORS, quickCommandHex } from "../../lib/quickCommandColors";
 import { useTranslation } from "react-i18next";
 
 interface Props {
@@ -15,9 +16,17 @@ interface Props {
 }
 
 // Черновик формы: id === null — новая команда
-type Draft = { id: string | null; label: string; command: string; description: string };
+type Draft = { id: string | null; label: string; command: string; description: string; color: QuickCommandColor };
 
-const EMPTY_DRAFT: Draft = { id: null, label: "", command: "", description: "" };
+const EMPTY_DRAFT: Draft = { id: null, label: "", command: "", description: "", color: "" };
+
+const toDraft = (c: QuickCommand): Draft => ({
+  id: c.id,
+  label: c.label,
+  command: c.command,
+  description: c.description ?? "",
+  color: c.color ?? "",
+});
 
 export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props) {
   const { workspaces, updateConsole: storeUpdateConsole, showToast } = useAppStore();
@@ -32,7 +41,7 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
   // Пустой список — сразу форма добавления
   const [draft, setDraft] = useState<Draft | null>(() => {
     const target = commands.find((c) => c.id === initialEditId);
-    if (target) return { id: target.id, label: target.label, command: target.command, description: target.description ?? "" };
+    if (target) return toDraft(target);
     return commands.length === 0 ? EMPTY_DRAFT : null;
   });
   const [saving, setSaving] = useState(false);
@@ -78,9 +87,10 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
     // Без подписи на кнопке показываем саму команду (первую строку)
     const label = draft.label.trim() || command.trim().split("\n")[0];
     const description = draft.description.trim() || undefined;
+    const color = draft.color || undefined;
     const next = draft.id
-      ? commands.map((c) => (c.id === draft.id ? { ...c, label, command, description } : c))
-      : [...commands, { id: crypto.randomUUID(), label, command, description }];
+      ? commands.map((c) => (c.id === draft.id ? { ...c, label, command, description, color } : c))
+      : [...commands, { id: crypto.randomUUID(), label, command, description, color }];
     if (await persist(next)) setDraft(null);
   };
 
@@ -147,6 +157,30 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
                 className={inputCls}
               />
             </div>
+            <div>
+              <div className="text-2xs text-text-muted mb-1.5">{t("quickCommands.color")}</div>
+              <div className="flex items-center gap-1.5">
+                {QUICK_COMMAND_COLORS.map(({ id, hex }) => (
+                  <button
+                    key={id || "none"}
+                    type="button"
+                    title={t(`quickCommands.colors.${id || "none"}`)}
+                    onClick={() => setDraft({ ...draft, color: id })}
+                    className={`w-6 h-6 rounded-full flex items-center justify-center border ${
+                      draft.color === id ? "ring-2 ring-accent ring-offset-1 ring-offset-surface-2" : ""
+                    } ${hex ? "border-transparent" : "border-border bg-surface-0 text-text-muted"}`}
+                    style={hex ? { backgroundColor: hex } : undefined}
+                  >
+                    {!hex && <Ban size={12} />}
+                  </button>
+                ))}
+              </div>
+              <div className="text-2xs text-text-muted mt-1">{t("quickCommands.colorHint")}</div>
+            </div>
+            <div className="mt-1">
+              <div className="text-2xs text-text-muted mb-1">{t("quickCommands.preview")}</div>
+              <QuickCommandButtonPreview label={draft.label.trim() || draft.command.trim().split("\n")[0] || "…"} color={draft.color} />
+            </div>
             <div className="flex justify-end gap-2 mt-1">
               <button
                 type="button"
@@ -171,6 +205,10 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
                 key={cmd.id}
                 className="group flex items-start gap-2 px-2.5 py-2 rounded-lg bg-surface-0 border border-border"
               >
+                <span
+                  className="mt-1 w-2.5 h-2.5 rounded-full shrink-0 border border-border"
+                  style={{ backgroundColor: quickCommandHex(cmd.color) || "transparent" }}
+                />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-text-primary truncate">{cmd.label}</div>
                   <div className="text-2xs text-text-muted font-mono truncate">{cmd.command}</div>
@@ -192,7 +230,7 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
                   <IconButton
                     title={t("quickCommands.edit")}
                     onClick={() =>
-                      setDraft({ id: cmd.id, label: cmd.label, command: cmd.command, description: cmd.description ?? "" })
+                      setDraft(toDraft(cmd))
                     }
                   >
                     <Pencil size={13} />
@@ -253,5 +291,19 @@ function IconButton({
     >
       {children}
     </button>
+  );
+}
+
+// Как кнопка будет выглядеть в панели под терминалом
+function QuickCommandButtonPreview({ label, color }: { label: string; color: QuickCommandColor }) {
+  const hex = quickCommandHex(color);
+  return (
+    <span
+      className="inline-flex items-center gap-1 max-w-[200px] px-2 py-0.5 rounded-md text-2xs text-text-primary bg-surface-3 border border-border"
+      style={hex ? { backgroundColor: `${hex}26`, borderColor: `${hex}99` } : undefined}
+    >
+      <Play size={10} className="shrink-0 fill-current" style={hex ? { color: hex } : undefined} />
+      <span className="truncate">{label}</span>
+    </span>
   );
 }

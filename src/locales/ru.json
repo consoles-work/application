@@ -388,6 +388,18 @@
     "deleteConfirm": "Удалить быструю команду «{{label}}»?",
     "toastCommandRequired": "Укажите команду",
     "runDangerTitle": "Опасная консоль",
-    "runDangerConfirm": "Консоль помечена как {{label}}.\nВыполнить команду?\n\n{{command}}"
+    "runDangerConfirm": "Консоль помечена как {{label}}.\nВыполнить команду?\n\n{{command}}",
+    "color": "Цвет кнопки",
+    "colorHint": "Например, красным удобно выделять опасные команды",
+    "preview": "Так будет выглядеть кнопка",
+    "colors": {
+      "none": "Без цвета",
+      "green": "Зелёный",
+      "blue": "Синий",
+      "yellow": "Жёлтый",
+      "orange": "Оранжевый",
+      "red": "Красный",
+      "purple": "Фиолетовый"
+    }
   }
 }
