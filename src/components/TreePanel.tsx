@@ -3,12 +3,14 @@ import { createPortal } from "react-dom";
 import { ChevronRight, ChevronDown, Search, X, Upload, Download, StickyNote } from "lucide-react";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../stores/appStore";
+import type { Project } from "../types";
 import { updateWorkspace, updateProject, updateConsole, setNodeDanger, cloneConsole, cloneProject, moveConsole } from "../lib/tauriCommands";
 import { ContextMenu, type ContextMenuState } from "./ContextMenu";
 import { CreateWorkspaceDialog } from "./dialogs/CreateWorkspaceDialog";
 import { CreateProjectDialog } from "./dialogs/CreateProjectDialog";
 import { CreateConsoleDialog } from "./dialogs/CreateConsoleDialog";
 import { EditConsoleDialog } from "./dialogs/EditConsoleDialog";
+import { QuickCommandsDialog } from "./dialogs/QuickCommandsDialog";
 import { ExportDialog } from "./dialogs/ExportDialog";
 import { ImportDialog } from "./dialogs/ImportDialog";
 import type { TreeNode, ConsoleConfig } from "../types";
@@ -48,6 +50,7 @@ export function TreePanel() {
   const [createProjectFor, setCreateProjectFor] = useState<string | null>(null);   // workspaceId
   const [createConsoleFor, setCreateConsoleFor] = useState<string | null>(null);   // projectId
   const [editConsole, setEditConsole] = useState<ConsoleConfig | null>(null);
+  const [quickCommandsFor, setQuickCommandsFor] = useState<string | null>(null);
   const [showExport, setShowExport] = useState(false);
   const [showImport, setShowImport] = useState(false);
 
@@ -135,27 +138,62 @@ export function TreePanel() {
     if (searchActive) searchInputRef.current?.focus();
   }, [searchActive]);
 
-  // Все узлы (включая свёрнутые) для поиска
+  // Все узлы (включая свёрнутые) для поиска.
+  // fields — несекретные поля формы, по которым тоже ищем. Пароли, passphrase,
+  // путь к ключу и значения env-переменных (там часто токены) сюда не попадают.
   const allNodes = useMemo(() => {
-    type FlatNode = { id: string; type: string; name: string; icon: string; color: string; breadcrumb: string; data: unknown };
+    type FlatNode = { id: string; type: string; name: string; icon: string; color: string; breadcrumb: string; data: unknown; fields: string[] };
     const result: FlatNode[] = [];
+    const envKeys = (vars: unknown) => (vars && typeof vars === "object" ? Object.keys(vars) : []);
     for (const ws of workspaces) {
-      result.push({ id: ws.id, type: "workspace", name: ws.name, icon: ws.icon, color: ws.color, breadcrumb: "", data: ws });
+      result.push({ id: ws.id, type: "workspace", name: ws.name, icon: ws.icon, color: ws.color, breadcrumb: "", data: ws, fields: [] });
       for (const proj of ws.projects) {
-        result.push({ id: proj.id, type: "project", name: proj.name, icon: proj.icon, color: proj.color, breadcrumb: ws.name, data: proj });
+        // Rust отдаёт camelCase, а интерфейс Project местами в snake_case — читаем оба варианта
+        const p = proj as Project & { envVars?: Record<string, string>; defaultShell?: string };
+        result.push({
+          id: proj.id, type: "project", name: proj.name, icon: proj.icon, color: proj.color, breadcrumb: ws.name, data: proj,
+          fields: [p.path, p.defaultShell ?? p.default_shell, p.isDanger ? p.dangerLabel : "", ...envKeys(p.envVars ?? p.env_vars)],
+        });
         for (const con of proj.consoles) {
-          const conData = con as { connectionType?: string };
-          result.push({ id: con.id, type: "console", name: con.name, icon: conData.connectionType === "ssh" ? "S" : "L", color: proj.color, breadcrumb: `${ws.name} › ${proj.name}`, data: con });
+          const isSsh = con.connectionType === "ssh";
+          result.push({
+            id: con.id, type: "console", name: con.name, icon: isSsh ? "S" : "L", color: proj.color, breadcrumb: `${ws.name} › ${proj.name}`, data: con,
+            fields: [
+              isSsh && con.sshUser && con.sshHost ? `${con.sshUser}@${con.sshHost}` : "",
+              isSsh ? con.sshHost : "",
+              isSsh ? con.sshUser : "",
+              isSsh && con.sshPort ? String(con.sshPort) : "",
+              isSsh ? con.sshExtraArgs : "",
+              con.hosting ?? "",
+              con.note ?? "",
+              con.startupCmd ?? "",
+              con.cwdOverride ?? "",
+              con.shellOverride ?? "",
+              con.isDanger ? con.dangerLabel : "",
+              ...envKeys(con.envVars),
+            ],
+          });
         }
       }
     }
     return result;
   }, [workspaces]);
 
+  // Совпадение по имени — в приоритете; иначе показываем строку поля, в котором нашлось
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
-    const q = searchQuery.toLowerCase();
-    return allNodes.filter((n) => n.name.toLowerCase().includes(q));
+    const q = searchQuery.trim().toLowerCase();
+    const byName: (typeof allNodes[0] & { match?: string })[] = [];
+    const byField: (typeof allNodes[0] & { match?: string })[] = [];
+    for (const n of allNodes) {
+      if (n.name.toLowerCase().includes(q)) { byName.push(n); continue; }
+      const hit = n.fields.find((f) => f && f.toLowerCase().includes(q));
+      if (hit) {
+        const line = hit.split("\n").find((l) => l.toLowerCase().includes(q)) ?? hit;
+        byField.push({ ...n, match: line.trim() });
+      }
+    }
+    return [...byName, ...byField];
   }, [searchQuery, allNodes]);
 
   const handleSearchSelect = (node: typeof allNodes[0]) => {
@@ -437,6 +475,9 @@ export function TreePanel() {
                     {node.breadcrumb && (
                       <div className="text-2xs text-text-muted truncate">{node.breadcrumb}</div>
                     )}
+                    {node.match && (
+                      <div className="text-2xs text-accent truncate font-mono">{node.match}</div>
+                    )}
                   </div>
                   <span className={`text-2xs px-1 py-0.5 rounded font-mono shrink-0 ${
                     node.type === "workspace" ? "bg-surface-3 text-text-muted" :
@@ -549,6 +590,7 @@ export function TreePanel() {
           onRename={(node) => startRename(node)}
           onToggleDanger={(node) => handleToggleDanger(node)}
           onEditConsole={(node) => setEditConsole(node.data as ConsoleConfig)}
+          onQuickCommands={(node) => setQuickCommandsFor(node.id)}
           onCloneConsole={handleCloneConsole}
           onCloneProject={handleCloneProject}
           onReconnectConsole={handleReconnectConsole}
@@ -575,6 +617,12 @@ export function TreePanel() {
         <EditConsoleDialog
           console_={editConsole}
           onClose={() => setEditConsole(null)}
+        />
+      )}
+      {quickCommandsFor && (
+        <QuickCommandsDialog
+          consoleId={quickCommandsFor}
+          onClose={() => setQuickCommandsFor(null)}
         />
       )}
       {showExport && <ExportDialog onClose={() => setShowExport(false)} />}

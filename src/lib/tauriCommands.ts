@@ -10,7 +10,7 @@
 // Возврат: Promise с результатом из Rust
 
 import { invoke } from "@tauri-apps/api/core";
-import type { Workspace, Project, ConsoleConfig, WikiPage, AiSession, AiMessage } from "../types";
+import type { Workspace, Project, ConsoleConfig, QuickCommand, WikiPage, AiSession, AiMessage } from "../types";
 
 export interface DbInfo {
   path: string;
@@ -145,6 +145,10 @@ export async function updateConsoleConfig(
     note,
     hosting,
   });
+}
+
+export async function setConsoleQuickCommands(id: string, commands: QuickCommand[]): Promise<void> {
+  return invoke("set_console_quick_commands", { id, commands });
 }
 
 export async function deleteConsole(id: string): Promise<void> {

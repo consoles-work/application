@@ -13,7 +13,6 @@ use tauri::Manager;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState};
 
-#[allow(dead_code)]
 pub static QUIT_DIALOG_ACTIVE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -53,7 +52,7 @@ pub fn run() {
                             let _ = w.set_focus();
                         }
                     }
-                    "quit" => app.exit(0),
+                    "quit" => confirm_quit(app),
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
@@ -72,6 +71,14 @@ pub fn run() {
                 })
                 .build(app)?;
 
+            // Меню приложения: Cmd+Q через подтверждение выхода
+            install_app_menu(app.handle(), &lang)?;
+            app.on_menu_event(|app, event| {
+                if event.id() == "app_quit" {
+                    confirm_quit(app);
+                }
+            });
+
             println!("✅ consoles.work started successfully");
             Ok(())
         })
@@ -87,6 +94,7 @@ pub fn run() {
             update_console,
             update_console_config,
             delete_console,
+            set_console_quick_commands,
             spawn_pty,
             write_to_pty,
             resize_pty,
@@ -138,7 +146,7 @@ pub fn run() {
                 if close_to_tray {
                     let _ = window.hide();
                 } else {
-                    window.app_handle().exit(0);
+                    confirm_quit(window.app_handle());
                 }
             }
         })

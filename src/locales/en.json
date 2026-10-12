@@ -78,7 +78,8 @@
     "exportServers": "Export servers (.md)",
     "toastServersExported": "Server list saved",
     "toastNoServers": "No SSH servers here",
-    "toastServersExportError": "Export error: {{error}}"
+    "toastServersExportError": "Export error: {{error}}",
+    "quickCommands": "Quick commands..."
   },
   "terminalPanel": {
     "selectConsole": "Select a console in the tree →",
@@ -366,5 +367,27 @@
     "autoLockUnit": "minutes (0 — off)",
     "autoLockHint": "If there is no mouse movement or key press for this long, the screen is locked and the password must be entered again. Terminal sessions keep running.",
     "autoLockNeedsPassword": "Available when a password is enabled."
+  },
+  "quickCommands": {
+    "title": "Quick commands",
+    "label": "Button label",
+    "labelPlaceholder": "e.g. Container status",
+    "command": "Command",
+    "commandHint": "Sent to the terminal followed by Enter. Each line is a separate command.",
+    "description": "Description (optional)",
+    "descriptionPlaceholder": "What the command does — shown in the tooltip",
+    "add": "Add",
+    "edit": "Edit",
+    "delete": "Delete",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "close": "Close",
+    "manage": "Manage quick commands",
+    "barHint": "Click to run · Right-click to edit",
+    "deleteTitle": "Delete command",
+    "deleteConfirm": "Delete quick command “{{label}}”?",
+    "toastCommandRequired": "Enter a command",
+    "runDangerTitle": "Dangerous console",
+    "runDangerConfirm": "This console is marked as {{label}}.\nRun the command?\n\n{{command}}"
   }
 }

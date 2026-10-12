@@ -78,7 +78,8 @@
     "exportServers": "Exporter les serveurs (.md)",
     "toastServersExported": "Liste des serveurs enregistrée",
     "toastNoServers": "Aucun serveur SSH ici",
-    "toastServersExportError": "Erreur d'export : {{error}}"
+    "toastServersExportError": "Erreur d'export : {{error}}",
+    "quickCommands": "Commandes rapides..."
   },
   "terminalPanel": {
     "selectConsole": "Sélectionnez une console dans l'arbre →",
@@ -366,5 +367,27 @@
     "autoLockUnit": "minutes (0 — désactivé)",
     "autoLockHint": "Sans mouvement de souris ni frappe pendant ce délai, l'écran est verrouillé et le mot de passe doit être ressaisi. Les sessions de terminal continuent de fonctionner.",
     "autoLockNeedsPassword": "Disponible lorsqu'un mot de passe est activé."
+  },
+  "quickCommands": {
+    "title": "Commandes rapides",
+    "label": "Libellé du bouton",
+    "labelPlaceholder": "Ex. : État des conteneurs",
+    "command": "Commande",
+    "commandHint": "Envoyée au terminal suivie d’Entrée. Chaque ligne est une commande distincte.",
+    "description": "Description (facultatif)",
+    "descriptionPlaceholder": "Ce que fait la commande — affiché dans l’info-bulle",
+    "add": "Ajouter",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "moveUp": "Monter",
+    "moveDown": "Descendre",
+    "close": "Fermer",
+    "manage": "Gérer les commandes rapides",
+    "barHint": "Clic pour exécuter · Clic droit pour modifier",
+    "deleteTitle": "Supprimer la commande",
+    "deleteConfirm": "Supprimer la commande rapide « {{label}} » ?",
+    "toastCommandRequired": "Saisissez une commande",
+    "runDangerTitle": "Console dangereuse",
+    "runDangerConfirm": "Cette console est marquée {{label}}.\nExécuter la commande ?\n\n{{command}}"
   }
 }

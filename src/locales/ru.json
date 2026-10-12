@@ -78,7 +78,8 @@
     "exportServers": "Экспорт серверов (.md)",
     "toastServersExported": "Список серверов сохранён",
     "toastNoServers": "В этой папке нет SSH-серверов",
-    "toastServersExportError": "Ошибка экспорта: {{error}}"
+    "toastServersExportError": "Ошибка экспорта: {{error}}",
+    "quickCommands": "Быстрые команды..."
   },
   "terminalPanel": {
     "selectConsole": "Выберите консоль в дереве →",
@@ -366,5 +367,27 @@
     "autoLockUnit": "минут (0 — выключено)",
     "autoLockHint": "Если за это время не было ни движения мыши, ни нажатия клавиш, экран блокируется заставкой и нужно снова ввести пароль. Терминальные сессии при этом продолжают работать.",
     "autoLockNeedsPassword": "Доступно, когда включён пароль."
+  },
+  "quickCommands": {
+    "title": "Быстрые команды",
+    "label": "Подпись кнопки",
+    "labelPlaceholder": "Например: Статус контейнеров",
+    "command": "Команда",
+    "commandHint": "Отправляется в терминал с Enter. Каждая строка — отдельная команда.",
+    "description": "Описание (необязательно)",
+    "descriptionPlaceholder": "Что делает команда — видно в подсказке",
+    "add": "Добавить",
+    "edit": "Редактировать",
+    "delete": "Удалить",
+    "moveUp": "Выше",
+    "moveDown": "Ниже",
+    "close": "Закрыть",
+    "manage": "Управление быстрыми командами",
+    "barHint": "Клик — выполнить · ПКМ — редактировать",
+    "deleteTitle": "Удаление команды",
+    "deleteConfirm": "Удалить быструю команду «{{label}}»?",
+    "toastCommandRequired": "Укажите команду",
+    "runDangerTitle": "Опасная консоль",
+    "runDangerConfirm": "Консоль помечена как {{label}}.\nВыполнить команду?\n\n{{command}}"
   }
 }

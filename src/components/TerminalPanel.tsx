@@ -5,12 +5,13 @@ import { FitAddon } from "@xterm/addon-fit";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { buildSshCommand } from "../lib/connectionString";
 import { listen } from "@tauri-apps/api/event";
-import { StickyNote, ChevronDown, ChevronRight } from "lucide-react";
+import { StickyNote, ChevronDown, ChevronRight, Zap, Settings2 } from "lucide-react";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../stores/appStore";
 import { spawnPty, writeToPty, resizePty, killPty } from "../lib/tauriCommands";
 import { getThemeById, resolveThemeId } from "../lib/themes";
-import type { TerminalSession, ConsoleConfig, Project } from "../types";
+import type { TerminalSession, ConsoleConfig, Project, QuickCommand } from "../types";
+import { QuickCommandsDialog } from "./dialogs/QuickCommandsDialog";
 import { useTranslation } from "react-i18next";
 import i18n from "../lib/i18n";
 
@@ -60,6 +61,7 @@ export function TerminalPanel() {
     showAiPanel,
   } = useAppStore();
   const { t } = useTranslation();
+  const [quickDialog, setQuickDialog] = useState<{ consoleId: string; editId?: string } | null>(null);
 
   // Верхние вкладки — уникальные консоли, нижние — экземпляры активной консоли.
   // sessions хранит экземпляры одной консоли подряд, порядок групп = порядок открытия.
@@ -187,11 +189,21 @@ export function TerminalPanel() {
               dangerLabel={con?.dangerLabel ?? "DANGER"}
               consoleName={con?.name ?? ""}
               note={con?.note?.trim() ?? ""}
+              quickCommands={con?.quickCommands ?? []}
+              onManageQuickCommands={(editId) => setQuickDialog({ consoleId: session.console_id, editId })}
             />
           );
         })}
         {sessions.length === 0 && <EmptyState />}
       </div>
+
+      {quickDialog && (
+        <QuickCommandsDialog
+          consoleId={quickDialog.consoleId}
+          initialEditId={quickDialog.editId}
+          onClose={() => setQuickDialog(null)}
+        />
+      )}
     </div>
   );
 }
@@ -216,6 +228,8 @@ function TerminalView({
   dangerLabel,
   consoleName,
   note,
+  quickCommands,
+  onManageQuickCommands,
 }: {
   session: TerminalSession;
   isActive: boolean;
@@ -223,6 +237,8 @@ function TerminalView({
   dangerLabel: string;
   consoleName: string;
   note: string;
+  quickCommands: QuickCommand[];
+  onManageQuickCommands: (editId?: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -446,6 +462,22 @@ function TerminalView({
   const menuClearLine = () => {
     if (ptyIdRef.current !== null) writeToPty(ptyIdRef.current, "\x05\x15");
   };
+  // Быстрая команда: строки уходят в PTY как набранные с Enter.
+  // На опасной консоли — подтверждение, чтобы случайный клик не ушёл в прод.
+  const runQuickCommand = async (cmd: QuickCommand) => {
+    const ptyId = ptyIdRef.current;
+    if (ptyId === null) return;
+    if (isDanger) {
+      const confirmed = await ask(
+        i18n.t("quickCommands.runDangerConfirm", { label: dangerLabel, command: cmd.command }),
+        { title: i18n.t("quickCommands.runDangerTitle"), kind: "warning" }
+      );
+      if (!confirmed) return;
+    }
+    writeToPty(ptyId, cmd.command.replace(/\r?\n/g, "\r") + "\r").catch(() => {});
+    termRef.current?.focus();
+  };
+
   // term.clear() оставляет текущую строку приглашения, убирает историю выше
   const menuClearScreen = () => termRef.current?.clear();
   // Полный сброс xterm (включая «залипшие» SGR-цвета) + перерисовка приглашения шелла
@@ -543,7 +575,110 @@ function TerminalView({
           </div>
         )}
       </div>
+      {/* Панель быстрых команд — только если у консоли они есть */}
+      {quickCommands.length > 0 && (
+        <QuickCommandsBar
+          commands={quickCommands}
+          onRun={runQuickCommand}
+          onEdit={(cmd) => onManageQuickCommands(cmd.id)}
+          onManage={() => onManageQuickCommands()}
+        />
+      )}
     </div>
+  );
+}
+
+// ══════════════════════════════════════
+// Панель быстрых команд под терминалом
+// ══════════════════════════════════════
+
+function QuickCommandsBar({
+  commands,
+  onRun,
+  onEdit,
+  onManage,
+}: {
+  commands: QuickCommand[];
+  onRun: (cmd: QuickCommand) => void;
+  onEdit: (cmd: QuickCommand) => void;
+  onManage: () => void;
+}) {
+  const { t } = useTranslation();
+  // Своя подсказка вместо title: нативные tooltip в WebKit у Tauri показываются ненадёжно
+  const [hover, setHover] = useState<{ cmd: QuickCommand; rect: DOMRect } | null>(null);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(hoverTimer.current), []);
+
+  const showHint = (cmd: QuickCommand, el: HTMLElement) => {
+    clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => setHover({ cmd, rect: el.getBoundingClientRect() }), 300);
+  };
+  const hideHint = () => {
+    clearTimeout(hoverTimer.current);
+    setHover(null);
+  };
+
+  return (
+    <div
+      className="shrink-0 flex items-center gap-1 px-2 py-1 bg-surface-1 border-t border-border overflow-x-auto"
+      onScroll={hideHint}
+      // Своё ПКМ-поведение (редактирование кнопки) вместо меню терминала
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    >
+      <Zap size={12} className="text-text-muted shrink-0 mr-0.5" />
+      {commands.map((cmd) => (
+        <button
+          key={cmd.id}
+          className="shrink-0 max-w-[200px] truncate px-2 py-0.5 rounded-md text-2xs text-text-primary bg-surface-2 border border-border hover:border-accent/60 hover:bg-surface-3"
+          onMouseEnter={(e) => showHint(cmd, e.currentTarget)}
+          onMouseLeave={hideHint}
+          onClick={() => {
+            hideHint();
+            onRun(cmd);
+          }}
+          onContextMenu={() => {
+            hideHint();
+            onEdit(cmd);
+          }}
+        >
+          {cmd.label}
+        </button>
+      ))}
+      {hover && <QuickCommandHint cmd={hover.cmd} rect={hover.rect} hint={t("quickCommands.barHint")} />}
+      <button
+        className="ml-auto shrink-0 p-1 rounded text-text-muted hover:text-text-primary hover:bg-surface-3"
+        title={t("quickCommands.manage")}
+        onClick={onManage}
+      >
+        <Settings2 size={13} />
+      </button>
+    </div>
+  );
+}
+
+// Подсказка над кнопкой быстрой команды: подпись, описание, сама команда
+function QuickCommandHint({ cmd, rect, hint }: { cmd: QuickCommand; rect: DOMRect; hint: string }) {
+  const width = 340;
+  const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
+  const bottom = window.innerHeight - rect.top + 6;
+  return createPortal(
+    <div
+      className="fixed z-50 pointer-events-none bg-surface-2 border border-border rounded-lg shadow-xl px-3 py-2 flex flex-col gap-1.5"
+      style={{ left, bottom, maxWidth: width }}
+    >
+      <div className="text-xs font-semibold text-text-primary break-words">{cmd.label}</div>
+      {cmd.description && (
+        <div className="text-2xs text-text-secondary whitespace-pre-wrap break-words">{cmd.description}</div>
+      )}
+      <pre className="text-2xs font-mono text-text-primary bg-surface-0 border border-border rounded px-2 py-1 whitespace-pre-wrap break-all max-h-40 overflow-hidden">
+        {cmd.command}
+      </pre>
+      <div className="text-2xs text-text-muted">{hint}</div>
+    </div>,
+    document.body
   );
 }
 

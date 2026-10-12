@@ -78,7 +78,8 @@
     "exportServers": "Серверлерді экспорттау (.md)",
     "toastServersExported": "Серверлер тізімі сақталды",
     "toastNoServers": "Мұнда SSH-серверлер жоқ",
-    "toastServersExportError": "Экспорт қатесі: {{error}}"
+    "toastServersExportError": "Экспорт қатесі: {{error}}",
+    "quickCommands": "Жылдам командалар..."
   },
   "terminalPanel": {
     "selectConsole": "Ағашта консольді таңдаңыз →",
@@ -366,5 +367,27 @@
     "autoLockUnit": "минут (0 — өшірулі)",
     "autoLockHint": "Осы уақыт ішінде тінтуір қозғалмаса және перне басылмаса, экран құлыпталады және құпиясөзді қайта енгізу керек. Терминал сеанстары жұмысын жалғастырады.",
     "autoLockNeedsPassword": "Құпиясөз қосулы болғанда қолжетімді."
+  },
+  "quickCommands": {
+    "title": "Жылдам командалар",
+    "label": "Батырма атауы",
+    "labelPlaceholder": "Мысалы: Контейнерлер күйі",
+    "command": "Команда",
+    "commandHint": "Терминалға Enter-мен жіберіледі. Әр жол — жеке команда.",
+    "description": "Сипаттама (міндетті емес)",
+    "descriptionPlaceholder": "Команда не істейді — кеңесте көрсетіледі",
+    "add": "Қосу",
+    "edit": "Өңдеу",
+    "delete": "Жою",
+    "moveUp": "Жоғары",
+    "moveDown": "Төмен",
+    "close": "Жабу",
+    "manage": "Жылдам командаларды басқару",
+    "barHint": "Шерту — орындау · Оң жақ батырма — өңдеу",
+    "deleteTitle": "Команданы жою",
+    "deleteConfirm": "«{{label}}» жылдам командасын жою керек пе?",
+    "toastCommandRequired": "Команданы көрсетіңіз",
+    "runDangerTitle": "Қауіпті консоль",
+    "runDangerConfirm": "Бұл консоль {{label}} деп белгіленген.\nКоманданы орындау керек пе?\n\n{{command}}"
   }
 }

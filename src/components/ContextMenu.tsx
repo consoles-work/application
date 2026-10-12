@@ -28,6 +28,7 @@ interface ContextMenuProps {
   onRename: (node: TreeNode) => void;
   onToggleDanger: (node: TreeNode) => void;
   onEditConsole: (node: TreeNode) => void;
+  onQuickCommands: (node: TreeNode) => void;
   onCloneConsole: (node: TreeNode) => void;
   onCloneProject: (node: TreeNode) => void;
   onReconnectConsole: (node: TreeNode) => void;
@@ -41,6 +42,7 @@ export function ContextMenu({
   onRename,
   onToggleDanger,
   onEditConsole,
+  onQuickCommands,
   onCloneConsole,
   onCloneProject,
   onReconnectConsole,
@@ -240,6 +242,7 @@ export function ContextMenu({
     onOpenNewInstance: handleOpenNewInstance,
     onToggleDanger: handleToggleDanger,
     onEditConsole: () => { onClose(); onEditConsole(menu.node); },
+    onQuickCommands: () => { onClose(); onQuickCommands(menu.node); },
     onCloneConsole: () => { onClose(); onCloneConsole(menu.node); },
     onCloneProject: () => { onClose(); onCloneProject(menu.node); },
     onReconnectConsole: () => { onClose(); onReconnectConsole(menu.node); },
@@ -294,6 +297,7 @@ function getMenuItems(handlers: {
   onOpenNewInstance: () => void;
   onToggleDanger: () => void;
   onEditConsole: () => void;
+  onQuickCommands: () => void;
   onCloneConsole: () => void;
   onCloneProject: () => void;
   onReconnectConsole: () => void;
@@ -342,6 +346,7 @@ function getMenuItems(handlers: {
     ...(hasSession ? [{ label: t("contextMenu.openNewInstance"), icon: "⧉", action: handlers.onOpenNewInstance } as MenuItem] : []),
     ...(hasSession ? [{ label: t("contextMenu.reconnectConsole"), icon: "↺", action: handlers.onReconnectConsole } as MenuItem] : []),
     { label: t("contextMenu.connectionSettings"), icon: "⚙", action: handlers.onEditConsole },
+    { label: t("contextMenu.quickCommands"), icon: "⚡", action: handlers.onQuickCommands },
     ...(isSsh ? [{ label: t("contextMenu.copySshCommand"), icon: "⧉", action: handlers.onCopySshCommand } as MenuItem] : []),
     { label: t("contextMenu.cloneConsole"), icon: "⎘", action: handlers.onCloneConsole },
     "separator" as MenuItem,

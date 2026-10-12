@@ -98,6 +98,19 @@ pub struct ConsoleConfig {
     /// Где хостится сервер (провайдер/дата-центр), необязательно
     #[serde(default)]
     pub hosting: String,
+    /// Кнопки быстрых команд (панель под терминалом)
+    #[serde(default)]
+    pub quick_commands: Vec<QuickCommand>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QuickCommand {
+    pub id: String,
+    pub label: String,
+    pub command: String,
+    #[serde(default)]
+    pub description: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -247,6 +260,7 @@ pub fn create_console(
         ssh_password: ssh_password.unwrap_or_default(),
         note: note.unwrap_or_default(),
         hosting: hosting.unwrap_or_default(),
+        quick_commands: Vec::new(),
     };
 
     crate::db::save_console(&console)?;
@@ -284,6 +298,12 @@ pub fn update_console_config(
         note.as_deref().unwrap_or_default(),
         hosting.as_deref().unwrap_or_default(),
     )
+}
+
+/// Заменить список быстрых команд консоли целиком
+#[tauri::command]
+pub fn set_console_quick_commands(id: String, commands: Vec<QuickCommand>) -> Result<(), String> {
+    crate::db::set_console_quick_commands(&id, &commands)
 }
 
 /// Удалить консоль
@@ -598,6 +618,79 @@ pub fn tray_labels(lang: &str) -> (&'static str, &'static str) {
     }
 }
 
+// ── Подтверждение выхода ──
+
+/// Надписи диалога выхода: (заголовок, текст, «выйти», «отмена»)
+fn quit_dialog_labels(lang: &str) -> (&'static str, &'static str, &'static str, &'static str) {
+    match lang {
+        "en" => ("Quit", "Are you sure you want to quit?\nAll open terminal sessions will be closed.", "Quit", "Cancel"),
+        "zh" => ("退出", "确定要退出吗？\n所有打开的终端会话都将关闭。", "退出", "取消"),
+        "fr" => ("Quitter", "Voulez-vous vraiment quitter ?\nToutes les sessions de terminal ouvertes seront fermées.", "Quitter", "Annuler"),
+        "kk" => ("Шығу", "Шығуға сенімдісіз бе?\nБарлық ашық терминал сессиялары жабылады.", "Шығу", "Болдырмау"),
+        _    => ("Выход", "Вы уверены, что хотите выйти?\nВсе открытые терминальные сессии будут закрыты.", "Выйти", "Отмена"),
+    }
+}
+
+/// Спросить подтверждение и завершить приложение при согласии.
+/// Единая точка для всех путей выхода: трей, Cmd+Q, закрытие окна без трея.
+pub fn confirm_quit(app: &tauri::AppHandle) {
+    use std::sync::atomic::Ordering;
+    use tauri::Manager;
+    use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+
+    // Диалог уже на экране — второй не открываем
+    if crate::QUIT_DIALOG_ACTIVE.swap(true, Ordering::SeqCst) {
+        return;
+    }
+
+    let (title, text, yes, no) = quit_dialog_labels(&crate::db::get_setting_str("ui.language", "ru"));
+    let mut dialog = app.dialog()
+        .message(text)
+        .title(title)
+        .kind(MessageDialogKind::Warning)
+        .buttons(MessageDialogButtons::OkCancelCustom(yes.to_string(), no.to_string()));
+
+    // Окно могло быть спрятано в трей — показываем, чтобы диалог было к чему привязать
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.unminimize();
+        let _ = w.show();
+        let _ = w.set_focus();
+        dialog = dialog.parent(&w);
+    }
+
+    let handle = app.clone();
+    dialog.show(move |confirmed| {
+        if confirmed {
+            handle.exit(0);
+        } else {
+            crate::QUIT_DIALOG_ACTIVE.store(false, Ordering::SeqCst);
+        }
+    });
+}
+
+/// macOS: штатный пункт «Quit» (Cmd+Q) из меню по умолчанию завершает процесс
+/// напрямую, минуя приложение. Заменяем его своим пунктом с тем же
+/// сочетанием клавиш, который идёт через confirm_quit.
+pub fn install_app_menu(app: &tauri::AppHandle, lang: &str) -> tauri::Result<()> {
+    #[cfg(target_os = "macos")]
+    {
+        use tauri::menu::{Menu, MenuItem, MenuItemKind};
+        let (_, quit_label) = tray_labels(lang);
+        let menu = Menu::default(app)?;
+        if let Some(MenuItemKind::Submenu(app_submenu)) = menu.items()?.into_iter().next() {
+            // Последний пункт подменю приложения — PredefinedMenuItem::quit
+            if let Some(last) = app_submenu.items()?.last() {
+                app_submenu.remove(last)?;
+            }
+            app_submenu.append(&MenuItem::with_id(app, "app_quit", quit_label, true, Some("CmdOrCtrl+Q"))?)?;
+        }
+        app.set_menu(menu)?;
+    }
+    #[cfg(not(target_os = "macos"))]
+    let _ = (app, lang);
+    Ok(())
+}
+
 /// Обновить надписи меню системного трея при смене языка интерфейса.
 #[tauri::command]
 pub fn update_tray_language(app: tauri::AppHandle, lang: String) -> Result<(), String> {
@@ -614,6 +707,7 @@ pub fn update_tray_language(app: tauri::AppHandle, lang: String) -> Result<(), S
             }
         }
     }
+    let _ = install_app_menu(&app, &lang);
     Ok(())
 }
 

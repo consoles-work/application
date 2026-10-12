@@ -78,7 +78,8 @@
     "exportServers": "导出服务器列表 (.md)",
     "toastServersExported": "服务器列表已保存",
     "toastNoServers": "此处没有 SSH 服务器",
-    "toastServersExportError": "导出错误：{{error}}"
+    "toastServersExportError": "导出错误：{{error}}",
+    "quickCommands": "快捷命令..."
   },
   "terminalPanel": {
     "selectConsole": "在树中选择控制台 →",
@@ -366,5 +367,27 @@
     "autoLockUnit": "分钟（0 — 关闭）",
     "autoLockHint": "如果在此时间内没有鼠标移动或按键，屏幕将被锁定，需要重新输入密码。终端会话会继续运行。",
     "autoLockNeedsPassword": "启用密码后可用。"
+  },
+  "quickCommands": {
+    "title": "快捷命令",
+    "label": "按钮名称",
+    "labelPlaceholder": "例如：容器状态",
+    "command": "命令",
+    "commandHint": "发送到终端并回车。每行为一条单独的命令。",
+    "description": "描述（可选）",
+    "descriptionPlaceholder": "命令的作用 — 显示在提示中",
+    "add": "添加",
+    "edit": "编辑",
+    "delete": "删除",
+    "moveUp": "上移",
+    "moveDown": "下移",
+    "close": "关闭",
+    "manage": "管理快捷命令",
+    "barHint": "单击执行 · 右键编辑",
+    "deleteTitle": "删除命令",
+    "deleteConfirm": "删除快捷命令「{{label}}」？",
+    "toastCommandRequired": "请输入命令",
+    "runDangerTitle": "危险控制台",
+    "runDangerConfirm": "此控制台标记为 {{label}}。\n确定执行命令？\n\n{{command}}"
   }
 }
