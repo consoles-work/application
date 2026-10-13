@@ -421,6 +421,30 @@ pub fn set_console_quick_commands(id: &str, commands: &[QuickCommand]) -> Result
     Ok(())
 }
 
+/// +1 запуск быстрой команды. Read-modify-write под общим локом БД — без гонок между вкладками.
+/// Символы считаются по тексту команды на момент запуска (+1 за Enter).
+pub fn record_quick_command_run(console_id: &str, command_id: &str) -> Result<QuickCommand, String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    let json: String = db.query_row(
+        "SELECT quick_commands FROM consoles WHERE id = ?1",
+        params![console_id],
+        |row| row.get(0),
+    ).map_err(|e| e.to_string())?;
+    let mut commands: Vec<QuickCommand> = serde_json::from_str(&json).map_err(|e| e.to_string())?;
+    let cmd = commands.iter_mut()
+        .find(|c| c.id == command_id)
+        .ok_or_else(|| format!("quick command {command_id} not found"))?;
+    cmd.run_count += 1;
+    cmd.saved_chars += cmd.command.chars().count() as u64 + 1;
+    let updated = cmd.clone();
+    let json = serde_json::to_string(&commands).map_err(|e| e.to_string())?;
+    db.execute(
+        "UPDATE consoles SET quick_commands = ?2 WHERE id = ?1",
+        params![console_id, json],
+    ).map_err(|e| e.to_string())?;
+    Ok(updated)
+}
+
 pub fn update_console_name(id: &str, name: &str) -> Result<(), String> {
     let db = get_db().lock().map_err(|e| e.to_string())?;
     db.execute(

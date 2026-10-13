@@ -151,6 +151,11 @@ export async function setConsoleQuickCommands(id: string, commands: QuickCommand
   return invoke("set_console_quick_commands", { id, commands });
 }
 
+// Учесть запуск быстрой команды; возвращает команду с обновлёнными счётчиками
+export async function recordQuickCommandRun(consoleId: string, commandId: string): Promise<QuickCommand> {
+  return invoke("record_quick_command_run", { consoleId, commandId });
+}
+
 export async function deleteConsole(id: string): Promise<void> {
   return invoke("delete_console", { id });
 }

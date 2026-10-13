@@ -126,6 +126,7 @@ pub fn run() {
             update_console_config,
             delete_console,
             set_console_quick_commands,
+            record_quick_command_run,
 
             // PTY (терминал)
             spawn_pty,

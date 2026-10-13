@@ -402,6 +402,13 @@
     "confirm": "Show a warning before running",
     "confirmHint": "Asks for confirmation before running",
     "runConfirmTitle": "Run command",
-    "runConfirm": "Run “{{label}}”?\n\n{{command}}"
+    "runConfirm": "Run “{{label}}”?\n\n{{command}}",
+    "stats": "Runs: {{runs}} · saved {{saved}}",
+    "statsNever": "Not run yet",
+    "statsTotal": "Total runs: {{runs}} · saved {{saved}}",
+    "statsFormula": "Rough estimate: command length ÷ {{cpm}} chars/min (average typing speed)",
+    "savedSec": "≈ {{value}} sec",
+    "savedMin": "≈ {{value}} min",
+    "savedHourMin": "≈ {{hours}} h {{minutes}} min"
   }
 }

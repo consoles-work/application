@@ -117,6 +117,12 @@ pub struct QuickCommand {
     /// Спрашивать подтверждение перед выполнением
     #[serde(default)]
     pub confirm: bool,
+    /// Сколько раз команду запускали кнопкой
+    #[serde(default)]
+    pub run_count: u64,
+    /// Сколько символов не пришлось набирать руками (сумма по всем запускам)
+    #[serde(default)]
+    pub saved_chars: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -310,6 +316,12 @@ pub fn update_console_config(
 #[tauri::command]
 pub fn set_console_quick_commands(id: String, commands: Vec<QuickCommand>) -> Result<(), String> {
     crate::db::set_console_quick_commands(&id, &commands)
+}
+
+/// Учесть запуск быстрой команды (счётчик + «сэкономленные» символы), вернуть обновлённую команду
+#[tauri::command]
+pub fn record_quick_command_run(console_id: String, command_id: String) -> Result<QuickCommand, String> {
+    crate::db::record_quick_command_run(&console_id, &command_id)
 }
 
 /// Удалить консоль

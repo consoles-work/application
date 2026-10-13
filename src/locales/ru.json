@@ -402,6 +402,13 @@
     "confirm": "Показывать предупреждение перед выполнением",
     "confirmHint": "Перед выполнением спросит подтверждение",
     "runConfirmTitle": "Выполнить команду",
-    "runConfirm": "Выполнить «{{label}}»?\n\n{{command}}"
+    "runConfirm": "Выполнить «{{label}}»?\n\n{{command}}",
+    "stats": "Запусков: {{runs}} · сэкономлено {{saved}}",
+    "statsNever": "Ещё не запускалась",
+    "statsTotal": "Всего запусков: {{runs}} · сэкономлено {{saved}}",
+    "statsFormula": "Примерно: длина команды ÷ {{cpm}} символов/мин (средняя скорость набора)",
+    "savedSec": "≈ {{value}} сек",
+    "savedMin": "≈ {{value}} мин",
+    "savedHourMin": "≈ {{hours}} ч {{minutes}} мин"
   }
 }

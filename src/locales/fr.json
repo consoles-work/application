@@ -402,6 +402,13 @@
     "confirm": "Afficher un avertissement avant l’exécution",
     "confirmHint": "Demande une confirmation avant l’exécution",
     "runConfirmTitle": "Exécuter la commande",
-    "runConfirm": "Exécuter « {{label}} » ?\n\n{{command}}"
+    "runConfirm": "Exécuter « {{label}} » ?\n\n{{command}}",
+    "stats": "Exécutions : {{runs}} · gagné {{saved}}",
+    "statsNever": "Jamais exécutée",
+    "statsTotal": "Total des exécutions : {{runs}} · gagné {{saved}}",
+    "statsFormula": "Estimation : longueur de la commande ÷ {{cpm}} caractères/min (vitesse de frappe moyenne)",
+    "savedSec": "≈ {{value}} s",
+    "savedMin": "≈ {{value}} min",
+    "savedHourMin": "≈ {{hours}} h {{minutes}} min"
   }
 }

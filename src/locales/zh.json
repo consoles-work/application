@@ -402,6 +402,13 @@
     "confirm": "执行前显示警告",
     "confirmHint": "执行前会请求确认",
     "runConfirmTitle": "执行命令",
-    "runConfirm": "执行「{{label}}」？\n\n{{command}}"
+    "runConfirm": "执行「{{label}}」？\n\n{{command}}",
+    "stats": "运行次数：{{runs}} · 节省 {{saved}}",
+    "statsNever": "尚未运行",
+    "statsTotal": "总运行次数：{{runs}} · 节省 {{saved}}",
+    "statsFormula": "粗略估算：命令长度 ÷ {{cpm}} 字符/分钟（平均打字速度）",
+    "savedSec": "≈ {{value}} 秒",
+    "savedMin": "≈ {{value}} 分钟",
+    "savedHourMin": "≈ {{hours}} 小时 {{minutes}} 分钟"
   }
 }

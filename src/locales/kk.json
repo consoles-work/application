@@ -402,6 +402,13 @@
     "confirm": "Орындау алдында ескерту көрсету",
     "confirmHint": "Орындау алдында растауды сұрайды",
     "runConfirmTitle": "Команданы орындау",
-    "runConfirm": "«{{label}}» орындалсын ба?\n\n{{command}}"
+    "runConfirm": "«{{label}}» орындалсын ба?\n\n{{command}}",
+    "stats": "Іске қосылды: {{runs}} · үнемделді {{saved}}",
+    "statsNever": "Әлі іске қосылмаған",
+    "statsTotal": "Барлығы іске қосылды: {{runs}} · үнемделді {{saved}}",
+    "statsFormula": "Шамамен: команда ұзындығы ÷ {{cpm}} таңба/мин (орташа теру жылдамдығы)",
+    "savedSec": "≈ {{value}} сек",
+    "savedMin": "≈ {{value}} мин",
+    "savedHourMin": "≈ {{hours}} сағ {{minutes}} мин"
   }
 }

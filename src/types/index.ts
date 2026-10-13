@@ -62,6 +62,8 @@ export interface QuickCommand {
   description?: string; // необязательное пояснение (в подсказке)
   color?: QuickCommandColor; // цвет кнопки, пусто — обычная
   confirm?: boolean; // спрашивать подтверждение перед выполнением
+  runCount?: number; // сколько раз запускали кнопкой
+  savedChars?: number; // сколько символов не пришлось набирать (сумма по запускам)
 }
 
 export type QuickCommandColor = "" | "green" | "blue" | "yellow" | "orange" | "red" | "purple";

@@ -6,6 +6,7 @@ import { useAppStore } from "../../stores/appStore";
 import { setConsoleQuickCommands } from "../../lib/tauriCommands";
 import type { QuickCommand, QuickCommandColor } from "../../types";
 import { QUICK_COMMAND_COLORS, quickCommandHex } from "../../lib/quickCommandColors";
+import { formatSavedTime, sumQuickCommandStats, TYPING_CHARS_PER_MINUTE } from "../../lib/quickCommandStats";
 import { useTranslation } from "react-i18next";
 
 interface Props {
@@ -121,6 +122,8 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
   };
 
   if (!console_) return null;
+
+  const totals = sumQuickCommandStats(commands);
 
   const inputCls =
     "w-full px-3 py-2 rounded-lg bg-surface-0 border border-border text-sm text-text-primary outline-none focus:border-accent";
@@ -238,6 +241,11 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
                   {cmd.description && (
                     <div className="text-2xs text-text-secondary truncate">{cmd.description}</div>
                   )}
+                  <div className="text-2xs text-text-muted">
+                    {cmd.runCount
+                      ? t("quickCommands.stats", { runs: cmd.runCount, saved: formatSavedTime(cmd.savedChars ?? 0, t) })
+                      : t("quickCommands.statsNever")}
+                  </div>
                 </div>
                 <div className="flex items-center gap-0.5 shrink-0 text-text-muted">
                   <IconButton title={t("quickCommands.moveUp")} disabled={i === 0 || saving} onClick={() => handleMove(i, -1)}>
@@ -264,6 +272,16 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
                 </div>
               </div>
             ))}
+            {totals.runs > 0 && (
+              <div className="mt-2 px-2.5 py-1.5 rounded-lg bg-accent/10 border border-accent/30">
+                <div className="text-xs text-text-primary">
+                  {t("quickCommands.statsTotal", { runs: totals.runs, saved: formatSavedTime(totals.chars, t) })}
+                </div>
+                <div className="text-2xs text-text-muted">
+                  {t("quickCommands.statsFormula", { cpm: TYPING_CHARS_PER_MINUTE })}
+                </div>
+              </div>
+            )}
             <div className="flex justify-between gap-2 mt-3">
               <button
                 type="button"

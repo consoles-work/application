@@ -1,6 +1,6 @@
 # DevConsole Hub — Статус проекта
 
-> Последнее обновление: 2026-10-10 (экспорт серверов в Markdown, поле «Хостинг», экземпляры консоли, водяной знак, 18 тем, один экземпляр приложения; этап 19 — ключ БД из пароля, запланирован)
+> Последнее обновление: 2026-10-13 (счётчик запусков быстрых команд и сэкономленное время; быстрые команды консоли, подтверждение выхода; этап 19 — ключ БД из пароля, запланирован)
 
 ---
 
@@ -23,6 +23,7 @@
 | `src/lib/tauriCommands.ts` | ✅ Готово | Все IPC-обёртки: дерево, PTY, wiki, clone, settings, AI сессии, `setNodeExpanded`, `exportData`/`previewImport`/`applyImport`, **`moveConsole`**, **`enableAutostart`/`disableAutostart`/`getAutostartStatus`** |
 | `src/lib/themes.ts` | ✅ Готово | 18 тем (9 тёмных + 9 светлых, флаг `dark`) с UI-цветами, полной xterm-палитрой и цветами водяного знака (`watermark.prod` / `watermark.plain`), resolveThemeId, applyTheme |
 | `src/lib/connectionString.ts` | ✅ Готово | `buildSshCommand` и другие форматы строки подключения (команда / `user@host:port` / список параметров) |
+| `src/lib/quickCommandStats.ts` | ✅ Готово | Оценка сэкономленного быстрыми командами времени: `TYPING_CHARS_PER_MINUTE` (200), `sumQuickCommandStats`, `formatSavedTime` |
 | `src/lib/serversMarkdown.ts` | ✅ Готово | `buildServersMarkdown` — публичный Markdown-отчёт по SSH-серверам воркспейса/проекта; колонка «Хостинг» только если заполнена |
 | `src/components/Layout.tsx` | ✅ Готово | Четырёхпанельный layout с resizable сплиттерами + кнопка Settings в titlebar |
 | `src/components/TreePanel.tsx` | ✅ Готово | Дерево + раскрытие + контекстное меню + inline rename (F2) + danger/ssh badge + клонирование + поиск + кнопки Export/Import + **drag-and-drop консолей (mouse-event, ghost-портал, подтверждение)** |
@@ -48,7 +49,7 @@
 |------|--------|------------|
 | `src-tauri/src/main.rs` | ✅ Готово | ~50 IPC-команд; **single-instance** (первый плагин, фокусирует уже открытое окно); **трей** (`TrayIconBuilder`); **`CloseRequested`** читает `ui.closeToTray` — hide или exit; **autostart-плагин** подключён |
 | `src-tauri/src/lib.rs` | ✅ Готово | Синхронизирован с main.rs (мобильная/библиотечная сборка) |
-| `src-tauri/src/commands.rs` | ✅ Готово | CRUD дерева, PTY, wiki, danger, clone, settings, AI (8 команд), экспорт/импорт (3 команды), **`move_console`**, **`enable_autostart`/`disable_autostart`/`get_autostart_status`**, `ai_detect_bin`/`ai_check`/`ai_run`/`ai_cancel`, **`save_text_file`** |
+| `src-tauri/src/commands.rs` | ✅ Готово | CRUD дерева, PTY, wiki, danger, clone, settings, AI (8 команд), экспорт/импорт (3 команды), **`move_console`**, **`enable_autostart`/`disable_autostart`/`get_autostart_status`**, `ai_detect_bin`/`ai_check`/`ai_run`/`ai_cancel`, **`save_text_file`**, `set_console_quick_commands`, **`record_quick_command_run`** |
 | `src-tauri/src/db.rs` | ✅ Готово | Полный CRUD + FTS5 + клонирование + settings + SQLCipher + AI-сессии + `set_node_expanded` + `ssh_passphrase` + `ssh_password` + `move_console` + **`get_setting_bool`** + `load_all_wiki_pages` + `delete_all_*` + `get_workspace_names` |
 | `src-tauri/src/export.rs` | ✅ Готово | Формат `.dchub`: AES-256-GCM + PBKDF2 (100k iter); `workspace_ids` фильтр; верификационная фраза; **экспорт/импорт настроек**; **исправлен импорт wiki** (id_map для перепривязки страниц) |
 | `src-tauri/src/pty_manager.rs` | ✅ Готово | portable-pty: spawn/write/resize/kill; UTF-8 локаль; SSH passphrase через `add_key_to_agent`; SSH пароль сервера через SSH_ASKPASS_REQUIRE=force |
@@ -98,12 +99,26 @@
 ### Post-MVP
 - Сплит-терминал (Ctrl+Shift+H / V)
 - Broadcast-режим (ввод в несколько консолей)
-- Snippets / быстрые команды
+- Snippets / быстрые команды с параметрами (быстрые команды без параметров — готовы, PLAN.md этап 20)
 - Интеграции: Git, Docker
 
 ---
 
 ## История изменений
+
+### 2026-10-13 — Счётчик запусков быстрых команд *(в рабочем дереве, не закоммичено)*
+
+- У каждой быстрой команды считаются запуски и «не набранные» символы (длина команды + Enter); хранятся в БД вместе с командами (`consoles.quick_commands`), переживают перезапуск и попадают в `.dchub`
+- Новая Rust-команда `record_quick_command_run` (в `main.rs` и `lib.rs`) — атомарно увеличивает счётчики под локом БД
+- Сэкономленное время ≈ символы ÷ 200 симв/мин (`src/lib/quickCommandStats.ts`)
+- Видно в подсказке над кнопкой и в окне «Быстрые команды» (по каждой команде + итог по консоли с формулой)
+- Подробности — PLAN.md, этап 20.3
+
+### 2026-10-12 — Быстрые команды консоли + подтверждение выхода
+
+- Кнопки быстрых команд под терминалом: ПКМ по консоли → «⚡ Быстрые команды...», цвет кнопки, предупреждение перед запуском, своя подсказка; хранение — `consoles.quick_commands`, едут в `.dchub`
+- Подтверждение выхода для трея, закрытия окна и Cmd+Q (`confirm_quit`)
+- Подробности — PLAN.md, этап 20.1–20.2
 
 ### 2026-10-10 — Экспорт списка серверов в Markdown + поле «Хостинг» *(в рабочем дереве, не закоммичено)*
 

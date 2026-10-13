@@ -9,7 +9,8 @@ import { StickyNote, ChevronDown, ChevronRight, Zap, Settings2, Play } from "luc
 import { quickCommandHex } from "../lib/quickCommandColors";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../stores/appStore";
-import { spawnPty, writeToPty, resizePty, killPty } from "../lib/tauriCommands";
+import { spawnPty, writeToPty, resizePty, killPty, recordQuickCommandRun } from "../lib/tauriCommands";
+import { formatSavedTime } from "../lib/quickCommandStats";
 import { getThemeById, resolveThemeId } from "../lib/themes";
 import type { TerminalSession, ConsoleConfig, Project, QuickCommand } from "../types";
 import { QuickCommandsDialog } from "./dialogs/QuickCommandsDialog";
@@ -477,6 +478,20 @@ function TerminalView({
     }
     writeToPty(ptyId, cmd.command.replace(/\r?\n/g, "\r") + "\r").catch(() => {});
     termRef.current?.focus();
+    // Счётчик запусков и «сэкономленные» символы — считает бэкенд, в store кладём результат
+    recordQuickCommandRun(session.console_id, cmd.id)
+      .then((updated) => {
+        const con = useAppStore
+          .getState()
+          .workspaces.flatMap((w) => w.projects)
+          .flatMap((p) => p.consoles)
+          .find((c) => c.id === session.console_id);
+        if (!con?.quickCommands) return;
+        useAppStore.getState().updateConsole(session.console_id, {
+          quickCommands: con.quickCommands.map((c) => (c.id === updated.id ? updated : c)),
+        });
+      })
+      .catch((e) => console.warn("recordQuickCommandRun failed", e));
   };
 
   // term.clear() оставляет текущую строку приглашения, убирает историю выше
@@ -660,9 +675,15 @@ function QuickCommandsBar({
         </button>
         );
       })}
-      {hover && <QuickCommandHint cmd={hover.cmd} rect={hover.rect} hint={t("quickCommands.barHint")}
+      {hover && (
+        <QuickCommandHint
+          // Берём актуальную версию команды: счётчик мог обновиться, пока подсказка открыта
+          cmd={commands.find((c) => c.id === hover.cmd.id) ?? hover.cmd}
+          rect={hover.rect}
+          hint={t("quickCommands.barHint")}
           confirmHint={t("quickCommands.confirmHint")}
-        />}
+        />
+      )}
       <button
         className="ml-auto shrink-0 p-1 rounded text-text-muted hover:text-text-primary hover:bg-surface-3"
         title={t("quickCommands.manage")}
@@ -686,6 +707,7 @@ function QuickCommandHint({
   hint: string;
   confirmHint: string;
 }) {
+  const { t } = useTranslation();
   const width = 340;
   const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
   const bottom = window.innerHeight - rect.top + 6;
@@ -702,6 +724,11 @@ function QuickCommandHint({
         {cmd.command}
       </pre>
       {cmd.confirm && <div className="text-2xs text-red-400">⚠ {confirmHint}</div>}
+      <div className="text-2xs text-text-secondary">
+        {cmd.runCount
+          ? t("quickCommands.stats", { runs: cmd.runCount, saved: formatSavedTime(cmd.savedChars ?? 0, t) })
+          : t("quickCommands.statsNever")}
+      </div>
       <div className="text-2xs text-text-muted">{hint}</div>
     </div>,
     document.body
