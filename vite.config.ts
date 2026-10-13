@@ -18,6 +18,9 @@ export default defineConfig({
     target: "esnext",
     minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
     sourcemap: !!process.env.TAURI_DEBUG,
+    // Десктопное приложение: бандл читается с диска, а не качается по сети,
+    // поэтому один чанк ~1.3 МБ (xterm + TipTap + React) — норма, не повод дробить
+    chunkSizeWarningLimit: 2000,
   },
 
   // Clear console on HMR to reduce noise
