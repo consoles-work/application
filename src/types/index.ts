@@ -61,6 +61,7 @@ export interface QuickCommand {
   command: string; // текст, отправляемый в терминал (можно многострочный)
   description?: string; // необязательное пояснение (в подсказке)
   color?: QuickCommandColor; // цвет кнопки, пусто — обычная
+  confirm?: boolean; // спрашивать подтверждение перед выполнением
 }
 
 export type QuickCommandColor = "" | "green" | "blue" | "yellow" | "orange" | "red" | "purple";

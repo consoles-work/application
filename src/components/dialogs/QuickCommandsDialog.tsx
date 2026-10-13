@@ -16,9 +16,16 @@ interface Props {
 }
 
 // Черновик формы: id === null — новая команда
-type Draft = { id: string | null; label: string; command: string; description: string; color: QuickCommandColor };
+type Draft = {
+  id: string | null;
+  label: string;
+  command: string;
+  description: string;
+  color: QuickCommandColor;
+  confirm: boolean;
+};
 
-const EMPTY_DRAFT: Draft = { id: null, label: "", command: "", description: "", color: "" };
+const EMPTY_DRAFT: Draft = { id: null, label: "", command: "", description: "", color: "", confirm: false };
 
 const toDraft = (c: QuickCommand): Draft => ({
   id: c.id,
@@ -26,6 +33,7 @@ const toDraft = (c: QuickCommand): Draft => ({
   command: c.command,
   description: c.description ?? "",
   color: c.color ?? "",
+  confirm: c.confirm ?? false,
 });
 
 export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props) {
@@ -88,9 +96,10 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
     const label = draft.label.trim() || command.trim().split("\n")[0];
     const description = draft.description.trim() || undefined;
     const color = draft.color || undefined;
+    const confirm = draft.confirm;
     const next = draft.id
-      ? commands.map((c) => (c.id === draft.id ? { ...c, label, command, description, color } : c))
-      : [...commands, { id: crypto.randomUUID(), label, command, description, color }];
+      ? commands.map((c) => (c.id === draft.id ? { ...c, label, command, description, color, confirm } : c))
+      : [...commands, { id: crypto.randomUUID(), label, command, description, color, confirm }];
     if (await persist(next)) setDraft(null);
   };
 
@@ -177,6 +186,15 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
               </div>
               <div className="text-2xs text-text-muted mt-1">{t("quickCommands.colorHint")}</div>
             </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={draft.confirm}
+                onChange={(e) => setDraft({ ...draft, confirm: e.target.checked })}
+                className="accent-red-400"
+              />
+              <span className="text-xs text-text-primary">{t("quickCommands.confirm")}</span>
+            </label>
             <div className="mt-1">
               <div className="text-2xs text-text-muted mb-1">{t("quickCommands.preview")}</div>
               <QuickCommandButtonPreview label={draft.label.trim() || draft.command.trim().split("\n")[0] || "…"} color={draft.color} />
@@ -210,7 +228,12 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
                   style={{ backgroundColor: quickCommandHex(cmd.color) || "transparent" }}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-text-primary truncate">{cmd.label}</div>
+                  <div className="text-xs text-text-primary truncate">
+                    {cmd.confirm && (
+                      <span className="text-red-400 mr-1" title={t("quickCommands.confirm")}>⚠</span>
+                    )}
+                    {cmd.label}
+                  </div>
                   <div className="text-2xs text-text-muted font-mono truncate">{cmd.command}</div>
                   {cmd.description && (
                     <div className="text-2xs text-text-secondary truncate">{cmd.description}</div>

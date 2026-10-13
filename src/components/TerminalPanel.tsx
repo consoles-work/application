@@ -464,14 +464,14 @@ function TerminalView({
     if (ptyIdRef.current !== null) writeToPty(ptyIdRef.current, "\x05\x15");
   };
   // Быстрая команда: строки уходят в PTY как набранные с Enter.
-  // На опасной консоли — подтверждение, чтобы случайный клик не ушёл в прод.
+  // Подтверждение — только если у команды включена галочка «Показывать предупреждение».
   const runQuickCommand = async (cmd: QuickCommand) => {
     const ptyId = ptyIdRef.current;
     if (ptyId === null) return;
-    if (isDanger) {
+    if (cmd.confirm) {
       const confirmed = await ask(
-        i18n.t("quickCommands.runDangerConfirm", { label: dangerLabel, command: cmd.command }),
-        { title: i18n.t("quickCommands.runDangerTitle"), kind: "warning" }
+        i18n.t("quickCommands.runConfirm", { label: cmd.label, command: cmd.command }),
+        { title: i18n.t("quickCommands.runConfirmTitle"), kind: "warning" }
       );
       if (!confirmed) return;
     }
@@ -660,7 +660,9 @@ function QuickCommandsBar({
         </button>
         );
       })}
-      {hover && <QuickCommandHint cmd={hover.cmd} rect={hover.rect} hint={t("quickCommands.barHint")} />}
+      {hover && <QuickCommandHint cmd={hover.cmd} rect={hover.rect} hint={t("quickCommands.barHint")}
+          confirmHint={t("quickCommands.confirmHint")}
+        />}
       <button
         className="ml-auto shrink-0 p-1 rounded text-text-muted hover:text-text-primary hover:bg-surface-3"
         title={t("quickCommands.manage")}
@@ -673,7 +675,17 @@ function QuickCommandsBar({
 }
 
 // Подсказка над кнопкой быстрой команды: подпись, описание, сама команда
-function QuickCommandHint({ cmd, rect, hint }: { cmd: QuickCommand; rect: DOMRect; hint: string }) {
+function QuickCommandHint({
+  cmd,
+  rect,
+  hint,
+  confirmHint,
+}: {
+  cmd: QuickCommand;
+  rect: DOMRect;
+  hint: string;
+  confirmHint: string;
+}) {
   const width = 340;
   const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
   const bottom = window.innerHeight - rect.top + 6;
@@ -689,6 +701,7 @@ function QuickCommandHint({ cmd, rect, hint }: { cmd: QuickCommand; rect: DOMRec
       <pre className="text-2xs font-mono text-text-primary bg-surface-0 border border-border rounded px-2 py-1 whitespace-pre-wrap break-all max-h-40 overflow-hidden">
         {cmd.command}
       </pre>
+      {cmd.confirm && <div className="text-2xs text-red-400">⚠ {confirmHint}</div>}
       <div className="text-2xs text-text-muted">{hint}</div>
     </div>,
     document.body

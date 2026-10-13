@@ -114,6 +114,9 @@ pub struct QuickCommand {
     /// Цвет кнопки (ключ палитры: "red", "green", ...), пусто — обычная
     #[serde(default)]
     pub color: String,
+    /// Спрашивать подтверждение перед выполнением
+    #[serde(default)]
+    pub confirm: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

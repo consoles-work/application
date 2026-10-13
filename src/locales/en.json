@@ -387,8 +387,6 @@
     "deleteTitle": "Delete command",
     "deleteConfirm": "Delete quick command “{{label}}”?",
     "toastCommandRequired": "Enter a command",
-    "runDangerTitle": "Dangerous console",
-    "runDangerConfirm": "This console is marked as {{label}}.\nRun the command?\n\n{{command}}",
     "color": "Button color",
     "colorHint": "For example, use red to highlight dangerous commands",
     "preview": "Button preview",
@@ -400,6 +398,10 @@
       "orange": "Orange",
       "red": "Red",
       "purple": "Purple"
-    }
+    },
+    "confirm": "Show a warning before running",
+    "confirmHint": "Asks for confirmation before running",
+    "runConfirmTitle": "Run command",
+    "runConfirm": "Run “{{label}}”?\n\n{{command}}"
   }
 }

@@ -387,8 +387,6 @@
     "deleteTitle": "删除命令",
     "deleteConfirm": "删除快捷命令「{{label}}」？",
     "toastCommandRequired": "请输入命令",
-    "runDangerTitle": "危险控制台",
-    "runDangerConfirm": "此控制台标记为 {{label}}。\n确定执行命令？\n\n{{command}}",
     "color": "按钮颜色",
     "colorHint": "例如，可用红色标记危险命令",
     "preview": "按钮预览",
@@ -400,6 +398,10 @@
       "orange": "橙色",
       "red": "红色",
       "purple": "紫色"
-    }
+    },
+    "confirm": "执行前显示警告",
+    "confirmHint": "执行前会请求确认",
+    "runConfirmTitle": "执行命令",
+    "runConfirm": "执行「{{label}}」？\n\n{{command}}"
   }
 }
