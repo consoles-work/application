@@ -11,6 +11,7 @@ import { ask } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../stores/appStore";
 import { spawnPty, writeToPty, resizePty, killPty, recordQuickCommandRun } from "../lib/tauriCommands";
 import { formatSavedTime } from "../lib/quickCommandStats";
+import { trackUsage, trackTerminalInput, METRICS } from "../lib/usageStats";
 import { getThemeById, resolveThemeId } from "../lib/themes";
 import type { TerminalSession, ConsoleConfig, Project, QuickCommand } from "../types";
 import { QuickCommandsDialog } from "./dialogs/QuickCommandsDialog";
@@ -381,13 +382,18 @@ function TerminalView({
           (event) => {
             if (event.payload.pty_id === ptyId) {
               term.write(event.payload.data);
+              trackUsage(METRICS.output, event.payload.data.length, session.console_id);
             }
           }
         );
         unlistenRef.current = unlisten;
 
         // Ввод пользователя → PTY
-        term.onData((data) => writeToPty(ptyId, data));
+        term.onData((data) => {
+          writeToPty(ptyId, data);
+          trackTerminalInput(session.console_id, data);
+        });
+        trackUsage(METRICS.sessions, 1, session.console_id);
 
         // Синхронизируем PTY с реальным размером xterm (fit уже был вызван до spawn)
         resizePty(ptyId, term.cols, term.rows).catch(() => {});
@@ -478,6 +484,9 @@ function TerminalView({
     }
     writeToPty(ptyId, cmd.command.replace(/\r?\n/g, "\r") + "\r").catch(() => {});
     termRef.current?.focus();
+    trackUsage(METRICS.qcRuns, 1, session.console_id);
+    // Та же формула, что в record_quick_command_run: символы команды + Enter
+    trackUsage(METRICS.qcChars, [...cmd.command].length + 1, session.console_id);
     // Счётчик запусков и «сэкономленные» символы — считает бэкенд, в store кладём результат
     recordQuickCommandRun(session.console_id, cmd.id)
       .then((updated) => {

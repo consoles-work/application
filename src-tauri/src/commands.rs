@@ -324,6 +324,42 @@ pub fn record_quick_command_run(console_id: String, command_id: String) -> Resul
     crate::db::record_quick_command_run(&console_id, &command_id)
 }
 
+// ══════════════════════════════════════════════
+// Команды: статистика использования
+// ══════════════════════════════════════════════
+
+/// Одна строка статистики: приращение (при записи) или накопленное значение (при чтении)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UsageStat {
+    /// Локальная дата YYYY-MM-DD
+    pub day: String,
+    /// Локальный час 0..23
+    pub hour: i64,
+    /// '' — метрика уровня приложения
+    #[serde(default)]
+    pub console_id: String,
+    #[serde(default)]
+    pub project_id: String,
+    pub metric: String,
+    pub value: i64,
+}
+
+#[tauri::command]
+pub fn record_usage_stats(entries: Vec<UsageStat>) -> Result<(), String> {
+    crate::db::record_usage_stats(&entries)
+}
+
+#[tauri::command]
+pub fn get_usage_stats(since_day: String) -> Result<Vec<UsageStat>, String> {
+    crate::db::get_usage_stats(&since_day)
+}
+
+#[tauri::command]
+pub fn clear_usage_stats() -> Result<(), String> {
+    crate::db::clear_usage_stats()
+}
+
 /// Удалить консоль
 #[tauri::command]
 pub fn delete_console(id: String) -> Result<(), String> {

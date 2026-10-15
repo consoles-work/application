@@ -5,6 +5,8 @@ import { CommandPalette } from "./components/CommandPalette";
 import { GlobalSearch } from "./components/GlobalSearch";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { LockScreen } from "./components/LockScreen";
+import { StatsDialog } from "./components/StatsDialog";
+import { startUsageTracking, setUsageEnabled, setUsagePaused } from "./lib/usageStats";
 import { useAppStore } from "./stores/appStore";
 import { loadAllWorkspaces, getSettings, loadAiSessions, createAiSession, isPasswordSet } from "./lib/tauriCommands";
 import { applyTheme } from "./lib/themes";
@@ -42,6 +44,8 @@ function App() {
   }, []);
 
   useEffect(() => {
+    // Под заставкой блокировки время и ввод не считаем
+    setUsagePaused(lock !== "unlocked");
     if (lock === "unlocked") setMounted(true);
     // inert: под заставкой нельзя сфокусировать терминал/инпуты и кликнуть
     mainRef.current?.toggleAttribute("inert", lock === "locked");
@@ -104,6 +108,9 @@ function MainApp() {
   const [showPalette, setShowPalette] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+  // Пока настройки не прочитаны, не знаем, включена ли статистика — не собираем
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   // Загрузка данных из SQLite при старте
   useEffect(() => {
@@ -127,6 +134,7 @@ function MainApp() {
 
     getSettings().then((s) => {
       setSettings(s);
+      setSettingsLoaded(true);
       applyTheme(s["ui.theme"] ?? "dark");
       i18n.changeLanguage(s["ui.language"] ?? "ru");
       // Восстанавливаем видимость панелей (по умолчанию — показывать)
@@ -146,6 +154,14 @@ function MainApp() {
   useEffect(() => {
     applyTheme(settings["ui.theme"] ?? "dark");
   }, [settings["ui.theme"]]);
+
+  // Статистика использования (stats.enabled, по умолчанию включена)
+  const statsEnabled = settingsLoaded && settings["stats.enabled"] !== "false";
+  useEffect(() => startUsageTracking(), []);
+  useEffect(() => {
+    setUsageEnabled(statsEnabled);
+    if (!statsEnabled) setShowStats(false);
+  }, [statsEnabled]);
 
   // Отключаем нативное контекстное меню WebKit (убирает "Reload" при ПКМ на пустом месте)
   useEffect(() => {
@@ -248,11 +264,15 @@ function MainApp() {
 
   return (
     <>
-      <Layout onOpenSettings={() => setShowSettings(true)} />
+      <Layout
+        onOpenSettings={() => setShowSettings(true)}
+        onOpenStats={statsEnabled ? () => setShowStats(true) : undefined}
+      />
       <ToastContainer />
       {showPalette && <CommandPalette onClose={() => setShowPalette(false)} />}
       {showGlobalSearch && <GlobalSearch onClose={() => setShowGlobalSearch(false)} />}
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
+      {showStats && <StatsDialog onClose={() => setShowStats(false)} />}
     </>
   );
 }

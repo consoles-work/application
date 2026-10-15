@@ -6,13 +6,15 @@ import { TerminalPanel } from "./TerminalPanel";
 import { WikiPanel } from "./WikiPanel";
 import { AiPanel } from "./AiPanel";
 import { useTranslation } from "react-i18next";
-import { Bot } from "lucide-react";
+import { Bot, BarChart3 } from "lucide-react";
 
 interface LayoutProps {
   onOpenSettings: () => void;
+  /** Нет — статистика выключена в настройках, кнопку не показываем */
+  onOpenStats?: () => void;
 }
 
-export function Layout({ onOpenSettings }: LayoutProps) {
+export function Layout({ onOpenSettings, onOpenStats }: LayoutProps) {
   const {
     showTreePanel,
     showWikiPanel,
@@ -142,6 +144,15 @@ export function Layout({ onOpenSettings }: LayoutProps) {
           >
             Wiki
           </button>
+          {onOpenStats && (
+            <button
+              onClick={onOpenStats}
+              className="px-2 py-1 rounded text-2xs text-text-muted hover:text-text-secondary flex items-center"
+              title={t("stats.title")}
+            >
+              <BarChart3 className="w-3 h-3" />
+            </button>
+          )}
           <button
             onClick={onOpenSettings}
             className="px-2 py-1 rounded text-2xs text-text-muted hover:text-text-secondary"

@@ -202,7 +202,9 @@
     "agentsBinCheck": "Vérifier",
     "agentsBinNotFound": "Binaire claude introuvable — indiquez le chemin manuellement",
     "agentsClaudeCliNote": "Moteur local : le binaire claude s'exécute en sous-processus avec votre propre abonnement. Aucune clé API requise. Les outils et les serveurs MCP externes sont désactivés.",
-    "tabSecurity": "Sécurité"
+    "tabSecurity": "Sécurité",
+    "statsEnabled": "Statistiques d’utilisation",
+    "statsNote": "Temps de travail, saisie dans le terminal, commandes rapides — stockés localement 30 jours. Bouton 📊 dans la barre de titre."
   },
   "dialogs": {
     "newWorkspace": "Nouvel espace de travail",
@@ -410,5 +412,52 @@
     "savedSec": "≈ {{value}} s",
     "savedMin": "≈ {{value}} min",
     "savedHourMin": "≈ {{hours}} h {{minutes}} min"
+  },
+  "stats": {
+    "title": "Statistiques",
+    "period": {
+      "today": "Aujourd’hui",
+      "week": "7 jours",
+      "month": "30 jours"
+    },
+    "loading": "Chargement…",
+    "empty": "Pas encore de données — les statistiques sont collectées depuis leur activation.",
+    "loadError": "Impossible de charger les statistiques : {{error}}",
+    "activeTime": "Travail actif",
+    "appOpen": "fenêtre ouverte {{time}}",
+    "savedByQuick": "Gagné grâce aux commandes rapides",
+    "savedSub": "exécutions : {{runs}} · {{share}} % de la saisie",
+    "typed": "Saisi à la main, caractères",
+    "typedSub": "collé : {{pasted}}",
+    "commands": "Commandes saisies à la main",
+    "commandsSub": "appuis sur Entrée dans le terminal",
+    "sessions": "Sessions de terminal",
+    "outputSub": "sortie : {{chars}} car.",
+    "aiMessages": "Questions à l’IA",
+    "wikiSub": "modifications wiki : {{edits}}",
+    "byProject": "Temps par projet",
+    "byProjectHint": "clic — consoles du projet",
+    "total": "Total",
+    "otherProjects": "Autres projets",
+    "deletedProject": "Projet supprimé",
+    "deletedConsole": "Console supprimée",
+    "noConsoleTime": "Pas encore de temps en console",
+    "byHour": "Temps actif par heure",
+    "byDay": "Temps actif par jour",
+    "consoles": "Consoles",
+    "consolesOf": "Consoles : {{project}}",
+    "showAll": "Tout afficher",
+    "colConsole": "Console",
+    "colTime": "Temps",
+    "colTyped": "Saisi",
+    "colQuick": "Commandes rapides",
+    "footer": "Stocké localement 30 jours. Travail actif — fenêtre au premier plan avec une saisie au moins toutes les 5 minutes.",
+    "refresh": "Actualiser",
+    "clear": "Effacer les statistiques",
+    "clearConfirm": "Supprimer toutes les statistiques collectées ? Les compteurs des commandes rapides sont conservés.",
+    "cleared": "Statistiques effacées",
+    "durSec": "{{value}} s",
+    "durMin": "{{value}} min",
+    "durHourMin": "{{hours}} h {{minutes}} min"
   }
 }

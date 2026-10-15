@@ -35,6 +35,7 @@ import {
   aiCancel,
 } from "../lib/tauriCommands";
 import type { AiMessage } from "../types";
+import { trackUsage, METRICS } from "../lib/usageStats";
 
 // Вне компонента — переживает ремонт при смене позиции панели
 let _abortController: AbortController | null = null;
@@ -313,6 +314,7 @@ export function AiPanel() {
     // Сохраняем сообщение пользователя в БД
     const userMsgId = uuid();
     await saveAiMessage(userMsgId, activeAiSessionId, "user", userContent).catch(() => {});
+    trackUsage(METRICS.aiMessages, 1);
 
     const userMsg: ChatMessage = { role: "user", content: userContent };
     const newHistory = [...aiMessages, userMsg];

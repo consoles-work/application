@@ -202,7 +202,9 @@
     "agentsBinCheck": "检查",
     "agentsBinNotFound": "未找到 claude 可执行文件 — 请手动指定路径",
     "agentsClaudeCliNote": "本地引擎：claude 以子进程运行，使用你自己的订阅，无需 API 密钥。工具和外部 MCP 服务器均已禁用。",
-    "tabSecurity": "安全"
+    "tabSecurity": "安全",
+    "statsEnabled": "使用统计",
+    "statsNote": "工作时间、终端输入、快捷命令——仅本地保存 30 天。标题栏中的 📊 按钮。"
   },
   "dialogs": {
     "newWorkspace": "新建工作区",
@@ -410,5 +412,52 @@
     "savedSec": "≈ {{value}} 秒",
     "savedMin": "≈ {{value}} 分钟",
     "savedHourMin": "≈ {{hours}} 小时 {{minutes}} 分钟"
+  },
+  "stats": {
+    "title": "统计",
+    "period": {
+      "today": "今天",
+      "week": "7 天",
+      "month": "30 天"
+    },
+    "loading": "加载中…",
+    "empty": "暂无数据——统计从启用时开始收集。",
+    "loadError": "无法加载统计：{{error}}",
+    "activeTime": "活跃工作",
+    "appOpen": "窗口打开 {{time}}",
+    "savedByQuick": "快捷命令节省",
+    "savedSub": "运行：{{runs}} · 占全部输入 {{share}}%",
+    "typed": "手动输入字符",
+    "typedSub": "粘贴：{{pasted}}",
+    "commands": "手动输入的命令",
+    "commandsSub": "终端中按下 Enter 的次数",
+    "sessions": "终端会话",
+    "outputSub": "输出：{{chars}} 字符",
+    "aiMessages": "AI 提问",
+    "wikiSub": "wiki 编辑：{{edits}}",
+    "byProject": "按项目的时间",
+    "byProjectHint": "点击——查看项目控制台",
+    "total": "总计",
+    "otherProjects": "其他项目",
+    "deletedProject": "已删除的项目",
+    "deletedConsole": "已删除的控制台",
+    "noConsoleTime": "暂无控制台时间",
+    "byHour": "按小时的活跃时间",
+    "byDay": "按天的活跃时间",
+    "consoles": "控制台",
+    "consolesOf": "控制台：{{project}}",
+    "showAll": "显示全部",
+    "colConsole": "控制台",
+    "colTime": "时间",
+    "colTyped": "输入",
+    "colQuick": "快捷命令",
+    "footer": "本地保存 30 天。活跃工作——窗口处于焦点且至少每 5 分钟有输入。",
+    "refresh": "刷新",
+    "clear": "清除统计",
+    "clearConfirm": "删除所有已收集的统计？快捷命令自身的计数器将保留。",
+    "cleared": "统计已清除",
+    "durSec": "{{value}} 秒",
+    "durMin": "{{value}} 分钟",
+    "durHourMin": "{{hours}} 小时 {{minutes}} 分钟"
   }
 }

@@ -96,6 +96,11 @@ pub fn run() {
             delete_console,
             set_console_quick_commands,
             record_quick_command_run,
+
+            // Статистика использования
+            record_usage_stats,
+            get_usage_stats,
+            clear_usage_stats,
             spawn_pty,
             write_to_pty,
             resize_pty,

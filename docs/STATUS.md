@@ -1,6 +1,6 @@
 # DevConsole Hub — Статус проекта
 
-> Последнее обновление: 2026-10-13 (счётчик запусков быстрых команд и сэкономленное время; быстрые команды консоли, подтверждение выхода; этап 19 — ключ БД из пароля, запланирован)
+> Последнее обновление: 2026-10-15 (статистика использования: окно со временем по проектам, вводом и быстрыми командами; счётчик запусков быстрых команд и сэкономленное время; быстрые команды консоли, подтверждение выхода; этап 19 — ключ БД из пароля, запланирован)
 
 ---
 
@@ -24,14 +24,16 @@
 | `src/lib/themes.ts` | ✅ Готово | 18 тем (9 тёмных + 9 светлых, флаг `dark`) с UI-цветами, полной xterm-палитрой и цветами водяного знака (`watermark.prod` / `watermark.plain`), resolveThemeId, applyTheme |
 | `src/lib/connectionString.ts` | ✅ Готово | `buildSshCommand` и другие форматы строки подключения (команда / `user@host:port` / список параметров) |
 | `src/lib/quickCommandStats.ts` | ✅ Готово | Оценка сэкономленного быстрыми командами времени: `TYPING_CHARS_PER_MINUTE` (200), `sumQuickCommandStats`, `formatSavedTime` |
+| `src/lib/usageStats.ts` | ✅ Готово | Трекер статистики: `METRICS`, `trackUsage`, `trackTerminalInput`, `flushUsage` (пакет раз в 30 с), `startUsageTracking` (время: окно / активно / консоль), `setUsageEnabled` / `setUsagePaused` |
+| `src/components/StatsDialog.tsx` | ✅ Готово | Окно статистики: периоды, плитки, кольцо по проектам, столбики по часам/дням, таблица консолей, очистка |
 | `src/lib/serversMarkdown.ts` | ✅ Готово | `buildServersMarkdown` — публичный Markdown-отчёт по SSH-серверам воркспейса/проекта; колонка «Хостинг» только если заполнена |
-| `src/components/Layout.tsx` | ✅ Готово | Четырёхпанельный layout с resizable сплиттерами + кнопка Settings в titlebar |
+| `src/components/Layout.tsx` | ✅ Готово | Четырёхпанельный layout с resizable сплиттерами + кнопка Settings в titlebar; **кнопка 📊 статистики (если `stats.enabled`)** |
 | `src/components/TreePanel.tsx` | ✅ Готово | Дерево + раскрытие + контекстное меню + inline rename (F2) + danger/ssh badge + клонирование + поиск + кнопки Export/Import + **drag-and-drop консолей (mouse-event, ghost-портал, подтверждение)** |
 | `src/components/TerminalPanel.tsx` | ✅ Готово | xterm.js + PTY + danger-баннер + SSH + startup + динамические настройки; индикатор-точка при выделении; `reconnectKey` в key-пропе; повторные fit() на 100ms/400ms при открытии и 200ms при смене вкладки; **контекстное меню по ПКМ (`TerminalContextMenu`): Копировать / Вставить / Выделить всё / Очистить строку / Очистить экран / Сбросить терминал; горячие клавиши Cmd+C/Cmd+V; буфер через `navigator.clipboard`** |
 | `src/components/WikiPanel.tsx` | ✅ Готово | TipTap редактор + привязка к узлу + автосохранение debounce + теги + поиск по wiki (FTS5) |
 | `src/components/WikiToolbar.tsx` | ✅ Готово | H1/H2/H3, Bold/Italic/Code, списки, TaskList, CodeBlock, HR, Undo/Redo |
 | `src/components/CommandPalette.tsx` | ✅ Готово | Fuzzy-поиск по дереву, ↑↓/Enter/Esc, danger badge |
-| `src/components/SettingsDialog.tsx` | ✅ Готово | 4 вкладки: Данные, Терминал, Интерфейс, Агенты; раздельные API-ключи per-провайдер; **автозапуск (чекбокс); поведение при закрытии (трей / завершить)** |
+| `src/components/SettingsDialog.tsx` | ✅ Готово | 4 вкладки: Данные, Терминал, Интерфейс, Агенты; раздельные API-ключи per-провайдер; **автозапуск (чекбокс); поведение при закрытии (трей / завершить)**; статистика использования (вкл./выкл., очистка) |
 | `src/components/Toast.tsx` | ✅ Готово | Success/error/info, автоисчезновение 3 сек |
 | `src/components/ContextMenu.tsx` | ✅ Готово | Workspace/Project/Console меню + клонирование + подтверждение удаления; **danger-пометка для console убрана** (перенесена в EditConsoleDialog); **пункт "Переподключить" для консолей с открытой сессией**; «Открыть ещё экземпляр»; «Скопировать SSH-команду»; **«Экспорт серверов (.md)» для воркспейса и проекта** |
 | `src/components/dialogs/CreateWorkspaceDialog.tsx` | ✅ Готово | Имя + emoji + цвет |
@@ -49,8 +51,8 @@
 |------|--------|------------|
 | `src-tauri/src/main.rs` | ✅ Готово | ~50 IPC-команд; **single-instance** (первый плагин, фокусирует уже открытое окно); **трей** (`TrayIconBuilder`); **`CloseRequested`** читает `ui.closeToTray` — hide или exit; **autostart-плагин** подключён |
 | `src-tauri/src/lib.rs` | ✅ Готово | Синхронизирован с main.rs (мобильная/библиотечная сборка) |
-| `src-tauri/src/commands.rs` | ✅ Готово | CRUD дерева, PTY, wiki, danger, clone, settings, AI (8 команд), экспорт/импорт (3 команды), **`move_console`**, **`enable_autostart`/`disable_autostart`/`get_autostart_status`**, `ai_detect_bin`/`ai_check`/`ai_run`/`ai_cancel`, **`save_text_file`**, `set_console_quick_commands`, **`record_quick_command_run`** |
-| `src-tauri/src/db.rs` | ✅ Готово | Полный CRUD + FTS5 + клонирование + settings + SQLCipher + AI-сессии + `set_node_expanded` + `ssh_passphrase` + `ssh_password` + `move_console` + **`get_setting_bool`** + `load_all_wiki_pages` + `delete_all_*` + `get_workspace_names` |
+| `src-tauri/src/commands.rs` | ✅ Готово | CRUD дерева, PTY, wiki, danger, clone, settings, AI (8 команд), экспорт/импорт (3 команды), **`move_console`**, **`enable_autostart`/`disable_autostart`/`get_autostart_status`**, `ai_detect_bin`/`ai_check`/`ai_run`/`ai_cancel`, **`save_text_file`**, `set_console_quick_commands`, **`record_quick_command_run`**, `record_usage_stats` / `get_usage_stats` / `clear_usage_stats` |
+| `src-tauri/src/db.rs` | ✅ Готово | Полный CRUD + FTS5 + клонирование + settings + SQLCipher + AI-сессии + `set_node_expanded` + `ssh_passphrase` + `ssh_password` + `move_console` + **`get_setting_bool`** + `load_all_wiki_pages` + `delete_all_*` + `get_workspace_names` + таблица `usage_stats` (upsert, автоочистка > 31 дня) |
 | `src-tauri/src/export.rs` | ✅ Готово | Формат `.dchub`: AES-256-GCM + PBKDF2 (100k iter); `workspace_ids` фильтр; верификационная фраза; **экспорт/импорт настроек**; **исправлен импорт wiki** (id_map для перепривязки страниц) |
 | `src-tauri/src/pty_manager.rs` | ✅ Готово | portable-pty: spawn/write/resize/kill; UTF-8 локаль; SSH passphrase через `add_key_to_agent`; SSH пароль сервера через SSH_ASKPASS_REQUIRE=force |
 | `src-tauri/build.rs` | ✅ Готово | Читает `.env`; встраивает `DB_ENCRYPTION_KEY` в бинарник через `env!()` |
@@ -105,6 +107,14 @@
 ---
 
 ## История изменений
+
+### 2026-10-15 — Статистика использования *(в рабочем дереве, не закоммичено)*
+
+- Кнопка 📊 в заголовке → окно статистики за сегодня / 7 / 30 дней: активное время и время с открытым окном, сэкономленное быстрыми командами, набрано и вставлено руками, команды (Enter), сессии, AI-вопросы, правки wiki; кольцевая диаграмма времени по проектам (клик — консоли проекта), столбики по часам/дням, таблица консолей
+- Новая таблица `usage_stats` (агрегаты по дню/часу/консоли/метрике), старше 31 дня чистится автоматически; команды `record_usage_stats` / `get_usage_stats` / `clear_usage_stats` (в `main.rs` и `lib.rs`)
+- Трекер `src/lib/usageStats.ts` — копит в памяти, пишет пакетом раз в 30 с; на экране блокировки пауза
+- Настройки → Интерфейс: «Статистика использования» (по умолчанию вкл.; выкл. — кнопки нет, сбор не идёт) и «Очистить статистику»
+- Подробности — PLAN.md, этап 21
 
 ### 2026-10-13 — Счётчик запусков быстрых команд *(в рабочем дереве, не закоммичено)*
 

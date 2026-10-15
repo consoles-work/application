@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Shield, ShieldCheck, Loader2 } from "lucide-react";
 import { open as shellOpen } from "@tauri-apps/plugin-shell";
+import { ask } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../stores/appStore";
-import { getDbInfo, setSetting, isPasswordSet, setPassword, enableAutostart, disableAutostart, getAutostartStatus, updateTrayLanguage, aiDetectBin, aiCheck } from "../lib/tauriCommands";
+import { clearUsageStats, getDbInfo, setSetting, isPasswordSet, setPassword, enableAutostart, disableAutostart, getAutostartStatus, updateTrayLanguage, aiDetectBin, aiCheck } from "../lib/tauriCommands";
 import type { DbInfo } from "../lib/tauriCommands";
 import { THEMES, type AppTheme } from "../lib/themes";
 import { useTranslation } from "react-i18next";
@@ -566,6 +567,18 @@ function InterfaceTab({
   const currentTheme = settings["ui.theme"] ?? "dark";
   const closeToTray = (settings["ui.closeToTray"] ?? "true") === "true";
   const [autostartEnabled, setAutostartEnabled] = useState(false);
+  const statsEnabled = settings["stats.enabled"] !== "false";
+
+  const handleClearStats = async () => {
+    const ok = await ask(t("stats.clearConfirm"), { title: t("stats.clear"), kind: "warning" });
+    if (!ok) return;
+    try {
+      await clearUsageStats();
+      showToast("success", t("stats.cleared"));
+    } catch (e) {
+      showToast("error", String(e));
+    }
+  };
 
   useEffect(() => {
     getAutostartStatus().then(setAutostartEnabled).catch(() => {});
@@ -659,6 +672,32 @@ function InterfaceTab({
           </button>
         </label>
         <p className="text-2xs text-text-muted mt-1">{t("settings.autostartNote")}</p>
+      </div>
+
+      {/* Статистика использования */}
+      <div>
+        <label className="flex items-center justify-between cursor-pointer">
+          <span className="text-xs font-medium text-text-secondary">{t("settings.statsEnabled")}</span>
+          <button
+            onClick={() => onChange("stats.enabled", statsEnabled ? "false" : "true")}
+            className={`relative w-10 h-5 rounded-full transition-colors ${
+              statsEnabled ? "bg-accent" : "bg-surface-3"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                statsEnabled ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </label>
+        <p className="text-2xs text-text-muted mt-1">{t("settings.statsNote")}</p>
+        <button
+          className="mt-2 px-3 py-1.5 text-xs rounded-lg border border-border bg-surface-0 text-red-400 hover:bg-surface-2"
+          onClick={handleClearStats}
+        >
+          {t("stats.clear")}
+        </button>
       </div>
 
       <div>

@@ -440,3 +440,26 @@ export async function aiRun(
 export async function aiCancel(sessionId: string): Promise<void> {
   return invoke("ai_cancel", { sessionId });
 }
+
+// ── Статистика использования ──
+
+export interface UsageStat {
+  day: string;        // YYYY-MM-DD, локальная дата
+  hour: number;       // 0..23
+  consoleId: string;  // "" — уровень приложения
+  projectId: string;
+  metric: string;
+  value: number;
+}
+
+export async function recordUsageStats(entries: UsageStat[]): Promise<void> {
+  return invoke("record_usage_stats", { entries });
+}
+
+export async function getUsageStats(sinceDay: string): Promise<UsageStat[]> {
+  return invoke<UsageStat[]>("get_usage_stats", { sinceDay });
+}
+
+export async function clearUsageStats(): Promise<void> {
+  return invoke("clear_usage_stats");
+}

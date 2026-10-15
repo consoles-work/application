@@ -15,7 +15,7 @@ use rusqlite::{Connection, params};
 use std::sync::Mutex;
 use std::collections::HashMap;
 
-use crate::commands::{Workspace, Project, ConsoleConfig, QuickCommand, WikiPage, DbInfo, AiSession, AiMessage};
+use crate::commands::{Workspace, Project, ConsoleConfig, QuickCommand, WikiPage, DbInfo, AiSession, AiMessage, UsageStat};
 
 /// Ключ шифрования БД — встроен в бинарник при компиляции.
 /// Задать до сборки: export DB_ENCRYPTION_KEY="random-64-char-string"
@@ -185,6 +185,20 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
         );
 
         CREATE INDEX IF NOT EXISTS idx_ai_messages_session ON ai_messages(session_id);
+
+        -- Статистика использования: агрегаты по (день, час, консоль, метрика).
+        -- console_id = '' — метрики уровня приложения. project_id — проект консоли
+        -- на момент записи (время остаётся за проектом, даже если консоль перенесли).
+        -- Без внешних ключей: удалённые консоли/проекты не стирают историю.
+        CREATE TABLE IF NOT EXISTS usage_stats (
+            day        TEXT NOT NULL,
+            hour       INTEGER NOT NULL,
+            console_id TEXT NOT NULL DEFAULT '',
+            project_id TEXT NOT NULL DEFAULT '',
+            metric     TEXT NOT NULL,
+            value      INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (day, hour, console_id, metric)
+        );
     ")?;
 
     // ── Миграции для уже существующих БД ──
@@ -192,6 +206,8 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
     conn.execute("ALTER TABLE consoles ADD COLUMN note TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE consoles ADD COLUMN hosting TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE consoles ADD COLUMN quick_commands TEXT NOT NULL DEFAULT '[]'", []).ok();
+
+    prune_usage_stats(&conn);
 
     DB.set(Mutex::new(conn))
         .map_err(|_| "Database already initialized")?;
@@ -918,4 +934,68 @@ pub fn get_workspace_names() -> Result<std::collections::HashSet<String>, String
         .filter_map(|r| r.ok())
         .collect();
     Ok(names)
+}
+
+// ══════════════════════════════════════════════
+// Статистика использования
+// ══════════════════════════════════════════════
+
+/// Сколько дней истории держим: окно «месяц» = 30 дней, считая сегодня (+1 про запас)
+const USAGE_KEEP_DAYS: i64 = 31;
+
+fn prune_usage_stats(db: &Connection) {
+    db.execute(
+        "DELETE FROM usage_stats WHERE day < date('now', 'localtime', ?1)",
+        params![format!("-{USAGE_KEEP_DAYS} days")],
+    ).ok();
+}
+
+/// Пакетная запись приращений: value += value для каждой строки, одной транзакцией
+pub fn record_usage_stats(entries: &[UsageStat]) -> Result<(), String> {
+    let mut db = get_db().lock().map_err(|e| e.to_string())?;
+    let tx = db.transaction().map_err(|e| e.to_string())?;
+    {
+        let mut stmt = tx.prepare(
+            "INSERT INTO usage_stats (day, hour, console_id, project_id, metric, value)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+             ON CONFLICT(day, hour, console_id, metric) DO UPDATE SET value = value + excluded.value",
+        ).map_err(|e| e.to_string())?;
+        for e in entries {
+            // Мусор с фронта не пишем: день строго YYYY-MM-DD, час 0..23, приращение > 0
+            if e.day.len() != 10 || !(0..24).contains(&e.hour) || e.value <= 0 || e.metric.is_empty() {
+                continue;
+            }
+            stmt.execute(params![e.day, e.hour, e.console_id, e.project_id, e.metric, e.value])
+                .map_err(|e| e.to_string())?;
+        }
+    }
+    tx.commit().map_err(|e| e.to_string())
+}
+
+/// Все строки начиная с дня `since_day` (YYYY-MM-DD) — агрегирует фронт
+pub fn get_usage_stats(since_day: &str) -> Result<Vec<UsageStat>, String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    prune_usage_stats(&db);
+    let mut stmt = db.prepare(
+        "SELECT day, hour, console_id, project_id, metric, value FROM usage_stats WHERE day >= ?1",
+    ).map_err(|e| e.to_string())?;
+    let rows = stmt.query_map(params![since_day], |row| {
+        Ok(UsageStat {
+            day: row.get(0)?,
+            hour: row.get(1)?,
+            console_id: row.get(2)?,
+            project_id: row.get(3)?,
+            metric: row.get(4)?,
+            value: row.get(5)?,
+        })
+    }).map_err(|e| e.to_string())?
+    .filter_map(|r| r.ok())
+    .collect();
+    Ok(rows)
+}
+
+pub fn clear_usage_stats() -> Result<(), String> {
+    let db = get_db().lock().map_err(|e| e.to_string())?;
+    db.execute("DELETE FROM usage_stats", []).map_err(|e| e.to_string())?;
+    Ok(())
 }

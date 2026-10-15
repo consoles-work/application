@@ -202,7 +202,9 @@
     "agentsBinCheck": "Check",
     "agentsBinNotFound": "claude binary not found — set the path manually",
     "agentsClaudeCliNote": "Local engine: the claude binary runs as a subprocess on your own subscription. No API key needed. Tools and external MCP servers are disabled.",
-    "tabSecurity": "Security"
+    "tabSecurity": "Security",
+    "statsEnabled": "Usage statistics",
+    "statsNote": "Working time, terminal input, quick commands — stored locally for 30 days. 📊 button in the title bar."
   },
   "dialogs": {
     "newWorkspace": "New Workspace",
@@ -410,5 +412,52 @@
     "savedSec": "≈ {{value}} sec",
     "savedMin": "≈ {{value}} min",
     "savedHourMin": "≈ {{hours}} h {{minutes}} min"
+  },
+  "stats": {
+    "title": "Statistics",
+    "period": {
+      "today": "Today",
+      "week": "7 days",
+      "month": "30 days"
+    },
+    "loading": "Loading…",
+    "empty": "No data yet — statistics are collected from the moment they are enabled.",
+    "loadError": "Failed to load statistics: {{error}}",
+    "activeTime": "Active work",
+    "appOpen": "window open {{time}}",
+    "savedByQuick": "Saved by quick commands",
+    "savedSub": "runs: {{runs}} · {{share}}% of all input",
+    "typed": "Typed by hand, chars",
+    "typedSub": "pasted: {{pasted}}",
+    "commands": "Commands typed by hand",
+    "commandsSub": "Enter presses in the terminal",
+    "sessions": "Terminal sessions",
+    "outputSub": "output: {{chars}} chars",
+    "aiMessages": "AI questions",
+    "wikiSub": "wiki edits: {{edits}}",
+    "byProject": "Time by project",
+    "byProjectHint": "click — project consoles",
+    "total": "Total",
+    "otherProjects": "Other projects",
+    "deletedProject": "Deleted project",
+    "deletedConsole": "Deleted console",
+    "noConsoleTime": "No console time yet",
+    "byHour": "Active time by hour",
+    "byDay": "Active time by day",
+    "consoles": "Consoles",
+    "consolesOf": "Consoles: {{project}}",
+    "showAll": "Show all",
+    "colConsole": "Console",
+    "colTime": "Time",
+    "colTyped": "Typed",
+    "colQuick": "Quick commands",
+    "footer": "Stored locally for 30 days. Active work — window focused with input at least every 5 minutes.",
+    "refresh": "Refresh",
+    "clear": "Clear statistics",
+    "clearConfirm": "Delete all collected statistics? Counters on the quick commands themselves are kept.",
+    "cleared": "Statistics cleared",
+    "durSec": "{{value}} s",
+    "durMin": "{{value}} min",
+    "durHourMin": "{{hours}} h {{minutes}} min"
   }
 }

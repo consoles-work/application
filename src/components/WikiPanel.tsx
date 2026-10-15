@@ -9,6 +9,7 @@ import { createLowlight, common } from "lowlight";
 import { Plus, Trash2, Pin, Search, X } from "lucide-react";
 
 import { useAppStore } from "../stores/appStore";
+import { trackUsage, METRICS } from "../lib/usageStats";
 import { WikiToolbar } from "./WikiToolbar";
 import {
   loadWikiPages,
@@ -228,6 +229,7 @@ export function WikiPanel() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       saveWikiPage(page).catch(() => {});
+      trackUsage(METRICS.wikiEdits, 1);
     }, 1000);
   }, []);
 
