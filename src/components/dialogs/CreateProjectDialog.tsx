@@ -6,7 +6,12 @@ import { createProject, updateProject, setNodeDanger } from "../../lib/tauriComm
 import type { Project, ShellType } from "../../types";
 import { useTranslation } from "react-i18next";
 
-const EMOJI_OPTIONS = ["📁", "🔧", "🎨", "🌐", "🔬", "📱", "⚙️", "🗄️", "🤖", "📊", "🔐", "🧪"];
+// 27 = три полных ряда по 9 при ширине диалога w-96
+const EMOJI_OPTIONS = [
+  "📁", "🔧", "🎨", "🌐", "🔬", "📱", "⚙️", "🗄️", "🤖",
+  "📊", "🔐", "🧪", "🖥️", "💻", "☁️", "🐳", "🐧", "🍎",
+  "🛒", "💳", "📦", "🚀", "🔥", "🛡️", "📡", "🎮", "📝",
+];
 const COLOR_OPTIONS = ["#58a6ff", "#3fb950", "#d29922", "#f85149", "#bc8cff", "#f778ba", "#39c5cf", "#ff7b72"];
 const SHELLS: ShellType[] = ["bash", "zsh", "fish", "powershell", "cmd"];
 

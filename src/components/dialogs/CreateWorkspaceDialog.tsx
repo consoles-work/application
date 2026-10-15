@@ -5,7 +5,12 @@ import { createWorkspace, updateWorkspace } from "../../lib/tauriCommands";
 import type { Workspace } from "../../types";
 import { useTranslation } from "react-i18next";
 
-const EMOJI_OPTIONS = ["💼", "🚀", "🌙", "⚡", "🔥", "🎯", "🛠️", "📦", "🌐", "🎨", "🔬", "💡"];
+// 21 = три полных ряда по 7 при ширине диалога w-80
+const EMOJI_OPTIONS = [
+  "💼", "🚀", "🌙", "⚡", "🔥", "🎯", "🛠️",
+  "📦", "🌐", "🎨", "🔬", "💡", "🏢", "🏠",
+  "🧩", "🌍", "⭐", "💎", "🧠", "🎓", "🌱",
+];
 const COLOR_OPTIONS = ["#58a6ff", "#3fb950", "#d29922", "#f85149", "#bc8cff", "#f778ba", "#39c5cf", "#ff7b72"];
 
 interface Props {
