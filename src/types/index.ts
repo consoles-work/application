@@ -53,6 +53,8 @@ export interface ConsoleConfig {
   note?: string; // произвольная заметка к подключению
   hosting?: string; // где хостится сервер (провайдер), необязательно
   quickCommands?: QuickCommand[]; // кнопки быстрых команд под терминалом
+  icon?: string; // ключ иконки из CONSOLE_ICONS, пусто — по типу подключения
+  color?: QuickCommandColor; // цвет иконки (та же палитра, что у быстрых команд), пусто — обычный
 }
 
 export interface QuickCommand {
@@ -66,7 +68,7 @@ export interface QuickCommand {
   savedChars?: number; // сколько символов не пришлось набирать (сумма по запускам)
 }
 
-export type QuickCommandColor = "" | "green" | "blue" | "yellow" | "orange" | "red" | "purple";
+export type QuickCommandColor = "" | "green" | "blue" | "cyan" | "yellow" | "orange" | "red" | "pink" | "purple";
 
 // ── Wiki ──
 

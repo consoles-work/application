@@ -53,7 +53,7 @@ export function CopyConnectionButton({ config }: { config: ConsoleConfig }) {
 
   return (
     <div ref={wrapRef} className="relative">
-      <div className="text-2xs text-text-muted mb-1">
+      <div className="text-2xs text-text-primary mb-1">
         {t("dialogs.copyConnection")}{" "}
         <span className="opacity-50">{t("dialogs.copyConnectionNote")}</span>
       </div>

@@ -7,6 +7,7 @@ import { buildSshCommand } from "../lib/connectionString";
 import { listen } from "@tauri-apps/api/event";
 import { StickyNote, ChevronDown, ChevronRight, Zap, Settings2, Play } from "lucide-react";
 import { quickCommandHex } from "../lib/quickCommandColors";
+import { ConsoleIcon } from "../lib/consoleIcons";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../stores/appStore";
 import { spawnPty, writeToPty, resizePty, killPty, recordQuickCommandRun } from "../lib/tauriCommands";
@@ -118,6 +119,7 @@ export function TerminalPanel() {
               {isDanger && (
                 <span className="text-red-400 text-xs mr-1">⚠</span>
               )}
+              {con && <ConsoleIcon con={con} size={14} />}
               <span className="truncate max-w-[120px]">{items[0].title}</span>
               {items.length > 1 && (
                 <span className="text-2xs px-1 rounded bg-surface-3 text-text-muted font-mono shrink-0">

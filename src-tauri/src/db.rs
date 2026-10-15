@@ -131,7 +131,9 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
             ssh_extra_args  TEXT NOT NULL DEFAULT '',
             note            TEXT NOT NULL DEFAULT '',
             hosting         TEXT NOT NULL DEFAULT '',
-            quick_commands  TEXT NOT NULL DEFAULT '[]'
+            quick_commands  TEXT NOT NULL DEFAULT '[]',
+            icon            TEXT NOT NULL DEFAULT '',
+            color           TEXT NOT NULL DEFAULT ''
         );
 
         -- Wiki pages (привязаны к любому узлу)
@@ -206,6 +208,8 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
     conn.execute("ALTER TABLE consoles ADD COLUMN note TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE consoles ADD COLUMN hosting TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE consoles ADD COLUMN quick_commands TEXT NOT NULL DEFAULT '[]'", []).ok();
+    conn.execute("ALTER TABLE consoles ADD COLUMN icon TEXT NOT NULL DEFAULT ''", []).ok();
+    conn.execute("ALTER TABLE consoles ADD COLUMN color TEXT NOT NULL DEFAULT ''", []).ok();
 
     prune_usage_stats(&conn);
 
@@ -286,7 +290,7 @@ fn load_projects_for_workspace(db: &Connection, workspace_id: &str) -> Result<Ve
 }
 
 /// Колонки консоли — в том же порядке, что читает `console_from_row`
-const CONSOLE_COLUMNS: &str = "id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args, ssh_passphrase, ssh_password, note, hosting, quick_commands";
+const CONSOLE_COLUMNS: &str = "id, project_id, name, shell_override, cwd_override, startup_cmd, env_vars, sort_order, is_danger, danger_label, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args, ssh_passphrase, ssh_password, note, hosting, quick_commands, icon, color";
 
 fn console_from_row(row: &rusqlite::Row) -> rusqlite::Result<ConsoleConfig> {
     let env_str: Option<String> = row.get(6)?;
@@ -317,6 +321,8 @@ fn console_from_row(row: &rusqlite::Row) -> rusqlite::Result<ConsoleConfig> {
         note: row.get::<_, Option<String>>(18)?.unwrap_or_default(),
         hosting: row.get::<_, Option<String>>(19)?.unwrap_or_default(),
         quick_commands,
+        icon: row.get::<_, Option<String>>(21)?.unwrap_or_default(),
+        color: row.get::<_, Option<String>>(22)?.unwrap_or_default(),
     })
 }
 
@@ -326,8 +332,8 @@ fn write_console(db: &Connection, con: &ConsoleConfig) -> Result<(), String> {
         .map(|e| serde_json::to_string(e).unwrap_or_default());
     let quick_json = serde_json::to_string(&con.quick_commands).unwrap_or_else(|_| "[]".to_string());
     db.execute(
-        &format!("INSERT OR REPLACE INTO consoles ({CONSOLE_COLUMNS}) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21)"),
-        params![con.id, con.project_id, con.name, con.shell_override, con.cwd_override, con.startup_cmd, env_json, con.sort_order, con.is_danger as i32, con.danger_label, con.connection_type, con.ssh_host, con.ssh_port, con.ssh_user, con.ssh_key_path, con.ssh_extra_args, con.ssh_passphrase, con.ssh_password, con.note, con.hosting, quick_json],
+        &format!("INSERT OR REPLACE INTO consoles ({CONSOLE_COLUMNS}) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23)"),
+        params![con.id, con.project_id, con.name, con.shell_override, con.cwd_override, con.startup_cmd, env_json, con.sort_order, con.is_danger as i32, con.danger_label, con.connection_type, con.ssh_host, con.ssh_port, con.ssh_user, con.ssh_key_path, con.ssh_extra_args, con.ssh_passphrase, con.ssh_password, con.note, con.hosting, quick_json, con.icon, con.color],
     ).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -484,11 +490,13 @@ pub fn update_console_config_fields(
     ssh_password: &str,
     note: &str,
     hosting: &str,
+    icon: &str,
+    color: &str,
 ) -> Result<(), String> {
     let db = get_db().lock().map_err(|e| e.to_string())?;
     db.execute(
-        "UPDATE consoles SET name = ?2, startup_cmd = ?3, connection_type = ?4, ssh_host = ?5, ssh_port = ?6, ssh_user = ?7, ssh_key_path = ?8, ssh_extra_args = ?9, ssh_passphrase = ?10, ssh_password = ?11, note = ?12, hosting = ?13 WHERE id = ?1",
-        params![id, name, startup_cmd, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args, ssh_passphrase, ssh_password, note, hosting],
+        "UPDATE consoles SET name = ?2, startup_cmd = ?3, connection_type = ?4, ssh_host = ?5, ssh_port = ?6, ssh_user = ?7, ssh_key_path = ?8, ssh_extra_args = ?9, ssh_passphrase = ?10, ssh_password = ?11, note = ?12, hosting = ?13, icon = ?14, color = ?15 WHERE id = ?1",
+        params![id, name, startup_cmd, connection_type, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_extra_args, ssh_passphrase, ssh_password, note, hosting, icon, color],
     ).map_err(|e| e.to_string())?;
     Ok(())
 }

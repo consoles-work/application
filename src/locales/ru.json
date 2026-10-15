@@ -264,7 +264,19 @@
     "copyFormat": "Формат",
     "copyFormatCommand": "Готовая ssh-команда",
     "copyFormatTarget": "user@host:port",
-    "copyFormatParams": "Список параметров"
+    "copyFormatParams": "Список параметров",
+    "tabMain": "Основное",
+    "tabStartup": "Запуск",
+    "tabInfo": "Описание",
+    "tabLook": "Оформление",
+    "hostingPickHint": "Выберите из уже указанных или впишите новый",
+    "lookPreview": "Так консоль выглядит в дереве",
+    "consoleIcon": "Иконка",
+    "consoleIconAuto": "Автоматически: SSH — сервер, локальная — терминал",
+    "consoleIconAutoShort": "авто",
+    "consoleColor": "Цвет иконки",
+    "localHint": "Локальный терминал на этом компьютере — кроме названия, здесь ничего настраивать не нужно.",
+    "localHintStartup": "Стартовые команды →"
   },
   "export": {
     "title": "Экспорт данных",
@@ -396,9 +408,11 @@
       "none": "Без цвета",
       "green": "Зелёный",
       "blue": "Синий",
+      "cyan": "Бирюзовый",
       "yellow": "Жёлтый",
       "orange": "Оранжевый",
       "red": "Красный",
+      "pink": "Розовый",
       "purple": "Фиолетовый"
     },
     "confirm": "Показывать предупреждение перед выполнением",

@@ -30,6 +30,16 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
+        // Размер, положение и «развёрнутость» окна переживают перезапуск.
+        // VISIBLE не восстанавливаем: окно, спрятанное в трей, иначе стартовало бы невидимым
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::all()
+                        - tauri_plugin_window_state::StateFlags::VISIBLE,
+                )
+                .build(),
+        )
         .setup(|app| {
             db::init()?;
             pty_manager::init(app.handle().clone());

@@ -15,6 +15,7 @@ import { ExportDialog } from "./dialogs/ExportDialog";
 import { ImportDialog } from "./dialogs/ImportDialog";
 import type { TreeNode, ConsoleConfig } from "../types";
 import { useTranslation } from "react-i18next";
+import { ConsoleIconTile } from "../lib/consoleIcons";
 
 // ══════════════════════════════════════
 // TreePanel — дерево проектов
@@ -527,16 +528,11 @@ export function TreePanel() {
                 )}
               </span>
 
-              {/* Icon — только для workspace и project */}
-              {node.type !== "console" && (
+              {/* Icon — emoji у workspace/project, своя иконка с цветом у консоли */}
+              {node.type !== "console" ? (
                 <span className="text-sm">{node.icon}</span>
-              )}
-
-              {/* SSH badge перед именем */}
-              {node.type === "console" && (node.data as { connectionType?: string }).connectionType === "ssh" && (
-                <span className="shrink-0 text-2xs px-1 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/25 font-mono">
-                  ssh
-                </span>
+              ) : (
+                <ConsoleIconTile con={node.data as ConsoleConfig} />
               )}
 
               {/* Name — или input при переименовании */}

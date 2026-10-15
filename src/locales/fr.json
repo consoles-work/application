@@ -264,7 +264,19 @@
     "copyFormat": "Format",
     "copyFormatCommand": "Commande ssh prête",
     "copyFormatTarget": "user@host:port",
-    "copyFormatParams": "Liste des paramètres"
+    "copyFormatParams": "Liste des paramètres",
+    "tabMain": "Général",
+    "tabStartup": "Démarrage",
+    "tabInfo": "Détails",
+    "tabLook": "Apparence",
+    "hostingPickHint": "Choisissez une valeur déjà utilisée ou saisissez-en une nouvelle",
+    "lookPreview": "Aperçu de la console dans l'arborescence",
+    "consoleIcon": "Icône",
+    "consoleIconAuto": "Automatique : SSH — serveur, locale — terminal",
+    "consoleIconAutoShort": "auto",
+    "consoleColor": "Couleur de l'icône",
+    "localHint": "Terminal local sur cet ordinateur — rien à régler ici à part le nom.",
+    "localHintStartup": "Commandes de démarrage →"
   },
   "export": {
     "title": "Exporter les données",
@@ -396,9 +408,11 @@
       "none": "Sans couleur",
       "green": "Vert",
       "blue": "Bleu",
+      "cyan": "Cyan",
       "yellow": "Jaune",
       "orange": "Orange",
       "red": "Rouge",
+      "pink": "Rose",
       "purple": "Violet"
     },
     "confirm": "Afficher un avertissement avant l’exécution",

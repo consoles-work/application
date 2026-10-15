@@ -264,7 +264,19 @@
     "copyFormat": "Пішім",
     "copyFormatCommand": "Дайын ssh-пәрмен",
     "copyFormatTarget": "user@host:port",
-    "copyFormatParams": "Параметрлер тізімі"
+    "copyFormatParams": "Параметрлер тізімі",
+    "tabMain": "Негізгі",
+    "tabStartup": "Іске қосу",
+    "tabInfo": "Сипаттама",
+    "tabLook": "Безендіру",
+    "hostingPickHint": "Бұрын көрсетілгендерден таңдаңыз немесе жаңасын жазыңыз",
+    "lookPreview": "Консоль ағашта осылай көрінеді",
+    "consoleIcon": "Белгіше",
+    "consoleIconAuto": "Автоматты: SSH — сервер, жергілікті — терминал",
+    "consoleIconAutoShort": "авто",
+    "consoleColor": "Белгіше түсі",
+    "localHint": "Осы компьютердегі жергілікті терминал — атауынан басқа мұнда баптайтын ештеңе жоқ.",
+    "localHintStartup": "Іске қосу командалары →"
   },
   "export": {
     "title": "Деректерді экспорттау",
@@ -396,9 +408,11 @@
       "none": "Түссіз",
       "green": "Жасыл",
       "blue": "Көк",
+      "cyan": "Көгілдір",
       "yellow": "Сары",
       "orange": "Қызғылт сары",
       "red": "Қызыл",
+      "pink": "Қызғылт",
       "purple": "Күлгін"
     },
     "confirm": "Орындау алдында ескерту көрсету",

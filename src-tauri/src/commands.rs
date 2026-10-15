@@ -101,6 +101,12 @@ pub struct ConsoleConfig {
     /// Кнопки быстрых команд (панель под терминалом)
     #[serde(default)]
     pub quick_commands: Vec<QuickCommand>,
+    /// Иконка консоли в дереве (ключ набора: "server", "database", ...), пусто — по типу подключения
+    #[serde(default)]
+    pub icon: String,
+    /// Цвет иконки (ключ палитры: "red", "green", ...), пусто — обычный
+    #[serde(default)]
+    pub color: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -249,6 +255,8 @@ pub fn create_console(
     ssh_password: Option<String>,
     note: Option<String>,
     hosting: Option<String>,
+    icon: Option<String>,
+    color: Option<String>,
 ) -> Result<ConsoleConfig, String> {
     let id = uuid::Uuid::new_v4().to_string();
     let console = ConsoleConfig {
@@ -273,6 +281,8 @@ pub fn create_console(
         note: note.unwrap_or_default(),
         hosting: hosting.unwrap_or_default(),
         quick_commands: Vec::new(),
+        icon: icon.unwrap_or_default(),
+        color: color.unwrap_or_default(),
     };
 
     crate::db::save_console(&console)?;
@@ -301,6 +311,8 @@ pub fn update_console_config(
     ssh_password: String,
     note: Option<String>,
     hosting: Option<String>,
+    icon: Option<String>,
+    color: Option<String>,
 ) -> Result<(), String> {
     crate::db::update_console_config_fields(
         &id, &name, startup_cmd.as_deref(),
@@ -309,6 +321,8 @@ pub fn update_console_config(
         &ssh_passphrase, &ssh_password,
         note.as_deref().unwrap_or_default(),
         hosting.as_deref().unwrap_or_default(),
+        icon.as_deref().unwrap_or_default(),
+        color.as_deref().unwrap_or_default(),
     )
 }
 

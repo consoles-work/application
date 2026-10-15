@@ -264,7 +264,19 @@
     "copyFormat": "格式",
     "copyFormatCommand": "完整 ssh 命令",
     "copyFormatTarget": "user@host:port",
-    "copyFormatParams": "参数列表"
+    "copyFormatParams": "参数列表",
+    "tabMain": "基本",
+    "tabStartup": "启动",
+    "tabInfo": "说明",
+    "tabLook": "外观",
+    "hostingPickHint": "从已填写的值中选择，或输入新值",
+    "lookPreview": "控制台在树中的样子",
+    "consoleIcon": "图标",
+    "consoleIconAuto": "自动：SSH — 服务器，本地 — 终端",
+    "consoleIconAutoShort": "自动",
+    "consoleColor": "图标颜色",
+    "localHint": "本机上的本地终端——除名称外无需在此设置。",
+    "localHintStartup": "启动命令 →"
   },
   "export": {
     "title": "导出数据",
@@ -396,9 +408,11 @@
       "none": "无颜色",
       "green": "绿色",
       "blue": "蓝色",
+      "cyan": "青色",
       "yellow": "黄色",
       "orange": "橙色",
       "red": "红色",
+      "pink": "粉色",
       "purple": "紫色"
     },
     "confirm": "执行前显示警告",

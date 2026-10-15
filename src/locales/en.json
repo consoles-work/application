@@ -264,7 +264,19 @@
     "copyFormat": "Format",
     "copyFormatCommand": "Ready ssh command",
     "copyFormatTarget": "user@host:port",
-    "copyFormatParams": "Parameter list"
+    "copyFormatParams": "Parameter list",
+    "tabMain": "General",
+    "tabStartup": "Startup",
+    "tabInfo": "Details",
+    "tabLook": "Appearance",
+    "hostingPickHint": "Pick one you've used before or type a new one",
+    "lookPreview": "How the console looks in the tree",
+    "consoleIcon": "Icon",
+    "consoleIconAuto": "Automatic: SSH — server, local — terminal",
+    "consoleIconAutoShort": "auto",
+    "consoleColor": "Icon color",
+    "localHint": "A local terminal on this computer — nothing to set here besides the name.",
+    "localHintStartup": "Startup commands →"
   },
   "export": {
     "title": "Export data",
@@ -396,9 +408,11 @@
       "none": "No color",
       "green": "Green",
       "blue": "Blue",
+      "cyan": "Cyan",
       "yellow": "Yellow",
       "orange": "Orange",
       "red": "Red",
+      "pink": "Pink",
       "purple": "Purple"
     },
     "confirm": "Show a warning before running",
