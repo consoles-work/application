@@ -2,33 +2,43 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../../stores/appStore";
-import { createProject, setNodeDanger } from "../../lib/tauriCommands";
-import type { ShellType } from "../../types";
+import { createProject, updateProject, setNodeDanger } from "../../lib/tauriCommands";
+import type { Project, ShellType } from "../../types";
 import { useTranslation } from "react-i18next";
 
 const EMOJI_OPTIONS = ["📁", "🔧", "🎨", "🌐", "🔬", "📱", "⚙️", "🗄️", "🤖", "📊", "🔐", "🧪"];
 const COLOR_OPTIONS = ["#58a6ff", "#3fb950", "#d29922", "#f85149", "#bc8cff", "#f778ba", "#39c5cf", "#ff7b72"];
 const SHELLS: ShellType[] = ["bash", "zsh", "fish", "powershell", "cmd"];
 
-interface Props {
-  workspaceId: string;
-  onClose: () => void;
-}
+type Props =
+  | { workspaceId: string; project?: undefined; onClose: () => void }
+  /** Режим редактирования существующего проекта */
+  | { workspaceId?: undefined; project: Project; onClose: () => void };
 
-export function CreateProjectDialog({ workspaceId, onClose }: Props) {
-  const [name, setName] = useState("");
-  const [path, setPath] = useState("");
-  const [shell, setShell] = useState<ShellType>("zsh");
-  const [icon, setIcon] = useState("📁");
-  const [color, setColor] = useState("#58a6ff");
-  const [isDanger, setIsDanger] = useState(false);
-  const [dangerLabel, setDangerLabel] = useState("PRODUCTION");
+export function CreateProjectDialog({ workspaceId, project, onClose }: Props) {
+  const isEdit = !!project;
+  const [name, setName] = useState(project?.name ?? "");
+  const [path, setPath] = useState(project?.path ?? "");
+  const [shell, setShell] = useState<ShellType>(project?.default_shell || "zsh");
+  const [icon, setIcon] = useState(project?.icon || "📁");
+  const [color, setColor] = useState(project?.color || "#58a6ff");
+  const [isDanger, setIsDanger] = useState(project?.isDanger ?? false);
+  const [dangerLabel, setDangerLabel] = useState(project?.dangerLabel || "PRODUCTION");
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { addProject, showToast } = useAppStore();
+  const { addProject, updateProject: storeUpdateProject, showToast } = useAppStore();
   const { t } = useTranslation();
 
+  // Иконка из импорта или старой версии может отсутствовать в наборе — показать её первой
+  const emojiOptions = EMOJI_OPTIONS.includes(icon) || !project ? EMOJI_OPTIONS : [project.icon, ...EMOJI_OPTIONS];
+
   useEffect(() => { inputRef.current?.focus(); }, []);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [onClose]);
 
   const handleBrowse = async () => {
     try {
@@ -44,13 +54,24 @@ export function CreateProjectDialog({ workspaceId, onClose }: Props) {
     if (!name.trim()) return;
     setLoading(true);
     try {
-      const proj = await createProject(workspaceId, name.trim(), icon, color, path, shell);
       const finalLabel = dangerLabel.trim() || "PRODUCTION";
-      if (isDanger) {
-        await setNodeDanger(proj.id, "project", true, finalLabel);
+      if (project) {
+        await updateProject(project.id, name.trim(), icon, color, path, shell);
+        if (isDanger !== project.isDanger || (isDanger && finalLabel !== project.dangerLabel)) {
+          await setNodeDanger(project.id, "project", isDanger, finalLabel);
+        }
+        storeUpdateProject(project.id, {
+          name: name.trim(), icon, color, path, default_shell: shell, isDanger, dangerLabel: finalLabel,
+        });
+        showToast("success", t("dialogs.toastProjectUpdated", { name: name.trim() }));
+      } else {
+        const proj = await createProject(workspaceId, name.trim(), icon, color, path, shell);
+        if (isDanger) {
+          await setNodeDanger(proj.id, "project", true, finalLabel);
+        }
+        addProject(workspaceId, { ...proj, icon, color, isDanger, dangerLabel: finalLabel });
+        showToast("success", t("dialogs.toastProjectCreated", { name: proj.name }));
       }
-      addProject(workspaceId, { ...proj, icon, color, isDanger, dangerLabel: finalLabel });
-      showToast("success", t("dialogs.toastProjectCreated", { name: proj.name }));
       onClose();
     } catch (err) {
       showToast("error", t("dialogs.toastError", { error: err }));
@@ -62,7 +83,7 @@ export function CreateProjectDialog({ workspaceId, onClose }: Props) {
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onMouseDown={onClose}>
       <div className="bg-surface-2 border border-border rounded-xl shadow-2xl w-96 p-5" onMouseDown={(e) => e.stopPropagation()}>
-        <h2 className="text-sm font-semibold text-text-primary mb-4">{t("dialogs.newProject")}</h2>
+        <h2 className="text-sm font-semibold text-text-primary mb-4">{isEdit ? t("dialogs.editProject") : t("dialogs.newProject")}</h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           {/* Name */}
           <input
@@ -104,7 +125,7 @@ export function CreateProjectDialog({ workspaceId, onClose }: Props) {
           <div>
             <div className="text-2xs text-text-muted mb-1">{t("dialogs.icon")}</div>
             <div className="flex flex-wrap gap-1">
-              {EMOJI_OPTIONS.map((e) => (
+              {emojiOptions.map((e) => (
                 <button key={e} type="button" onClick={() => setIcon(e)}
                   className={`w-8 h-8 rounded-lg text-base ${icon === e ? "bg-accent/20 ring-1 ring-accent" : "hover:bg-surface-3"}`}>
                   {e}
@@ -153,7 +174,9 @@ export function CreateProjectDialog({ workspaceId, onClose }: Props) {
             </button>
             <button type="submit" disabled={!name.trim() || loading}
               className="px-3 py-1.5 text-xs bg-accent text-white rounded-lg hover:bg-accent/80 disabled:opacity-40">
-              {loading ? t("common.creating") : t("common.create")}
+              {isEdit
+                ? (loading ? t("common.saving") : t("common.save"))
+                : (loading ? t("common.creating") : t("common.create"))}
             </button>
           </div>
         </form>

@@ -51,6 +51,12 @@ export function TreePanel() {
   const [createProjectFor, setCreateProjectFor] = useState<string | null>(null);   // workspaceId
   const [createConsoleFor, setCreateConsoleFor] = useState<string | null>(null);   // projectId
   const [editConsole, setEditConsole] = useState<ConsoleConfig | null>(null);
+  const [editWorkspaceId, setEditWorkspaceId] = useState<string | null>(null);
+  const [editProjectId, setEditProjectId] = useState<string | null>(null);
+  const editWorkspace = editWorkspaceId ? workspaces.find((w) => w.id === editWorkspaceId) : undefined;
+  const editProject = editProjectId
+    ? workspaces.flatMap((w) => w.projects).find((p) => p.id === editProjectId)
+    : undefined;
   const [quickCommandsFor, setQuickCommandsFor] = useState<string | null>(null);
   const [showExport, setShowExport] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -583,9 +589,12 @@ export function TreePanel() {
           onClose={() => setContextMenu(null)}
           onCreateProject={(wsId) => setCreateProjectFor(wsId)}
           onCreateConsole={(projId) => setCreateConsoleFor(projId)}
-          onRename={(node) => startRename(node)}
           onToggleDanger={(node) => handleToggleDanger(node)}
           onEditConsole={(node) => setEditConsole(node.data as ConsoleConfig)}
+          onEditNode={(node) => {
+            if (node.type === "workspace") setEditWorkspaceId(node.id);
+            else if (node.type === "project") setEditProjectId(node.id);
+          }}
           onQuickCommands={(node) => setQuickCommandsFor(node.id)}
           onCloneConsole={handleCloneConsole}
           onCloneProject={handleCloneProject}
@@ -601,6 +610,18 @@ export function TreePanel() {
         <CreateProjectDialog
           workspaceId={createProjectFor}
           onClose={() => setCreateProjectFor(null)}
+        />
+      )}
+      {editWorkspace && (
+        <CreateWorkspaceDialog
+          workspace={editWorkspace}
+          onClose={() => setEditWorkspaceId(null)}
+        />
+      )}
+      {editProject && (
+        <CreateProjectDialog
+          project={editProject}
+          onClose={() => setEditProjectId(null)}
         />
       )}
       {createConsoleFor && (

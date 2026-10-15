@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import { ask, save } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../stores/appStore";
 import {
@@ -25,9 +24,9 @@ interface ContextMenuProps {
   onClose: () => void;
   onCreateProject: (workspaceId: string) => void;
   onCreateConsole: (projectId: string) => void;
-  onRename: (node: TreeNode) => void;
   onToggleDanger: (node: TreeNode) => void;
   onEditConsole: (node: TreeNode) => void;
+  onEditNode: (node: TreeNode) => void;
   onQuickCommands: (node: TreeNode) => void;
   onCloneConsole: (node: TreeNode) => void;
   onCloneProject: (node: TreeNode) => void;
@@ -39,9 +38,9 @@ export function ContextMenu({
   onClose,
   onCreateProject,
   onCreateConsole,
-  onRename,
   onToggleDanger,
   onEditConsole,
+  onEditNode,
   onQuickCommands,
   onCloneConsole,
   onCloneProject,
@@ -129,27 +128,6 @@ export function ContextMenu({
     }
   };
 
-  const handleOpenInVSCode = async () => {
-    onClose();
-    const proj = menu.node.data as { path: string };
-    try {
-      await shellOpen(`vscode://file${proj.path}`);
-    } catch {
-      // Fallback: попробовать через shell
-      showToast("info", t("contextMenu.toastOpeningVSCode"));
-    }
-  };
-
-  const handleOpenInFinder = async () => {
-    onClose();
-    const proj = menu.node.data as { path: string };
-    try {
-      await shellOpen(proj.path);
-    } catch (e) {
-      showToast("error", t("contextMenu.toastOpenError", { error: e }));
-    }
-  };
-
   const handleRunConsole = () => {
     onClose();
     if (!activateConsole(menu.node.id)) {
@@ -232,16 +210,14 @@ export function ContextMenu({
     t,
     onCreateProject: () => { onClose(); onCreateProject(menu.node.id); },
     onCreateConsole: () => { onClose(); onCreateConsole(menu.node.id); },
-    onRename: () => { onClose(); onRename(menu.node); },
     onDeleteWorkspace: handleDeleteWorkspace,
     onDeleteProject: handleDeleteProject,
     onDeleteConsole: handleDeleteConsole,
-    onOpenVSCode: handleOpenInVSCode,
-    onOpenFinder: handleOpenInFinder,
     onRunConsole: handleRunConsole,
     onOpenNewInstance: handleOpenNewInstance,
     onToggleDanger: handleToggleDanger,
     onEditConsole: () => { onClose(); onEditConsole(menu.node); },
+    onEditNode: () => { onClose(); onEditNode(menu.node); },
     onQuickCommands: () => { onClose(); onQuickCommands(menu.node); },
     onCloneConsole: () => { onClose(); onCloneConsole(menu.node); },
     onCloneProject: () => { onClose(); onCloneProject(menu.node); },
@@ -287,16 +263,14 @@ function getMenuItems(handlers: {
   t: (key: string) => string;
   onCreateProject: () => void;
   onCreateConsole: () => void;
-  onRename: () => void;
   onDeleteWorkspace: () => void;
   onDeleteProject: () => void;
   onDeleteConsole: () => void;
-  onOpenVSCode: () => void;
-  onOpenFinder: () => void;
   onRunConsole: () => void;
   onOpenNewInstance: () => void;
   onToggleDanger: () => void;
   onEditConsole: () => void;
+  onEditNode: () => void;
   onQuickCommands: () => void;
   onCloneConsole: () => void;
   onCloneProject: () => void;
@@ -313,7 +287,7 @@ function getMenuItems(handlers: {
       { label: t("contextMenu.addProject"), icon: "+", action: handlers.onCreateProject },
       { label: t("contextMenu.exportServers"), icon: "⇩", action: handlers.onExportServers },
       "separator",
-      { label: t("contextMenu.rename"), icon: "✎", action: handlers.onRename },
+      { label: t("contextMenu.settings"), icon: "⚙", action: handlers.onEditNode },
       "separator",
       { label: t("contextMenu.deleteWorkspace"), icon: "✕", action: handlers.onDeleteWorkspace, danger: true },
     ];
@@ -324,15 +298,13 @@ function getMenuItems(handlers: {
       { label: t("contextMenu.addConsole"), icon: "+", action: handlers.onCreateConsole },
       { label: t("contextMenu.cloneProject"), icon: "⎘", action: handlers.onCloneProject },
       "separator",
-      { label: t("contextMenu.openInVSCode"), icon: "⎋", action: handlers.onOpenVSCode },
-      { label: t("contextMenu.openInFinder"), icon: "⌂", action: handlers.onOpenFinder },
       { label: t("contextMenu.exportServers"), icon: "⇩", action: handlers.onExportServers },
       "separator",
       data.isDanger
         ? { label: t("contextMenu.removeDangerFlag"), icon: "✓", action: handlers.onToggleDanger }
         : { label: t("contextMenu.markAsDangerous"), icon: "⚠", action: handlers.onToggleDanger },
       "separator",
-      { label: t("contextMenu.rename"), icon: "✎", action: handlers.onRename },
+      { label: t("contextMenu.settings"), icon: "⚙", action: handlers.onEditNode },
       "separator",
       { label: t("contextMenu.deleteProject"), icon: "✕", action: handlers.onDeleteProject, danger: true },
     ];
@@ -349,8 +321,6 @@ function getMenuItems(handlers: {
     { label: t("contextMenu.quickCommands"), icon: "⚡", action: handlers.onQuickCommands },
     ...(isSsh ? [{ label: t("contextMenu.copySshCommand"), icon: "⧉", action: handlers.onCopySshCommand } as MenuItem] : []),
     { label: t("contextMenu.cloneConsole"), icon: "⎘", action: handlers.onCloneConsole },
-    "separator" as MenuItem,
-    { label: t("contextMenu.rename"), icon: "✎", action: handlers.onRename },
     "separator" as MenuItem,
     { label: t("contextMenu.deleteConsole"), icon: "✕", action: handlers.onDeleteConsole, danger: true },
   ];
