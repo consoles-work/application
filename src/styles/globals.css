@@ -404,6 +404,21 @@ body,
   @apply text-accent border-accent bg-surface-1;
 }
 
+/* Крестик виден на всех вкладках: у неактивных приглушён, ярче при наведении */
+.terminal-tab-close {
+  opacity: 0.35;
+  transition: opacity 0.1s;
+}
+
+.terminal-tab.active .terminal-tab-close,
+.terminal-tab:hover .terminal-tab-close {
+  opacity: 0.7;
+}
+
+.terminal-tab .terminal-tab-close:hover {
+  opacity: 1;
+}
+
 /* ── xterm.js терминал ── */
 .xterm {
   height: 100%;

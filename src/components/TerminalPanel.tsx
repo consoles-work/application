@@ -132,8 +132,7 @@ export function TerminalPanel() {
                 </span>
               )}
               <button
-                className="ml-1.5 text-text-muted hover:text-danger text-xs shrink-0"
-                style={{ opacity: isActive ? 0.6 : 0 }}
+                className="terminal-tab-close ml-1.5 text-text-muted hover:text-danger text-xs shrink-0"
                 onClick={(e) => handleCloseGroup(e, items)}
               >
                 ×
@@ -169,8 +168,7 @@ export function TerminalPanel() {
               >
                 <span className="truncate max-w-[140px]">{tabTitle(session)}</span>
                 <button
-                  className="ml-1.5 text-text-muted hover:text-danger text-xs shrink-0"
-                  style={{ opacity: isActive ? 0.6 : 0 }}
+                  className="terminal-tab-close ml-1.5 text-text-muted hover:text-danger text-xs shrink-0"
                   onClick={(e) => handleCloseTab(e, session)}
                 >
                   ×
