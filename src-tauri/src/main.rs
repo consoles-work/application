@@ -220,10 +220,24 @@ pub fn run() {
             }
         })
 
-        // Запускаем приложение
+        // Собираем приложение
         // .expect() — если произошла ошибка, завершить программу с сообщением
-        .run(tauri::generate_context!())
-        .expect("error while running consoles.work");
+        .build(tauri::generate_context!())
+        .expect("error while running consoles.work")
+        // Запускаем цикл событий.
+        // На macOS повторный запуск из «Программ»/Dock не создаёт второй процесс
+        // (single-instance не срабатывает) — система шлёт Reopen уже запущенному.
+        // Окно, спрятанное в трей, нужно показать здесь
+        .run(|_app, _event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = _event {
+                if let Some(w) = _app.get_webview_window("main") {
+                    let _ = w.unminimize();
+                    let _ = w.show();
+                    let _ = w.set_focus();
+                }
+            }
+        });
 }
 
 // ── Точка входа ──

@@ -166,6 +166,18 @@ pub fn run() {
                 }
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running consoles.work");
+        .build(tauri::generate_context!())
+        .expect("error while running consoles.work")
+        // macOS: повторный запуск из «Программ»/Dock шлёт Reopen уже запущенному
+        // процессу (single-instance не срабатывает) — показываем окно из трея
+        .run(|_app, _event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = _event {
+                if let Some(w) = _app.get_webview_window("main") {
+                    let _ = w.unminimize();
+                    let _ = w.show();
+                    let _ = w.set_focus();
+                }
+            }
+        });
 }
