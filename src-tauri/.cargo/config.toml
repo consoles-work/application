@@ -1,0 +1,5 @@
+# `cargo run` (и tauri dev) на macOS запускает приложение через скрипт, который
+# подписывает dev-бинарник постоянной подписью — иначе macOS после каждой
+# пересборки считает его новым приложением. Подробности — в scripts/dev-sign-run.sh
+[target.'cfg(target_os = "macos")']
+runner = "../scripts/dev-sign-run.sh"

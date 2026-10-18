@@ -473,5 +473,12 @@
     "durSec": "{{value}} 秒",
     "durMin": "{{value}} 分钟",
     "durHourMin": "{{hours}} 小时 {{minutes}} 分钟"
+  },
+  "about": {
+    "title": "关于",
+    "version": "版本 {{version}}",
+    "description": "多项目终端管理器，内置知识库和 AI 助手。",
+    "site": "网站",
+    "github": "GitHub 上的源代码"
   }
 }

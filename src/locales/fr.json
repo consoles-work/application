@@ -473,5 +473,12 @@
     "durSec": "{{value}} s",
     "durMin": "{{value}} min",
     "durHourMin": "{{hours}} h {{minutes}} min"
+  },
+  "about": {
+    "title": "À propos",
+    "version": "version {{version}}",
+    "description": "Gestionnaire de terminaux multi-projets avec base de connaissances et assistant IA intégrés.",
+    "site": "Site web",
+    "github": "Code source sur GitHub"
   }
 }

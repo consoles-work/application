@@ -473,5 +473,12 @@
     "durSec": "{{value}} s",
     "durMin": "{{value}} min",
     "durHourMin": "{{hours}} h {{minutes}} min"
+  },
+  "about": {
+    "title": "About",
+    "version": "version {{version}}",
+    "description": "Multi-project terminal manager with a built-in knowledge base and AI assistant.",
+    "site": "Website",
+    "github": "Source code on GitHub"
   }
 }

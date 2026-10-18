@@ -1,13 +1,15 @@
 {
   "name": "consoles-work",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "version:check": "node scripts/version.mjs",
+    "version:bump": "node scripts/version.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.4",

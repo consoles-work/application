@@ -1,6 +1,6 @@
 # DevConsole Hub — Статус проекта
 
-> Последнее обновление: 2026-10-17 (крестик закрытия виден на всех вкладках терминала; запуск из «Программ»/Dock показывает окно, спрятанное в трей; настройки воркспейса и проекта: иконка/цвет после создания, из меню проекта убраны VS Code/Finder; README актуализирован; диалог консоли: вкладки, хостинг из списка, иконка и цвет консоли; окно запоминает размер; Tauri 2.12; статистика использования: окно со временем по проектам, вводом и быстрыми командами; счётчик запусков быстрых команд и сэкономленное время; быстрые команды консоли, подтверждение выхода; этап 19 — ключ БД из пароля, запланирован)
+> Последнее обновление: 2026-10-18 (постоянная подпись dev-сборки на macOS; ссылка на consoles.work в заголовке, диалог «О программе» с сайтом и GitHub, версия в одном месте + `npm run version:bump`, CHANGELOG.md, версия 0.2.0; крестик закрытия виден на всех вкладках терминала; запуск из «Программ»/Dock показывает окно, спрятанное в трей; настройки воркспейса и проекта: иконка/цвет после создания, из меню проекта убраны VS Code/Finder; README актуализирован; диалог консоли: вкладки, хостинг из списка, иконка и цвет консоли; окно запоминает размер; Tauri 2.12; статистика использования: окно со временем по проектам, вводом и быстрыми командами; счётчик запусков быстрых команд и сэкономленное время; быстрые команды консоли, подтверждение выхода; этап 19 — ключ БД из пароля, запланирован)
 
 ---
 
@@ -23,6 +23,8 @@
 | `src/lib/tauriCommands.ts` | ✅ Готово | Все IPC-обёртки: дерево, PTY, wiki, clone, settings, AI сессии, `setNodeExpanded`, `exportData`/`previewImport`/`applyImport`, **`moveConsole`**, **`enableAutostart`/`disableAutostart`/`getAutostartStatus`** |
 | `src/lib/themes.ts` | ✅ Готово | 18 тем (9 тёмных + 9 светлых, флаг `dark`) с UI-цветами, полной xterm-палитрой и цветами водяного знака (`watermark.prod` / `watermark.plain`), resolveThemeId, applyTheme |
 | `src/lib/connectionString.ts` | ✅ Готово | `buildSshCommand` и другие форматы строки подключения (команда / `user@host:port` / список параметров) |
+| `src/lib/appInfo.ts` | ✅ Готово | Версия (`__APP_VERSION__` / `__APP_COMMIT__` из Vite), `SITE_URL`, `GITHUB_URL`, `openExternal` |
+| `src/components/AboutDialog.tsx` | ✅ Готово | «О программе»: версия, коммит, ссылки на сайт и GitHub; из меню macOS (событие `show-about`) и из Настроек |
 | `src/lib/quickCommandStats.ts` | ✅ Готово | Оценка сэкономленного быстрыми командами времени: `TYPING_CHARS_PER_MINUTE` (200), `sumQuickCommandStats`, `formatSavedTime` |
 | `src/lib/usageStats.ts` | ✅ Готово | Трекер статистики: `METRICS`, `trackUsage`, `trackTerminalInput`, `flushUsage` (пакет раз в 30 с), `startUsageTracking` (время: окно / активно / консоль), `setUsageEnabled` / `setUsagePaused` |
 | `src/components/StatsDialog.tsx` | ✅ Готово | Окно статистики: периоды, плитки, кольцо по проектам, столбики по часам/дням, таблица консолей, очистка |
@@ -55,7 +57,7 @@
 |------|--------|------------|
 | `src-tauri/src/main.rs` | ✅ Готово | ~50 IPC-команд; **single-instance** (первый плагин, фокусирует уже открытое окно); **трей** (`TrayIconBuilder`); **`CloseRequested`** читает `ui.closeToTray` — hide или exit; **autostart-плагин** подключён |
 | `src-tauri/src/lib.rs` | ✅ Готово | Синхронизирован с main.rs (мобильная/библиотечная сборка) |
-| `src-tauri/src/commands.rs` | ✅ Готово | CRUD дерева, PTY, wiki, danger, clone, settings, AI (8 команд), экспорт/импорт (3 команды), **`move_console`**, **`enable_autostart`/`disable_autostart`/`get_autostart_status`**, `ai_detect_bin`/`ai_check`/`ai_run`/`ai_cancel`, **`save_text_file`**, `set_console_quick_commands`, **`record_quick_command_run`**, `record_usage_stats` / `get_usage_stats` / `clear_usage_stats` |
+| `src-tauri/src/commands.rs` | ✅ Готово | CRUD дерева, PTY, wiki, danger, clone, settings, AI (8 команд), экспорт/импорт (3 команды), **`move_console`**, **`enable_autostart`/`disable_autostart`/`get_autostart_status`**, `ai_detect_bin`/`ai_check`/`ai_run`/`ai_cancel`, **`save_text_file`**, `set_console_quick_commands`, **`record_quick_command_run`**, `record_usage_stats` / `get_usage_stats` / `clear_usage_stats`; меню приложения macOS: свой пункт «О программе» (`show_about` → событие `show-about`) и Cmd+Q через `confirm_quit` |
 | `src-tauri/src/db.rs` | ✅ Готово | Полный CRUD + FTS5 + клонирование + settings + SQLCipher + AI-сессии + `set_node_expanded` + `ssh_passphrase` + `ssh_password` + `move_console` + **`get_setting_bool`** + `load_all_wiki_pages` + `delete_all_*` + `get_workspace_names` + таблица `usage_stats` (upsert, автоочистка > 31 дня) |
 | `src-tauri/src/export.rs` | ✅ Готово | Формат `.dchub`: AES-256-GCM + PBKDF2 (100k iter); `workspace_ids` фильтр; верификационная фраза; **экспорт/импорт настроек**; **исправлен импорт wiki** (id_map для перепривязки страниц) |
 | `src-tauri/src/pty_manager.rs` | ✅ Готово | portable-pty: spawn/write/resize/kill; UTF-8 локаль; SSH passphrase через `add_key_to_agent`; SSH пароль сервера через SSH_ASKPASS_REQUIRE=force |
@@ -100,7 +102,7 @@
 | OS Keychain для API-ключей | Низкий | Сейчас в зашифрованной SQLite |
 | Горячие клавиши: Delete (удалить узел) | Низкий | Post-MVP |
 | Wiki: блоки кода с кнопками | Низкий | TipTap NodeView: "Копировать" + "Вставить в терминал" |
-| macOS Code Signing + Notarization | Низкий | Требует Apple Developer сертификат; инструкция в PLAN.md §12.3 |
+| macOS Code Signing + Notarization | Средний | Требует Apple Developer сертификат; инструкция в PLAN.md §12.3. Без постоянной подписи macOS считает каждую сборку новым приложением: повторные уведомления об объекте входа, сброс разрешений. Dev-сборка уже подписывается (этап 27), релизная — нет |
 
 ### Post-MVP
 - Сплит-терминал (Ctrl+Shift+H / V)
@@ -111,6 +113,20 @@
 ---
 
 ## История изменений
+
+### 2026-10-18 — Постоянная подпись dev-сборки (macOS) *(в рабочем дереве, не закоммичено)*
+
+- `tauri dev` подписывает бинарник сертификатом из связки ключей (идентификатор `work.consoles.app.dev`) — macOS больше не считает каждую пересборку новым приложением
+- `scripts/dev-sign-run.sh`, `src-tauri/.cargo/config.toml` (перенесено из ultraplan)
+- Подробно — PLAN.md, Этап 27
+
+### 2026-10-18 — Ссылка на сайт, «О программе», версионирование *(в рабочем дереве, не закоммичено)*
+
+- «Consoles.work» в заголовке окна открывает https://consoles.work
+- Диалог «О программе» (версия, коммит, сайт, GitHub) — из меню приложения macOS вместо штатной панели и из Настроек → Интерфейс
+- Версия в одном месте (`package.json`), `npm run version:check` / `version:bump`, `CHANGELOG.md`, правило в `docs/RULES.md`; версия поднята до 0.2.0
+- `appInfo.ts`, `AboutDialog.tsx`, `Layout.tsx`, `SettingsDialog.tsx`, `App.tsx`, `commands.rs` (`about_label`, `show_about`, `install_app_menu`), `main.rs` / `lib.rs`, `vite.config.ts`, `tauri.conf.json`, `scripts/version.mjs`
+- Подробно — PLAN.md, Этап 26
 
 ### 2026-10-17 — Крестик закрытия на всех вкладках терминала *(в рабочем дереве, не закоммичено)*
 

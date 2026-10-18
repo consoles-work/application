@@ -9,14 +9,16 @@ import { THEMES, type AppTheme } from "../lib/themes";
 import { useTranslation } from "react-i18next";
 import i18n from "../lib/i18n";
 import { AI_PROVIDERS, getProvider, streamCompletion } from "../lib/aiProviders";
+import { APP_NAME, APP_VERSION } from "../lib/appInfo";
 
 type Tab = "data" | "terminal" | "interface" | "agents" | "security";
 
 interface SettingsDialogProps {
   onClose: () => void;
+  onOpenAbout: () => void;
 }
 
-export function SettingsDialog({ onClose }: SettingsDialogProps) {
+export function SettingsDialog({ onClose, onOpenAbout }: SettingsDialogProps) {
   const [tab, setTab] = useState<Tab>("data");
   const { settings, setSetting: storeSetting, showToast } = useAppStore();
   const [dbInfo, setDbInfo] = useState<DbInfo | null>(null);
@@ -90,7 +92,7 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
             <TerminalTab settings={settings} onChange={handleSetSetting} />
           )}
           {tab === "interface" && (
-            <InterfaceTab settings={settings} onChange={handleSetSetting} />
+            <InterfaceTab settings={settings} onChange={handleSetSetting} onOpenAbout={onOpenAbout} />
           )}
           {tab === "agents" && (
             <AgentsTab settings={settings} onChange={handleSetSetting} showToast={showToast} />
@@ -558,9 +560,11 @@ function AgentsTab({
 function InterfaceTab({
   settings,
   onChange,
+  onOpenAbout,
 }: {
   settings: Record<string, string>;
   onChange: (key: string, value: string) => void;
+  onOpenAbout: () => void;
 }) {
   const { t } = useTranslation();
   const { showToast } = useAppStore();
@@ -719,6 +723,18 @@ function InterfaceTab({
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="flex items-center justify-between pt-3 border-t border-border">
+        <span className="text-xs text-text-muted">
+          {APP_NAME} {t("about.version", { version: APP_VERSION })}
+        </span>
+        <button
+          className="px-3 py-1.5 text-xs rounded-lg border border-border bg-surface-0 text-text-primary hover:bg-surface-2 transition-colors"
+          onClick={onOpenAbout}
+        >
+          {t("about.title")}
+        </button>
       </div>
     </div>
   );

@@ -473,5 +473,12 @@
     "durSec": "{{value}} сек",
     "durMin": "{{value}} мин",
     "durHourMin": "{{hours}} сағ {{minutes}} мин"
+  },
+  "about": {
+    "title": "Бағдарлама туралы",
+    "version": "нұсқа {{version}}",
+    "description": "Білім базасы мен AI-көмекшісі кіріктірілген көп жобалы терминал менеджері.",
+    "site": "Сайт",
+    "github": "GitHub-тағы бастапқы код"
   }
 }

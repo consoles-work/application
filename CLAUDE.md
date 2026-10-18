@@ -14,7 +14,13 @@ npm run tauri dev        # dev-режим (hot reload фронта + перек�
 npm run tauri build      # сборка продакшн-бинарника под текущую ОС
 npm run dev              # только фронтенд в браузере (без Tauri, для UI-разработки)
 npm run build            # сборка фронтенда без Tauri
+npm run version:check    # текущая версия + проверка, что копии совпадают
+npm run version:bump -- patch|minor|major|X.Y.Z   # поднять версию (без git)
 ```
+
+Версия — только в `package.json` (`tauri.conf.json` ссылается на него, фронт берёт через `__APP_VERSION__`). Правила — `docs/RULES.md`, «Версии»; изменения — `CHANGELOG.md`.
+
+На macOS `tauri dev` подписывает dev-бинарник постоянным сертификатом (`scripts/dev-sign-run.sh` — cargo runner из `src-tauri/.cargo/config.toml`), чтобы macOS не считала каждую пересборку новым приложением. Сертификат — `CONSOLES_DEV_SIGN_IDENTITY` или первый из связки ключей.
 
 Первый `npm run tauri dev` занимает 3-5 минут (Cargo компилирует зависимости), последующие — 5-10 секунд.
 
@@ -124,6 +130,7 @@ src/                              — Frontend (TypeScript + React)
     i18n.ts                       — локализация (i18next)
     aiProviders.ts                — OpenAI + Anthropic, стриминг SSE
     serversMarkdown.ts            — публичный Markdown-отчёт по серверам (ПКМ воркспейса/проекта)
+    appInfo.ts                    — версия, ссылки на сайт и GitHub, openExternal
   components/
     Layout.tsx                    — 4 панели + resizable-сплиттеры
     TreePanel.tsx                 — дерево + поиск + Export/Import кнопки
@@ -133,6 +140,7 @@ src/                              — Frontend (TypeScript + React)
     SettingsDialog.tsx            — 4 вкладки настроек
     ExportDialog.tsx / ImportDialog.tsx
     CommandPalette.tsx, ContextMenu.tsx, Toast.tsx
+    AboutDialog.tsx               — «О программе» (меню macOS + Настройки → Интерфейс)
     dialogs/                      — Create/Edit диалоги
   types/index.ts                  — TypeScript-интерфейсы (зеркало Rust-структур)
   locales/ru.json en.json zh.json fr.json kk.json

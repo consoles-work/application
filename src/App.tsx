@@ -6,6 +6,8 @@ import { GlobalSearch } from "./components/GlobalSearch";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { LockScreen } from "./components/LockScreen";
 import { StatsDialog } from "./components/StatsDialog";
+import { AboutDialog } from "./components/AboutDialog";
+import { listen } from "@tauri-apps/api/event";
 import { startUsageTracking, setUsageEnabled, setUsagePaused } from "./lib/usageStats";
 import { useAppStore } from "./stores/appStore";
 import { loadAllWorkspaces, getSettings, loadAiSessions, createAiSession, isPasswordSet } from "./lib/tauriCommands";
@@ -109,6 +111,7 @@ function MainApp() {
   const [showSettings, setShowSettings] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   // Пока настройки не прочитаны, не знаем, включена ли статистика — не собираем
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
@@ -192,6 +195,12 @@ function MainApp() {
     return () => observer.disconnect();
   }, []);
 
+  // «О программе» из меню приложения macOS (commands.rs → show_about)
+  useEffect(() => {
+    const unlisten = listen("show-about", () => setShowAbout(true));
+    return () => { unlisten.then((fn) => fn()); };
+  }, []);
+
   // Глобальные горячие клавиши
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -271,8 +280,14 @@ function MainApp() {
       <ToastContainer />
       {showPalette && <CommandPalette onClose={() => setShowPalette(false)} />}
       {showGlobalSearch && <GlobalSearch onClose={() => setShowGlobalSearch(false)} />}
-      {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
+      {showSettings && (
+        <SettingsDialog
+          onClose={() => setShowSettings(false)}
+          onOpenAbout={() => { setShowSettings(false); setShowAbout(true); }}
+        />
+      )}
       {showStats && <StatsDialog onClose={() => setShowStats(false)} />}
+      {showAbout && <AboutDialog onClose={() => setShowAbout(false)} />}
     </>
   );
 }

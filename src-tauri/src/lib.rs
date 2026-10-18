@@ -81,12 +81,12 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            // Меню приложения: Cmd+Q через подтверждение выхода
+            // Меню приложения: «О программе» — свой диалог, Cmd+Q через подтверждение выхода
             install_app_menu(app.handle(), &lang)?;
-            app.on_menu_event(|app, event| {
-                if event.id() == "app_quit" {
-                    confirm_quit(app);
-                }
+            app.on_menu_event(|app, event| match event.id().as_ref() {
+                "app_about" => show_about(app),
+                "app_quit" => confirm_quit(app),
+                _ => {}
             });
 
             println!("✅ consoles.work started successfully");

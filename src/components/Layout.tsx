@@ -7,6 +7,7 @@ import { WikiPanel } from "./WikiPanel";
 import { AiPanel } from "./AiPanel";
 import { useTranslation } from "react-i18next";
 import { Bot, BarChart3 } from "lucide-react";
+import { APP_NAME, SITE_URL, displayUrl, openExternal } from "../lib/appInfo";
 
 interface LayoutProps {
   onOpenSettings: () => void;
@@ -103,9 +104,13 @@ export function Layout({ onOpenSettings, onOpenStats }: LayoutProps) {
     >
       {/* ── Title bar ── */}
       <div className="h-10 flex items-center px-4 bg-surface-1 border-b border-border drag-region shrink-0">
-        <span className="text-xs font-semibold text-text-secondary no-drag">
-          Consoles.work
-        </span>
+        <button
+          onClick={() => openExternal(SITE_URL)}
+          className="text-xs font-semibold text-text-secondary hover:text-accent hover:underline underline-offset-2 no-drag"
+          title={displayUrl(SITE_URL)}
+        >
+          {APP_NAME}
+        </button>
         <div className="flex-1" />
         <div className="flex gap-1 no-drag">
           <button

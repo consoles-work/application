@@ -686,6 +686,28 @@ pub fn tray_labels(lang: &str) -> (&'static str, &'static str) {
     }
 }
 
+/// Надпись пункта «О программе» в меню приложения macOS.
+fn about_label(lang: &str) -> &'static str {
+    match lang {
+        "en" => "About Consoles.work",
+        "zh" => "关于 Consoles.work",
+        "fr" => "À propos de Consoles.work",
+        "kk" => "Consoles.work туралы",
+        _    => "О программе Consoles.work",
+    }
+}
+
+/// Показать окно и открыть в нём диалог «О программе» (AboutDialog.tsx).
+pub fn show_about(app: &tauri::AppHandle) {
+    use tauri::{Emitter, Manager};
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.unminimize();
+        let _ = w.show();
+        let _ = w.set_focus();
+    }
+    let _ = app.emit("show-about", ());
+}
+
 // ── Подтверждение выхода ──
 
 /// Надписи диалога выхода: (заголовок, текст, «выйти», «отмена»)
@@ -739,6 +761,8 @@ pub fn confirm_quit(app: &tauri::AppHandle) {
 /// macOS: штатный пункт «Quit» (Cmd+Q) из меню по умолчанию завершает процесс
 /// напрямую, минуя приложение. Заменяем его своим пунктом с тем же
 /// сочетанием клавиш, который идёт через confirm_quit.
+/// Штатная панель «About» показывает только текст, без ссылок на сайт и GitHub, —
+/// первый пункт меняем на свой, открывающий AboutDialog (show_about).
 pub fn install_app_menu(app: &tauri::AppHandle, lang: &str) -> tauri::Result<()> {
     #[cfg(target_os = "macos")]
     {
@@ -746,6 +770,9 @@ pub fn install_app_menu(app: &tauri::AppHandle, lang: &str) -> tauri::Result<()>
         let (_, quit_label) = tray_labels(lang);
         let menu = Menu::default(app)?;
         if let Some(MenuItemKind::Submenu(app_submenu)) = menu.items()?.into_iter().next() {
+            // Первый пункт подменю приложения — PredefinedMenuItem::about
+            app_submenu.remove_at(0)?;
+            app_submenu.insert(&MenuItem::with_id(app, "app_about", about_label(lang), true, None::<&str>)?, 0)?;
             // Последний пункт подменю приложения — PredefinedMenuItem::quit
             if let Some(last) = app_submenu.items()?.last() {
                 app_submenu.remove(last)?;

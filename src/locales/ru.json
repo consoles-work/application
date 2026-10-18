@@ -473,5 +473,12 @@
     "durSec": "{{value}} сек",
     "durMin": "{{value}} мин",
     "durHourMin": "{{hours}} ч {{minutes}} мин"
+  },
+  "about": {
+    "title": "О программе",
+    "version": "версия {{version}}",
+    "description": "Менеджер терминалов для множества проектов со встроенной базой знаний и AI-ассистентом.",
+    "site": "Сайт",
+    "github": "Исходный код на GitHub"
   }
 }
