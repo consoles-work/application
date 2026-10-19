@@ -6,16 +6,19 @@ import { TerminalPanel } from "./TerminalPanel";
 import { WikiPanel } from "./WikiPanel";
 import { AiPanel } from "./AiPanel";
 import { useTranslation } from "react-i18next";
-import { Bot, BarChart3 } from "lucide-react";
+import { Bot, BarChart3, KeyRound } from "lucide-react";
 import { APP_NAME, SITE_URL, displayUrl, openExternal } from "../lib/appInfo";
 
 interface LayoutProps {
   onOpenSettings: () => void;
   /** Нет — статистика выключена в настройках, кнопку не показываем */
   onOpenStats?: () => void;
+  onOpenSshKeys?: () => void;
+  /** Критичных проблем SSH-ключей — точка у кнопки */
+  sshKeysAlert?: number;
 }
 
-export function Layout({ onOpenSettings, onOpenStats }: LayoutProps) {
+export function Layout({ onOpenSettings, onOpenStats, onOpenSshKeys, sshKeysAlert = 0 }: LayoutProps) {
   const {
     showTreePanel,
     showWikiPanel,
@@ -149,6 +152,16 @@ export function Layout({ onOpenSettings, onOpenStats }: LayoutProps) {
           >
             Wiki
           </button>
+          {onOpenSshKeys && (
+            <button
+              onClick={onOpenSshKeys}
+              className="relative px-2 py-1 rounded text-2xs text-text-muted hover:text-text-secondary flex items-center"
+              title={sshKeysAlert > 0 ? t("sshKeys.alertTooltip", { count: sshKeysAlert }) : t("sshKeys.title")}
+            >
+              <KeyRound className="w-3 h-3" />
+              {sshKeysAlert > 0 && <span className="absolute top-0.5 right-1 w-1.5 h-1.5 rounded-full bg-red-500" />}
+            </button>
+          )}
           {onOpenStats && (
             <button
               onClick={onOpenStats}

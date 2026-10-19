@@ -10,7 +10,7 @@
 // Возврат: Promise с результатом из Rust
 
 import { invoke } from "@tauri-apps/api/core";
-import type { Workspace, Project, ConsoleConfig, QuickCommand, WikiPage, AiSession, AiMessage } from "../types";
+import type { Workspace, Project, ConsoleConfig, QuickCommand, WikiPage, AiSession, AiMessage, SshKeyFile, SshKeysReport } from "../types";
 
 export interface DbInfo {
   path: string;
@@ -470,4 +470,22 @@ export async function getUsageStats(sinceDay: string): Promise<UsageStat[]> {
 
 export async function clearUsageStats(): Promise<void> {
   return invoke("clear_usage_stats");
+}
+
+// ── SSH-ключи (локальный аудит, к серверам не подключаемся) ──
+
+export async function scanSshKeys(extraPaths: string[]): Promise<SshKeysReport> {
+  return invoke<SshKeysReport>("scan_ssh_keys", { extraPaths });
+}
+
+export async function inspectSshKey(path: string): Promise<SshKeyFile> {
+  return invoke<SshKeyFile>("inspect_ssh_key", { path });
+}
+
+export async function fixSshPermissions(path: string): Promise<void> {
+  return invoke("fix_ssh_permissions", { path });
+}
+
+export async function generateSshKey(name: string, comment: string, passphrase: string): Promise<SshKeyFile> {
+  return invoke<SshKeyFile>("generate_ssh_key", { name, comment, passphrase });
 }

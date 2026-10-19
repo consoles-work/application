@@ -374,6 +374,36 @@ pub fn clear_usage_stats() -> Result<(), String> {
     crate::db::clear_usage_stats()
 }
 
+// ══════════════════════════════════════════════
+// Команды: SSH-ключи (локальный аудит, к серверам не подключаемся)
+// ══════════════════════════════════════════════
+
+// async — не в главном потоке: ssh-add и чтение файлов не должны подвешивать окно
+
+/// Скан ~/.ssh, ~/.ssh/config и ssh-agent; `extra_paths` — ключи из консолей
+#[tauri::command]
+pub async fn scan_ssh_keys(extra_paths: Vec<String>) -> crate::ssh_keys::SshKeysReport {
+    crate::ssh_keys::scan(&extra_paths)
+}
+
+/// Сведения об одном ключе — подсказка под полем ключа в форме консоли
+#[tauri::command]
+pub async fn inspect_ssh_key(path: String) -> crate::ssh_keys::SshKeyFile {
+    crate::ssh_keys::inspect(&path)
+}
+
+/// chmod 600 на приватный ключ / 700 на ~/.ssh
+#[tauri::command]
+pub fn fix_ssh_permissions(path: String) -> Result<(), String> {
+    crate::ssh_keys::fix_permissions(&path)
+}
+
+/// Новый ED25519-ключ в ~/.ssh (шифрование passphrase через bcrypt-pbkdf — около секунды)
+#[tauri::command]
+pub async fn generate_ssh_key(name: String, comment: String, passphrase: String) -> Result<crate::ssh_keys::SshKeyFile, String> {
+    crate::ssh_keys::generate(&name, &comment, &passphrase)
+}
+
 /// Удалить консоль
 #[tauri::command]
 pub fn delete_console(id: String) -> Result<(), String> {

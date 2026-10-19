@@ -4,12 +4,14 @@ import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { Ban } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../../stores/appStore";
-import type { ConsoleConfig, QuickCommandColor } from "../../types";
+import type { ConsoleConfig, QuickCommandColor, SshKeyFile } from "../../types";
 import { CopyConnectionButton } from "../CopyConnectionButton";
 import { UnderlineTabs } from "../UnderlineTabs";
 import { SuggestInput, type SuggestOption } from "../SuggestInput";
 import { QUICK_COMMAND_COLORS } from "../../lib/quickCommandColors";
 import { CONSOLE_ICONS, ConsoleIconTile } from "../../lib/consoleIcons";
+import { inspectSshKey } from "../../lib/tauriCommands";
+import { permsTooOpen, formatMode } from "../../lib/sshAudit";
 
 /** Значения формы консоли — общие для создания и редактирования */
 export interface ConsoleFormValues {
@@ -91,6 +93,26 @@ export function ConsoleForm({ title, initial, submitLabel, submittingLabel, exis
   const { t } = useTranslation();
 
   useEffect(() => { if (autoFocusName) nameRef.current?.focus(); }, [autoFocusName]);
+
+  // Подсказка под полем ключа: файл есть ли, защищён ли passphrase, права (локально, раздел «SSH-ключи»)
+  const [keyInfo, setKeyInfo] = useState<SshKeyFile | null>(null);
+  useEffect(() => {
+    const path = v.sshKeyPath.trim();
+    if (v.connectionType !== "ssh" || !path) { setKeyInfo(null); return; }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      inspectSshKey(path).then((k) => { if (!cancelled) setKeyInfo(k); }).catch(() => {});
+    }, 400);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [v.sshKeyPath, v.connectionType]);
+  const keyHints: { text: string; tone: "red" | "amber" | "muted" }[] = [];
+  if (keyInfo) {
+    if (!keyInfo.privateExists && !keyInfo.publicExists) keyHints.push({ text: t("sshKeys.hintMissing"), tone: "red" });
+    else if (!keyInfo.privateExists) keyHints.push({ text: t("sshKeys.hintNoPrivate"), tone: "amber" });
+    if (keyInfo.privateExists && permsTooOpen(keyInfo.mode)) keyHints.push({ text: t("sshKeys.hintPerms", { mode: formatMode(keyInfo.mode) }), tone: "red" });
+    if (keyInfo.privateExists && keyInfo.encrypted === false) keyHints.push({ text: t("sshKeys.hintNoPassphrase"), tone: "amber" });
+    if (keyInfo.encrypted === true && !v.sshPassphrase && !keyInfo.agentLoaded) keyHints.push({ text: t("sshKeys.hintNeedPassphrase"), tone: "muted" });
+  }
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -248,6 +270,11 @@ export function ConsoleForm({ title, initial, submitLabel, submittingLabel, exis
                         {t("common.browse")}
                       </button>
                     </div>
+                    {keyHints.map((h) => (
+                      <div key={h.text} className={`text-2xs mt-1 ${h.tone === "red" ? "text-red-500" : h.tone === "amber" ? "text-amber-500" : "text-text-muted"}`}>
+                        {h.text}
+                      </div>
+                    ))}
                   </div>
 
                   {/* Passphrase — только когда выбран ключ */}

@@ -480,5 +480,246 @@
     "description": "Gestionnaire de terminaux multi-projets avec base de connaissances et assistant IA intégrés.",
     "site": "Site web",
     "github": "Code source sur GitHub"
+  },
+  "sshKeys": {
+    "title": "Clés SSH",
+    "subtitle": "Vérification locale : ~/.ssh, ~/.ssh/config, ssh-agent et consoles — aucune connexion aux serveurs",
+    "alertTooltip": "Clés SSH : {{count}} problème(s) critique(s)",
+    "refresh": "Actualiser",
+    "loading": "Vérification des clés…",
+    "loadError": "Impossible de vérifier les clés : {{error}}",
+    "footer": "L’application ne fait que lire les fichiers. Elle n’écrit sur le disque que via « Corriger les droits » et « Créer une clé ».",
+    "tileKeys": "Clés",
+    "tileKeysSub": "dans l’agent : {{agent}} · {{agentState}}",
+    "agent": {
+      "ok": "agent actif",
+      "empty": "agent vide",
+      "unavailable": "agent indisponible"
+    },
+    "tileNoPassphrase": "Sans phrase secrète",
+    "tileNoPassphraseSub": "sur {{total}} clés privées",
+    "tileProblems": "Problèmes",
+    "tileProblemsSub": "critiques : {{critical}} · info : {{info}}",
+    "tileConsoles": "Consoles sans clé propre",
+    "tileConsolesSub": "sur {{total}} consoles SSH",
+    "tabIssues": "Problèmes · {{count}}",
+    "tabKeys": "Clés · {{count}}",
+    "tabConsoles": "Consoles · {{count}}",
+    "tabConfig": "~/.ssh/config · {{count}}",
+    "noIssues": "Aucun problème détecté",
+    "fixLabel": "Que faire :",
+    "fixPerms": "Corriger les droits",
+    "permsFixed": "Droits corrigés",
+    "permsFixError": "Impossible de modifier les droits : {{error}}",
+    "goToConsole": "Afficher dans l’arbre",
+    "editConsole": "Modifier la console",
+    "keysHint": "Clés de {{dir}}, ainsi que celles indiquées dans les consoles et dans ~/.ssh/config",
+    "noKeys": "Aucune clé trouvée",
+    "usedBy": "consoles : {{count}}",
+    "notUsed": "non utilisée",
+    "notUsedLong": "Aucune console ni aucun Host de ~/.ssh/config n’utilise cette clé",
+    "usedByTitle": "Utilisée par",
+    "viaDefault": "comme clé par défaut",
+    "viaConfig": "via ~/.ssh/config",
+    "score": {
+      "strong": "robuste",
+      "ok": "correcte",
+      "weak": "faible",
+      "unsafe": "dangereuse"
+    },
+    "scoreHint": "Note 0–100 : algorithme et taille de clé, +5 avec phrase secrète, −10 sans",
+    "encrypted": "Protégée par une phrase secrète",
+    "notEncrypted": "Sans phrase secrète",
+    "inAgent": "dans l’agent",
+    "fPath": "Chemin",
+    "fFingerprint": "Empreinte",
+    "fComment": "Commentaire",
+    "fPassphrase": "Phrase secrète",
+    "fFormat": "Format",
+    "fMode": "Droits",
+    "fModified": "Modifiée",
+    "fAgent": "Dans ssh-agent",
+    "fError": "Erreur",
+    "yes": "oui",
+    "no": "non",
+    "unknown": "inconnu",
+    "noPrivate": "pas de clé privée",
+    "noPub": "pas de .pub",
+    "randomartHint": "Empreinte visuelle (comme ssh-keygen -lv) : pratique pour comparer les clés à l’œil",
+    "copyPublic": "Copier la clé publique",
+    "copyFingerprint": "Copier l’empreinte",
+    "copied": "Copié : {{what}}",
+    "whatPublic": "clé publique",
+    "whatFingerprint": "empreinte",
+    "create": "Créer une clé",
+    "createTitle": "Nouvelle clé ED25519",
+    "createHint": "La clé est créée dans ~/.ssh sur cet ordinateur. Elle n’est envoyée à aucun serveur : ajoutez-y la clé publique vous-même.",
+    "createName": "Nom du fichier",
+    "createComment": "Commentaire",
+    "createCommentPlaceholder": "par ex. work-laptop",
+    "createPassphrase": "Phrase secrète",
+    "createRepeat": "Répéter",
+    "createGenerate": "Générer",
+    "createGenerateHint": "Phrase secrète aléatoire de 24 caractères",
+    "createMismatch": "Ne correspond pas",
+    "createBadName": "Lettres latines, chiffres et _ . - @, sans .pub à la fin",
+    "createClash": "Un fichier de ce nom existe déjà",
+    "createNoPassphrase": "Sans phrase secrète, le fichier de clé suffit à accéder aux serveurs. Mieux vaut en définir une — l’application la saisit pour vous si elle est enregistrée dans la console.",
+    "createRemember": "Conservez la phrase secrète : elle ne peut pas être récupérée. Vous pouvez l’enregistrer dans le champ « Mot de passe de la clé » de la console.",
+    "createSubmit": "Créer",
+    "creating": "Création…",
+    "created": "Clé créée : {{path}}",
+    "createError": "Impossible de créer la clé : {{error}}",
+    "noConsoles": "Aucune console SSH pour l’instant",
+    "colConsole": "Console",
+    "colHost": "Hôte",
+    "colKey": "Clé",
+    "colFlags": "Particularités",
+    "via": {
+      "console": "propre",
+      "config": "config",
+      "default": "par défaut"
+    },
+    "viaPassword": "mot de passe seul",
+    "viaAgentOnly": "ssh-agent seul",
+    "flagNoHostCheck": "sans vérif. d’hôte",
+    "flagPassword": "+ mot de passe",
+    "noConfig": "{{path}} n’existe pas",
+    "configHint": "{{path}} et fichiers inclus via Include — lecture seule",
+    "configGlobal": "Avant le premier Host (tous les hôtes)",
+    "configConsoles": "Consoles :",
+    "fileMissing": "fichier introuvable",
+    "hintMissing": "Fichier de clé introuvable",
+    "hintNoPrivate": "Seule la clé publique (.pub) existe — la connexion nécessite la clé privée",
+    "hintPerms": "Droits {{mode}} : ssh refusera la clé, 600 est requis (Clés SSH → Corriger les droits)",
+    "hintNoPassphrase": "Clé sans phrase secrète — le fichier seul donne l’accès",
+    "hintNeedPassphrase": "Clé protégée par une phrase secrète — saisissez-la ci-dessous, sinon ssh la demandera à la connexion",
+    "issue": {
+      "agentManyKeys": {
+        "title": "ssh-agent contient {{count}} clés",
+        "why": "Si une console n’a pas de clé propre ni IdentitiesOnly=yes, ssh propose les clés de l’agent une à une. Après ~6 essais le serveur coupe : « Too many authentication failures ».",
+        "fix": "Indiquez une clé pour les consoles et ajoutez -o IdentitiesOnly=yes aux arguments SSH, ou retirez les clés inutiles de l’agent (ssh-add -d)."
+      },
+      "configIdentityMissing": {
+        "title": "Host {{host}} : IdentityFile {{path}} introuvable",
+        "why": "ssh ignore cette clé et en essaie d’autres — la connexion échoue ou utilise une autre clé.",
+        "fix": "Corrigez le chemin dans {{file}}, ligne {{line}}, ou supprimez la ligne."
+      },
+      "configNoHostCheck": {
+        "title": "Host {{host}} : vérification de la clé serveur désactivée",
+        "why": "StrictHostKeyChecking no ou UserKnownHostsFile /dev/null — ssh ne remarquera pas un serveur usurpé (attaque de l’homme du milieu).",
+        "fix": "Supprimez ces directives ({{file}}, ligne {{line}}). StrictHostKeyChecking accept-new suffit pour les nouveaux serveurs."
+      },
+      "configForwardAgent": {
+        "title": "Host {{host}} : transfert d’agent activé",
+        "why": "Pendant la connexion, root ou un attaquant sur le serveur peut utiliser votre ssh-agent pour se connecter ailleurs avec vos clés.",
+        "fix": "Supprimez ForwardAgent ({{file}}, ligne {{line}}). Pour rebondir par un serveur intermédiaire, utilisez ProxyJump."
+      },
+      "configForwardAgentAll": {
+        "title": "Transfert d’agent activé pour tous les hôtes",
+        "why": "ForwardAgent dans Host * (ou avant le premier Host) expose votre ssh-agent à chaque serveur où vous vous connectez.",
+        "fix": "Supprimez ForwardAgent du bloc commun ({{file}}, ligne {{line}}) ; si besoin, activez-le seulement pour un hôte de confiance précis."
+      },
+      "consoleDangerWeakKey": {
+        "title": "La console de production « {{console}} » utilise la clé non protégée {{key}}",
+        "why": "La console est marquée production, mais sa clé est sans phrase secrète ou faible : qui obtient le fichier obtient la production.",
+        "fix": "Définissez une phrase secrète (ssh-keygen -p -f <clé>) et enregistrez-la dans la console, ou utilisez une clé ED25519 distincte avec phrase secrète pour la production."
+      },
+      "consoleDefaultKeys": {
+        "title": "« {{console}} » : aucune clé indiquée",
+        "why": "ssh essaie les clés par défaut ({{count}} dans ~/.ssh) et toutes les clés de l’agent — les réglages ne montrent pas quelle clé sert.",
+        "fix": "Indiquez une clé dans les réglages de la console pour savoir quelle clé est utilisée où."
+      },
+      "consoleForwardAgent": {
+        "title": "« {{console}} » : transfert d’agent (-A)",
+        "why": "Tant que la session est ouverte, root ou un attaquant sur le serveur peut utiliser votre ssh-agent.",
+        "fix": "Retirez -A / ForwardAgent=yes des arguments SSH ; pour rebondir, utilisez -J (ProxyJump)."
+      },
+      "consoleKeyMissing": {
+        "title": "« {{console}} » : fichier de clé introuvable",
+        "why": "La console indique {{path}}, mais ce fichier n’existe pas — ssh continue sans lui ou demande un mot de passe.",
+        "fix": "Choisissez une clé existante dans les réglages de la console."
+      },
+      "consoleKeyNoPrivate": {
+        "title": "« {{console}} » : seule la clé publique existe",
+        "why": "La connexion nécessite la clé privée, mais {{path}} n’a qu’un .pub et la clé n’est pas dans l’agent.",
+        "fix": "Indiquez la clé privée (le fichier sans .pub) ou chargez la clé dans l’agent."
+      },
+      "consoleNoHostCheck": {
+        "title": "« {{console}} » : vérification de la clé serveur désactivée",
+        "why": "StrictHostKeyChecking=no ou UserKnownHostsFile=/dev/null dans les arguments — ssh ne remarquera pas un serveur usurpé.",
+        "fix": "Supprimez ces options. L’application accepte déjà les nouveaux serveurs automatiquement (accept-new)."
+      },
+      "consolePassphraseMissing": {
+        "title": "« {{console}} » : phrase secrète de {{key}} non enregistrée",
+        "why": "La clé est chiffrée et absente de l’agent — ssh demandera la phrase secrète à chaque connexion.",
+        "fix": "Saisissez-la dans le champ « Mot de passe de la clé » — l’application la fournira elle-même."
+      },
+      "consolePassphraseUnused": {
+        "title": "« {{console}} » : phrase secrète enregistrée, mais {{key}} n’est pas chiffrée",
+        "why": "Cette clé n’a pas besoin de phrase secrète — elle a sans doute été remplacée ou sa protection retirée.",
+        "fix": "Vérifiez que c’est la bonne clé ; si oui, définissez-lui une phrase secrète ou videz le champ « Mot de passe de la clé »."
+      },
+      "consolePasswordOnly": {
+        "title": "« {{console}} » : connexion par mot de passe uniquement",
+        "why": "Un mot de passe peut être deviné ou intercepté par un serveur usurpé ; une clé est plus sûre et n’est jamais envoyée au serveur.",
+        "fix": "Créez une clé, ajoutez-la au serveur et indiquez-la dans la console (le mot de passe peut rester en secours)."
+      },
+      "keyDsa": {
+        "title": "{{key}} : clé DSA",
+        "why": "DSA est jugé non sûr et désactivé depuis OpenSSH 7.0 — beaucoup de serveurs la refuseront.",
+        "fix": "Créez une clé ED25519 et remplacez celle-ci."
+      },
+      "keyDuplicate": {
+        "title": "{{key}} : la même clé se trouve aussi dans {{others}}",
+        "why": "Une même clé sous plusieurs noms : facile de changer la phrase secrète ou les droits d’un fichier et d’oublier l’autre.",
+        "fix": "Gardez un seul fichier et utilisez-le dans toutes les consoles."
+      },
+      "keyMultiWorkspace": {
+        "title": "{{key}} : utilisée dans {{count}} espaces de travail",
+        "why": "Une clé ouvre des serveurs de zones différentes (perso, travail, clients) : une fuite ouvre tout, et on ne peut pas révoquer l’accès pour une seule zone.",
+        "fix": "Utilisez une clé par zone de confiance (par ex. par espace de travail) et migrez les consoles progressivement."
+      },
+      "keyNoPassphrase": {
+        "title": "{{key}} : sans phrase secrète",
+        "why": "Le fichier de clé est un accès prêt à l’emploi : un portable volé, une sauvegarde ou un logiciel malveillant entre sur tous les serveurs de cette clé.",
+        "fix": "ssh-keygen -p -f {{path}} — définir une phrase secrète (rien à changer sur les serveurs), puis l’enregistrer dans les consoles."
+      },
+      "keyPermsOpen": {
+        "title": "{{key}} : droits {{mode}} — ssh refusera la clé",
+        "why": "La clé privée est lisible par d’autres. ssh refuse de l’utiliser (« UNPROTECTED PRIVATE KEY FILE »), et les autres utilisateurs peuvent la lire.",
+        "fix": "Droits 600 — bouton « Corriger les droits » ou chmod 600 {{path}}."
+      },
+      "keyPrivateMissing": {
+        "title": "{{key}} : clé privée absente",
+        "why": "La clé est indiquée dans une console ou ~/.ssh/config, mais seul le .pub existe et elle n’est pas dans l’agent — impossible de s’en servir.",
+        "fix": "Remettez la clé privée en place ou indiquez-en une autre."
+      },
+      "keyRsa2048": {
+        "title": "{{key}} : RSA 2048",
+        "why": "Encore acceptable, mais cette taille vieillit ; ED25519 est plus courte, plus rapide et plus sûre.",
+        "fix": "Utilisez ED25519 pour les nouveaux serveurs et remplacez cette clé à l’occasion."
+      },
+      "keyRsaShort": {
+        "title": "{{key}} : RSA {{bits}} — trop courte",
+        "why": "RSA sous 2048 bits n’est pas sûr ; OpenSSH récent refuse ces clés.",
+        "fix": "Créez une clé ED25519 et remplacez celle-ci."
+      },
+      "keyUnreadable": {
+        "title": "{{key}} : illisible",
+        "why": "Le fichier ressemble à une clé mais n’a pas pu être lu : {{error}}.",
+        "fix": "Vérifiez le fichier : ssh-keygen -l -f {{path}}."
+      },
+      "keyUnused": {
+        "title": "{{key}} : non utilisée",
+        "why": "La clé n’est indiquée dans aucune console ni dans ~/.ssh/config. Les clés oubliées sont un risque de plus.",
+        "fix": "Si elle est inutile, supprimez-la (et retirez-la des serveurs où elle est autorisée) ; sinon indiquez-la dans les consoles."
+      },
+      "sshDirPerms": {
+        "title": "{{path}} : droits {{mode}}",
+        "why": "Le dossier des clés est accessible aux autres utilisateurs, et ssh peut refuser de lire un config avec de tels droits.",
+        "fix": "Droits 700 — bouton « Corriger les droits » ou chmod 700 ~/.ssh."
+      }
+    }
   }
 }

@@ -85,6 +85,7 @@ SSH passphrase автоподставляется через `ssh-add` с `SSH_A
 - **AI-панель**: `AiPanel.tsx` — чат с историей в SQLite, стриминг SSE, позиция right/bottom (resizable). Провайдеры: OpenAI, Anthropic (`src/lib/aiProviders.ts`). API-ключи хранятся в зашифрованной SQLite как `ai.apiKey.openai` / `ai.apiKey.anthropic`.
 - **Локализация**: i18next, 5 языков (ru/en/zh/fr/kk), файлы `src/locales/*.json`.
 - **Темы**: 18 тем (9 тёмных + 9 светлых, флаг `dark` у темы), CSS-переменные, мгновенная смена. Функции в `src/lib/themes.ts`.
+- **SSH-ключи**: `src-tauri/src/ssh_keys.rs` — локальный скан `~/.ssh`, файлов ключей из консолей и `IdentityFile`, разбор `~/.ssh/config` (+ `Include`), `ssh-add -l`; формат и шифрование ключа — по заголовку файла, отпечаток и randomart — свой код (совпадает с `ssh-keygen`), создание ED25519 — крейт `ssh-key`. Команды `scan_ssh_keys`, `inspect_ssh_key`, `fix_ssh_permissions`, `generate_ssh_key`. Аудит — `src/lib/sshAudit.ts` (чистые функции), окно — `SshKeysDialog.tsx`. К серверам не подключается.
 
 ### Важные особенности IPC (camelCase)
 
@@ -131,6 +132,7 @@ src/                              — Frontend (TypeScript + React)
     aiProviders.ts                — OpenAI + Anthropic, стриминг SSE
     serversMarkdown.ts            — публичный Markdown-отчёт по серверам (ПКМ воркспейса/проекта)
     appInfo.ts                    — версия, ссылки на сайт и GitHub, openExternal
+    sshAudit.ts                   — аудит SSH-ключей и консолей для окна «SSH-ключи»
   components/
     Layout.tsx                    — 4 панели + resizable-сплиттеры
     TreePanel.tsx                 — дерево + поиск + Export/Import кнопки
@@ -141,6 +143,7 @@ src/                              — Frontend (TypeScript + React)
     ExportDialog.tsx / ImportDialog.tsx
     CommandPalette.tsx, ContextMenu.tsx, Toast.tsx
     AboutDialog.tsx               — «О программе» (меню macOS + Настройки → Интерфейс)
+    SshKeysDialog.tsx             — «SSH-ключи»: инвентаризация и аудит (кнопка с ключом в заголовке)
     dialogs/                      — Create/Edit диалоги
   types/index.ts                  — TypeScript-интерфейсы (зеркало Rust-структур)
   locales/ru.json en.json zh.json fr.json kk.json
@@ -153,6 +156,7 @@ src-tauri/src/                    — Backend (Rust)
   db.rs                           — SQLite CRUD через rusqlite (SQLCipher)
   pty_manager.rs                  — PTY-сессии (portable-pty), SSH passphrase/password
   export.rs                       — экспорт/импорт .dchub (AES-256-GCM)
+  ssh_keys.rs                     — SSH-ключи: скан, ~/.ssh/config, агент, права, создание ключа
 
 src-tauri/
   build.rs                        — встраивает DB_ENCRYPTION_KEY в бинарник

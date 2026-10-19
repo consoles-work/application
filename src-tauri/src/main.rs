@@ -22,6 +22,7 @@ mod pty_manager; // src/pty_manager.rs — управление терминал
 mod export;    // src/export.rs — экспорт/импорт .dchub
 mod ai_local;  // src/ai_local.rs — локальный движок: claude CLI подпроцессом
 mod security;  // src/security.rs — пароль на вход (Argon2id-хеш)
+mod ssh_keys;  // src/ssh_keys.rs — раздел «SSH-ключи»: инвентаризация и аудит
 
 // Подключаем публичные функции из модуля commands
 use commands::*;
@@ -142,6 +143,12 @@ pub fn run() {
             record_usage_stats,
             get_usage_stats,
             clear_usage_stats,
+
+            // SSH-ключи
+            scan_ssh_keys,
+            inspect_ssh_key,
+            fix_ssh_permissions,
+            generate_ssh_key,
 
             // PTY (терминал)
             spawn_pty,

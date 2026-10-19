@@ -1,6 +1,6 @@
 # DevConsole Hub — Статус проекта
 
-> Последнее обновление: 2026-10-18 (постоянная подпись dev-сборки на macOS; ссылка на consoles.work в заголовке, диалог «О программе» с сайтом и GitHub, версия в одном месте + `npm run version:bump`, CHANGELOG.md, версия 0.2.0; крестик закрытия виден на всех вкладках терминала; запуск из «Программ»/Dock показывает окно, спрятанное в трей; настройки воркспейса и проекта: иконка/цвет после создания, из меню проекта убраны VS Code/Finder; README актуализирован; диалог консоли: вкладки, хостинг из списка, иконка и цвет консоли; окно запоминает размер; Tauri 2.12; статистика использования: окно со временем по проектам, вводом и быстрыми командами; счётчик запусков быстрых команд и сэкономленное время; быстрые команды консоли, подтверждение выхода; этап 19 — ключ БД из пароля, запланирован)
+> Последнее обновление: 2026-10-19 (раздел «SSH-ключи»: инвентаризация и аудит ключей, консолей и ~/.ssh/config, создание ключа; исследование по мотивам Purple; постоянная подпись dev-сборки на macOS; ссылка на consoles.work в заголовке, диалог «О программе» с сайтом и GitHub, версия в одном месте + `npm run version:bump`, CHANGELOG.md, версия 0.2.0; крестик закрытия виден на всех вкладках терминала; запуск из «Программ»/Dock показывает окно, спрятанное в трей; настройки воркспейса и проекта: иконка/цвет после создания, из меню проекта убраны VS Code/Finder; README актуализирован; диалог консоли: вкладки, хостинг из списка, иконка и цвет консоли; окно запоминает размер; Tauri 2.12; статистика использования: окно со временем по проектам, вводом и быстрыми командами; счётчик запусков быстрых команд и сэкономленное время; быстрые команды консоли, подтверждение выхода; этап 19 — ключ БД из пароля, запланирован)
 
 ---
 
@@ -28,8 +28,10 @@
 | `src/lib/quickCommandStats.ts` | ✅ Готово | Оценка сэкономленного быстрыми командами времени: `TYPING_CHARS_PER_MINUTE` (200), `sumQuickCommandStats`, `formatSavedTime` |
 | `src/lib/usageStats.ts` | ✅ Готово | Трекер статистики: `METRICS`, `trackUsage`, `trackTerminalInput`, `flushUsage` (пакет раз в 30 с), `startUsageTracking` (время: окно / активно / консоль), `setUsageEnabled` / `setUsagePaused` |
 | `src/components/StatsDialog.tsx` | ✅ Готово | Окно статистики: периоды, плитки, кольцо по проектам, столбики по часам/дням, таблица консолей, очистка |
+| `src/lib/sshAudit.ts` | ✅ Готово | Аудит SSH: `auditSsh(report, workspaces)` — фактический ключ консоли (свой → `IdentityFile` → по умолчанию), 24 проверки с уровнем, `keyScore`, `hostMatches` (шаблоны `Host`) |
+| `src/components/SshKeysDialog.tsx` | ✅ Готово | Окно «SSH-ключи»: плитки, вкладки Проблемы / Ключи / Консоли / `~/.ssh/config`, копирование ключа и отпечатка, исправление прав, создание ED25519, переход к консоли; `quickSshAudit()` для индикатора в заголовке |
 | `src/lib/serversMarkdown.ts` | ✅ Готово | `buildServersMarkdown` — публичный Markdown-отчёт по SSH-серверам воркспейса/проекта; колонка «Хостинг» только если заполнена |
-| `src/components/Layout.tsx` | ✅ Готово | Четырёхпанельный layout с resizable сплиттерами + кнопка Settings в titlebar; **кнопка 📊 статистики (если `stats.enabled`)** |
+| `src/components/Layout.tsx` | ✅ Готово | Четырёхпанельный layout с resizable сплиттерами + кнопка Settings в titlebar; **кнопка 📊 статистики (если `stats.enabled`)**; кнопка «SSH-ключи» с красной точкой при критичных проблемах |
 | `src/components/TreePanel.tsx` | ✅ Готово | Дерево + раскрытие + контекстное меню + inline rename (F2) + danger/ssh badge + клонирование + поиск + кнопки Export/Import + **drag-and-drop консолей (mouse-event, ghost-портал, подтверждение)** |
 | `src/components/TerminalPanel.tsx` | ✅ Готово | xterm.js + PTY + danger-баннер + SSH + startup + динамические настройки; индикатор-точка при выделении; `reconnectKey` в key-пропе; повторные fit() на 100ms/400ms при открытии и 200ms при смене вкладки; **контекстное меню по ПКМ (`TerminalContextMenu`): Копировать / Вставить / Выделить всё / Очистить строку / Очистить экран / Сбросить терминал; горячие клавиши Cmd+C/Cmd+V; буфер через `navigator.clipboard`** |
 | `src/components/WikiPanel.tsx` | ✅ Готово | TipTap редактор + привязка к узлу + автосохранение debounce + теги + поиск по wiki (FTS5) |
@@ -42,7 +44,7 @@
 | `src/components/dialogs/CreateProjectDialog.tsx` | ✅ Готово | Имя + Browse + shell + emoji + цвет + danger-чекбокс |
 | `src/components/dialogs/CreateConsoleDialog.tsx` | ✅ Готово | Тонкая обёртка над `ConsoleForm`: SSH по умолчанию, фокус на имени, `createConsole` + `setNodeDanger` |
 | `src/components/dialogs/EditConsoleDialog.tsx` | ✅ Готово | Тонкая обёртка над `ConsoleForm`: `updateConsoleConfig` + `setNodeDanger`, кнопка копирования подключения |
-| `src/components/dialogs/ConsoleForm.tsx` | ✅ Готово | Общая форма консоли: вкладки Основное (имя, тип, SSH) / Запуск (стартовые команды, доп. аргументы SSH) / Описание (хостинг-комбобокс, заметка) / Оформление (иконка, цвет, метка продакшн, превью строки дерева); шапка и кнопки закреплены |
+| `src/components/dialogs/ConsoleForm.tsx` | ✅ Готово | Общая форма консоли: вкладки Основное (имя, тип, SSH) / Запуск (стартовые команды, доп. аргументы SSH) / Описание (хостинг-комбобокс, заметка) / Оформление (иконка, цвет, метка продакшн, превью строки дерева); шапка и кнопки закреплены; подсказка под полем ключа (`inspect_ssh_key`) |
 | `src/components/UnderlineTabs.tsx` | ✅ Готово | Вкладки во всю ширину с переезжающей полоской-индикатором, точка на вкладках с заполненными полями |
 | `src/components/SuggestInput.tsx` | ✅ Готово | Поле с подсказками: своё значение или выбор из списка (фильтр, стрелки/Enter/Escape, счётчик использований) |
 | `src/lib/consoleIcons.tsx` | ✅ Готово | Набор иконок консолей (ключ → lucide), `consoleIcon()` / `<ConsoleIcon>` — иконка по типу подключения, если своя не выбрана |
@@ -57,10 +59,11 @@
 |------|--------|------------|
 | `src-tauri/src/main.rs` | ✅ Готово | ~50 IPC-команд; **single-instance** (первый плагин, фокусирует уже открытое окно); **трей** (`TrayIconBuilder`); **`CloseRequested`** читает `ui.closeToTray` — hide или exit; **autostart-плагин** подключён |
 | `src-tauri/src/lib.rs` | ✅ Готово | Синхронизирован с main.rs (мобильная/библиотечная сборка) |
-| `src-tauri/src/commands.rs` | ✅ Готово | CRUD дерева, PTY, wiki, danger, clone, settings, AI (8 команд), экспорт/импорт (3 команды), **`move_console`**, **`enable_autostart`/`disable_autostart`/`get_autostart_status`**, `ai_detect_bin`/`ai_check`/`ai_run`/`ai_cancel`, **`save_text_file`**, `set_console_quick_commands`, **`record_quick_command_run`**, `record_usage_stats` / `get_usage_stats` / `clear_usage_stats`; меню приложения macOS: свой пункт «О программе» (`show_about` → событие `show-about`) и Cmd+Q через `confirm_quit` |
+| `src-tauri/src/commands.rs` | ✅ Готово | CRUD дерева, PTY, wiki, danger, clone, settings, AI (8 команд), экспорт/импорт (3 команды), **`move_console`**, **`enable_autostart`/`disable_autostart`/`get_autostart_status`**, `ai_detect_bin`/`ai_check`/`ai_run`/`ai_cancel`, **`save_text_file`**, `set_console_quick_commands`, **`record_quick_command_run`**, `record_usage_stats` / `get_usage_stats` / `clear_usage_stats`; `scan_ssh_keys` / `inspect_ssh_key` / `fix_ssh_permissions` / `generate_ssh_key`; меню приложения macOS: свой пункт «О программе» (`show_about` → событие `show-about`) и Cmd+Q через `confirm_quit` |
 | `src-tauri/src/db.rs` | ✅ Готово | Полный CRUD + FTS5 + клонирование + settings + SQLCipher + AI-сессии + `set_node_expanded` + `ssh_passphrase` + `ssh_password` + `move_console` + **`get_setting_bool`** + `load_all_wiki_pages` + `delete_all_*` + `get_workspace_names` + таблица `usage_stats` (upsert, автоочистка > 31 дня) |
 | `src-tauri/src/export.rs` | ✅ Готово | Формат `.dchub`: AES-256-GCM + PBKDF2 (100k iter); `workspace_ids` фильтр; верификационная фраза; **экспорт/импорт настроек**; **исправлен импорт wiki** (id_map для перепривязки страниц) |
 | `src-tauri/src/pty_manager.rs` | ✅ Готово | portable-pty: spawn/write/resize/kill; UTF-8 локаль; SSH passphrase через `add_key_to_agent`; SSH пароль сервера через SSH_ASKPASS_REQUIRE=force |
+| `src-tauri/src/ssh_keys.rs` | ✅ Готово | SSH-ключи локально: скан `~/.ssh` и ключей консолей / `IdentityFile`, разбор `~/.ssh/config` (+ `Include`), `ssh-add -l`, формат и passphrase по заголовку, отпечаток и randomart как у `ssh-keygen`, `chmod 600/700`, создание ED25519 (крейт `ssh-key`); unit-тесты |
 | `src-tauri/build.rs` | ✅ Готово | Читает `.env`; встраивает `DB_ENCRYPTION_KEY` в бинарник через `env!()` |
 
 ### Frontend — AI панель
@@ -113,6 +116,14 @@
 ---
 
 ## История изменений
+
+### 2026-10-19 — Раздел «SSH-ключи» *(в рабочем дереве, не закоммичено)*
+
+- Окно с иконкой ключа в заголовке: ключи из `~/.ssh` и из консолей (тип, стойкость, passphrase, права, агент, randomart), какие консоли и `Host` из `~/.ssh/config` их используют, каким ключом консоль ходит на самом деле; 24 проверки с уровнем, объяснением и советом; красная точка у кнопки при критичных проблемах
+- Действия: скопировать публичный ключ / отпечаток, исправить права, создать ключ ED25519, перейти к консоли или открыть её настройки; подсказка под полем ключа в форме консоли
+- Только локально, к серверам не подключаемся (решение владельца); прежний план с раскаткой и ротацией на серверах отменён
+- `ssh_keys.rs` (новый), `commands.rs`, `main.rs` / `lib.rs` (`scan_ssh_keys`, `inspect_ssh_key`, `fix_ssh_permissions`, `generate_ssh_key`), `Cargo.toml` (`ssh-key`), `sshAudit.ts`, `SshKeysDialog.tsx`, `Layout.tsx`, `App.tsx`, `ConsoleForm.tsx`, `tauriCommands.ts`, `types/index.ts`, локали ×5; исследование — `docs/SSH_KEY_MANAGER_RESEARCH.md`
+- Подробно — PLAN.md, Этап 28
 
 ### 2026-10-18 — Постоянная подпись dev-сборки (macOS) *(в рабочем дереве, не закоммичено)*
 

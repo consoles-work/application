@@ -40,6 +40,10 @@ sha2 = "0.10"
 hmac = "0.12"
 rand = "0.8"
 
+# ── SSH-ключи: разбор .pub / приватных ключей OpenSSH, отпечатки, создание ED25519 ──
+# Свой разбор вместо ssh-keygen: не нужен внешний процесс, passphrase не попадает в argv
+ssh-key = { version = "0.6", default-features = false, features = ["std", "ed25519", "encryption", "rand_core"] }
+
 # ── Пароль на вход (Argon2id-хеш) ──
 argon2 = "0.5"
 

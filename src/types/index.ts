@@ -165,3 +165,64 @@ export const DEFAULT_SETTINGS: AppSettings = {
   tree_panel_width: 250,
   wiki_panel_width: 350,
 };
+
+// ── SSH-ключи (зеркало src-tauri/src/ssh_keys.rs) ──
+
+export interface SshKeyFile {
+  path: string;            // абсолютный путь к приватному ключу (без .pub) — идентификатор
+  displayPath: string;     // с ~ вместо домашней папки
+  name: string;
+  privateExists: boolean;
+  publicExists: boolean;
+  inSshDir: boolean;
+  keyType: string;         // ED25519 | RSA | ECDSA | DSA | ED25519-SK | ECDSA-SK | "" (не распознан)
+  bits: number;
+  fingerprint: string;     // SHA256:…
+  comment: string;
+  publicKey: string;       // строка публичного ключа OpenSSH
+  encrypted: boolean | null; // null — нет приватного ключа или формат неизвестен
+  privateFormat: string;   // openssh | pem | pkcs8 | unknown | ""
+  agentLoaded: boolean;
+  hasCertificate: boolean;
+  mode: number | null;     // права приватного ключа (unix)
+  modified: number | null; // секунды unix
+  randomart: string;
+  error: string;
+}
+
+export interface SshConfigIdentity {
+  raw: string;
+  path: string;            // пусто — путь с %-токенами, не раскрывается
+  exists: boolean;
+}
+
+export interface SshConfigHost {
+  patterns: string[];
+  isGlobal: boolean;       // директивы до первого Host — действуют на все хосты
+  isMatch: boolean;
+  file: string;
+  line: number;
+  hostName: string;
+  user: string;
+  port: string;
+  identityFiles: SshConfigIdentity[];
+  forwardAgent: string;
+  strictHostKeyChecking: string;
+  userKnownHostsFile: string;
+  identitiesOnly: string;
+  passwordAuthentication: string;
+}
+
+export interface SshKeysReport {
+  home: string;
+  sshDir: string;
+  sshDirExists: boolean;
+  sshDirMode: number | null;
+  keys: SshKeyFile[];
+  configPath: string;
+  configExists: boolean;
+  configHosts: SshConfigHost[];
+  agentStatus: "ok" | "empty" | "unavailable";
+  agentFingerprints: string[];
+  defaultIdentities: string[];
+}

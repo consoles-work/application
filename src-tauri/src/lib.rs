@@ -7,6 +7,7 @@ mod pty_manager;
 mod export;
 mod ai_local;
 mod security;
+mod ssh_keys;
 
 use commands::*;
 use tauri::Manager;
@@ -111,6 +112,12 @@ pub fn run() {
             record_usage_stats,
             get_usage_stats,
             clear_usage_stats,
+
+            // SSH-ключи
+            scan_ssh_keys,
+            inspect_ssh_key,
+            fix_ssh_permissions,
+            generate_ssh_key,
             spawn_pty,
             write_to_pty,
             resize_pty,

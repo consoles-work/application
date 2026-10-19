@@ -480,5 +480,246 @@
     "description": "多项目终端管理器，内置知识库和 AI 助手。",
     "site": "网站",
     "github": "GitHub 上的源代码"
+  },
+  "sshKeys": {
+    "title": "SSH 密钥",
+    "subtitle": "本地检查：~/.ssh、~/.ssh/config、ssh-agent 和控制台 — 不连接服务器",
+    "alertTooltip": "SSH 密钥：{{count}} 个严重问题",
+    "refresh": "刷新",
+    "loading": "正在检查密钥…",
+    "loadError": "无法检查密钥：{{error}}",
+    "footer": "应用只读取文件。只有点击“修复权限”和“创建密钥”时才会写入磁盘。",
+    "tileKeys": "密钥",
+    "tileKeysSub": "agent 中：{{agent}} · {{agentState}}",
+    "agent": {
+      "ok": "agent 运行中",
+      "empty": "agent 为空",
+      "unavailable": "agent 不可用"
+    },
+    "tileNoPassphrase": "无密码短语",
+    "tileNoPassphraseSub": "共 {{total}} 个私钥",
+    "tileProblems": "问题",
+    "tileProblemsSub": "严重：{{critical}} · 提示：{{info}}",
+    "tileConsoles": "未设置密钥的控制台",
+    "tileConsolesSub": "共 {{total}} 个 SSH 控制台",
+    "tabIssues": "问题 · {{count}}",
+    "tabKeys": "密钥 · {{count}}",
+    "tabConsoles": "控制台 · {{count}}",
+    "tabConfig": "~/.ssh/config · {{count}}",
+    "noIssues": "未发现问题",
+    "fixLabel": "处理方法：",
+    "fixPerms": "修复权限",
+    "permsFixed": "权限已修复",
+    "permsFixError": "无法修改权限：{{error}}",
+    "goToConsole": "在树中显示",
+    "editConsole": "编辑控制台",
+    "keysHint": "来自 {{dir}} 的密钥，以及控制台和 ~/.ssh/config 中指定的密钥",
+    "noKeys": "未找到密钥",
+    "usedBy": "控制台：{{count}}",
+    "notUsed": "未使用",
+    "notUsedLong": "没有任何控制台或 ~/.ssh/config 中的 Host 使用此密钥",
+    "usedByTitle": "使用位置",
+    "viaDefault": "作为默认密钥",
+    "viaConfig": "通过 ~/.ssh/config",
+    "score": {
+      "strong": "强",
+      "ok": "良好",
+      "weak": "弱",
+      "unsafe": "不安全"
+    },
+    "scoreHint": "评分 0–100：算法和密钥长度，有密码短语 +5，无则 −10",
+    "encrypted": "受密码短语保护",
+    "notEncrypted": "无密码短语",
+    "inAgent": "已在 agent",
+    "fPath": "路径",
+    "fFingerprint": "指纹",
+    "fComment": "注释",
+    "fPassphrase": "密码短语",
+    "fFormat": "格式",
+    "fMode": "权限",
+    "fModified": "修改时间",
+    "fAgent": "在 ssh-agent 中",
+    "fError": "错误",
+    "yes": "是",
+    "no": "否",
+    "unknown": "未知",
+    "noPrivate": "无私钥",
+    "noPub": "无 .pub",
+    "randomartHint": "可视化指纹（同 ssh-keygen -lv）：便于肉眼比对密钥",
+    "copyPublic": "复制公钥",
+    "copyFingerprint": "复制指纹",
+    "copied": "已复制：{{what}}",
+    "whatPublic": "公钥",
+    "whatFingerprint": "指纹",
+    "create": "创建密钥",
+    "createTitle": "新的 ED25519 密钥",
+    "createHint": "密钥创建在本机的 ~/.ssh 中，不会发送到服务器：请自行将公钥添加到服务器。",
+    "createName": "文件名",
+    "createComment": "注释",
+    "createCommentPlaceholder": "例如 work-laptop",
+    "createPassphrase": "密码短语",
+    "createRepeat": "重复",
+    "createGenerate": "生成",
+    "createGenerateHint": "随机生成 24 个字符的密码短语",
+    "createMismatch": "不一致",
+    "createBadName": "仅限拉丁字母、数字和 _ . - @，不能以 .pub 结尾",
+    "createClash": "同名文件已存在",
+    "createNoPassphrase": "没有密码短语时，密钥文件本身就能访问服务器。建议设置 — 保存在控制台中后应用会自动填入。",
+    "createRemember": "请保存密码短语：它无法找回。可以填入控制台的“密钥密码”字段。",
+    "createSubmit": "创建",
+    "creating": "正在创建…",
+    "created": "密钥已创建：{{path}}",
+    "createError": "无法创建密钥：{{error}}",
+    "noConsoles": "还没有 SSH 控制台",
+    "colConsole": "控制台",
+    "colHost": "主机",
+    "colKey": "密钥",
+    "colFlags": "备注",
+    "via": {
+      "console": "自有",
+      "config": "config",
+      "default": "默认"
+    },
+    "viaPassword": "仅密码",
+    "viaAgentOnly": "仅 ssh-agent",
+    "flagNoHostCheck": "不检查主机",
+    "flagPassword": "+ 密码",
+    "noConfig": "{{path}} 不存在",
+    "configHint": "{{path}} 及通过 Include 引入的文件 — 只读",
+    "configGlobal": "第一个 Host 之前（所有主机）",
+    "configConsoles": "控制台：",
+    "fileMissing": "文件不存在",
+    "hintMissing": "未找到密钥文件",
+    "hintNoPrivate": "只有公钥（.pub）— 登录需要私钥",
+    "hintPerms": "权限 {{mode}}：ssh 会拒绝此密钥，需要 600（SSH 密钥 → 修复权限）",
+    "hintNoPassphrase": "密钥没有密码短语 — 密钥文件本身就能访问",
+    "hintNeedPassphrase": "密钥受密码短语保护 — 请在下方填写，否则 ssh 会在连接时询问",
+    "issue": {
+      "agentManyKeys": {
+        "title": "ssh-agent 中有 {{count}} 个密钥",
+        "why": "如果控制台没有自己的密钥或没有 IdentitiesOnly=yes，ssh 会逐个尝试 agent 中的密钥。约 6 次后服务器会中断登录：“Too many authentication failures”。",
+        "fix": "为控制台指定密钥，并在 SSH 附加参数中加入 -o IdentitiesOnly=yes，或从 agent 中移除多余的密钥（ssh-add -d）。"
+      },
+      "configIdentityMissing": {
+        "title": "Host {{host}}：未找到 IdentityFile {{path}}",
+        "why": "ssh 会跳过此密钥并尝试其他密钥 — 登录可能失败或使用错误的密钥。",
+        "fix": "修改 {{file}} 第 {{line}} 行的路径，或删除该行。"
+      },
+      "configNoHostCheck": {
+        "title": "Host {{host}}：已关闭服务器密钥检查",
+        "why": "StrictHostKeyChecking no 或 UserKnownHostsFile /dev/null — ssh 无法发现被冒充的服务器（中间人攻击）。",
+        "fix": "删除这些指令（{{file}} 第 {{line}} 行）。新服务器使用 StrictHostKeyChecking accept-new 即可。"
+      },
+      "configForwardAgent": {
+        "title": "Host {{host}}：已启用 agent 转发",
+        "why": "连接期间，服务器上的 root 或攻击者可以使用你的 ssh-agent，用你的密钥登录其他服务器。",
+        "fix": "删除 ForwardAgent（{{file}} 第 {{line}} 行）。需要经由中间服务器时请使用 ProxyJump。"
+      },
+      "configForwardAgentAll": {
+        "title": "所有主机都启用了 agent 转发",
+        "why": "Host *（或第一个 Host 之前）中的 ForwardAgent 会把你的 ssh-agent 暴露给你登录的每台服务器。",
+        "fix": "从公共块中删除 ForwardAgent（{{file}} 第 {{line}} 行）；如有需要，只为特定的可信主机启用。"
+      },
+      "consoleDangerWeakKey": {
+        "title": "生产控制台“{{console}}”使用未受保护的密钥 {{key}}",
+        "why": "该控制台标记为生产环境，但其密钥没有密码短语或强度不足：拿到密钥文件就能进入生产环境。",
+        "fix": "为密钥设置密码短语（ssh-keygen -p -f <密钥>）并保存到控制台，或为生产环境使用单独的带密码短语的 ED25519 密钥。"
+      },
+      "consoleDefaultKeys": {
+        "title": "“{{console}}”：未指定密钥",
+        "why": "ssh 会尝试默认密钥（~/.ssh 中有 {{count}} 个）以及 agent 中的所有密钥 — 从设置中看不出实际使用哪个密钥。",
+        "fix": "在控制台设置中指定密钥，这样就能看清各处使用的密钥。"
+      },
+      "consoleForwardAgent": {
+        "title": "“{{console}}”：agent 转发（-A）",
+        "why": "会话期间，服务器上的 root 或攻击者可以使用你的 ssh-agent。",
+        "fix": "从 SSH 附加参数中删除 -A / ForwardAgent=yes；需要跳转时使用 -J（ProxyJump）。"
+      },
+      "consoleKeyMissing": {
+        "title": "“{{console}}”：未找到密钥文件",
+        "why": "控制台指定了 {{path}}，但文件不存在 — ssh 会不使用它或要求输入密码。",
+        "fix": "在控制台设置中选择一个存在的密钥。"
+      },
+      "consoleKeyNoPrivate": {
+        "title": "“{{console}}”：只有公钥",
+        "why": "登录需要私钥，但 {{path}} 只有 .pub，agent 中也没有该密钥。",
+        "fix": "指定私钥（不带 .pub 的文件）或将密钥加载到 agent。"
+      },
+      "consoleNoHostCheck": {
+        "title": "“{{console}}”：已关闭服务器密钥检查",
+        "why": "附加参数中有 StrictHostKeyChecking=no 或 UserKnownHostsFile=/dev/null — ssh 无法发现被冒充的服务器。",
+        "fix": "删除这些选项。应用已会自动接受新服务器（accept-new）。"
+      },
+      "consolePassphraseMissing": {
+        "title": "“{{console}}”：未保存密钥 {{key}} 的密码短语",
+        "why": "密钥已加密且不在 agent 中 — 每次连接 ssh 都会询问密码短语。",
+        "fix": "在“密钥密码”字段中填写密码短语 — 应用会自动填入。"
+      },
+      "consolePassphraseUnused": {
+        "title": "“{{console}}”：保存了密码短语，但密钥 {{key}} 未加密",
+        "why": "此密钥不需要密码短语 — 可能密钥已被替换或保护已被移除。",
+        "fix": "检查是否指定了正确的密钥；如果正确，请为其设置密码短语或清空“密钥密码”字段。"
+      },
+      "consolePasswordOnly": {
+        "title": "“{{console}}”：仅使用密码登录",
+        "why": "密码可能被猜中，或在服务器被冒充时被截获；密钥更安全且不会发送到服务器。",
+        "fix": "创建密钥，添加到服务器并在控制台中指定（密码可保留作备用）。"
+      },
+      "keyDsa": {
+        "title": "{{key}}：DSA 密钥",
+        "why": "DSA 已被认为不安全，OpenSSH 7.0 起默认禁用 — 很多服务器会拒绝。",
+        "fix": "创建 ED25519 密钥替换它。"
+      },
+      "keyDuplicate": {
+        "title": "{{key}}：同一密钥也存在于 {{others}}",
+        "why": "同一密钥有多个文件名：容易只修改了一个文件的密码短语或权限而忘了另一个。",
+        "fix": "只保留一个文件，并在所有控制台中使用它。"
+      },
+      "keyMultiWorkspace": {
+        "title": "{{key}}：在 {{count}} 个工作区中使用",
+        "why": "一个密钥可以打开不同区域（个人、工作、客户）的服务器：一个文件泄露就全部暴露，也无法只撤销某一个区域的访问。",
+        "fix": "每个信任区域（例如每个工作区）使用一个密钥，并逐步迁移控制台。"
+      },
+      "keyNoPassphrase": {
+        "title": "{{key}}：无密码短语",
+        "why": "密钥文件本身就是现成的访问权限：被盗的笔记本、备份或恶意软件都能进入使用此密钥的所有服务器。",
+        "fix": "ssh-keygen -p -f {{path}} — 设置密码短语（服务器无需改动），然后在控制台中保存。"
+      },
+      "keyPermsOpen": {
+        "title": "{{key}}：权限 {{mode}} — ssh 会拒绝此密钥",
+        "why": "私钥对其他人可读。ssh 会拒绝使用（“UNPROTECTED PRIVATE KEY FILE”），系统中的其他用户也能读取它。",
+        "fix": "权限 600 — 点击“修复权限”或执行 chmod 600 {{path}}。"
+      },
+      "keyPrivateMissing": {
+        "title": "{{key}}：缺少私钥",
+        "why": "密钥在控制台或 ~/.ssh/config 中被引用，但只有 .pub 且不在 agent 中 — 无法用它登录。",
+        "fix": "恢复私钥或改用其他密钥。"
+      },
+      "keyRsa2048": {
+        "title": "{{key}}：RSA 2048",
+        "why": "目前仍可接受，但该长度被认为正在过时；ED25519 更短、更快、更安全。",
+        "fix": "新服务器使用 ED25519，方便时替换此密钥。"
+      },
+      "keyRsaShort": {
+        "title": "{{key}}：RSA {{bits}} — 太短",
+        "why": "低于 2048 位的 RSA 不安全；新版 OpenSSH 会拒绝此类密钥。",
+        "fix": "创建 ED25519 密钥替换它。"
+      },
+      "keyUnreadable": {
+        "title": "{{key}}：无法解析",
+        "why": "该文件看起来是密钥，但无法读取：{{error}}。",
+        "fix": "检查文件：ssh-keygen -l -f {{path}}。"
+      },
+      "keyUnused": {
+        "title": "{{key}}：未使用",
+        "why": "任何控制台和 ~/.ssh/config 都没有使用此密钥。被遗忘的密钥是额外风险。",
+        "fix": "如果不需要，请删除它（并从已授权的服务器上移除）；否则在控制台中指定它。"
+      },
+      "sshDirPerms": {
+        "title": "{{path}}：权限 {{mode}}",
+        "why": "密钥目录对其他用户可访问，ssh 也可能拒绝读取权限不正确的 config。",
+        "fix": "权限 700 — 点击“修复权限”或执行 chmod 700 ~/.ssh。"
+      }
+    }
   }
 }

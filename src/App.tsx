@@ -6,6 +6,7 @@ import { GlobalSearch } from "./components/GlobalSearch";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { LockScreen } from "./components/LockScreen";
 import { StatsDialog } from "./components/StatsDialog";
+import { SshKeysDialog, quickSshAudit } from "./components/SshKeysDialog";
 import { AboutDialog } from "./components/AboutDialog";
 import { listen } from "@tauri-apps/api/event";
 import { startUsageTracking, setUsageEnabled, setUsagePaused } from "./lib/usageStats";
@@ -111,6 +112,9 @@ function MainApp() {
   const [showSettings, setShowSettings] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showSshKeys, setShowSshKeys] = useState(false);
+  // Критичные проблемы SSH-ключей — точка у кнопки в заголовке
+  const [sshCritical, setSshCritical] = useState(0);
   const [showAbout, setShowAbout] = useState(false);
   // Пока настройки не прочитаны, не знаем, включена ли статистика — не собираем
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -118,7 +122,11 @@ function MainApp() {
   // Загрузка данных из SQLite при старте
   useEffect(() => {
     loadAllWorkspaces()
-      .then(setWorkspaces)
+      .then((ws) => {
+        setWorkspaces(ws);
+        // Локальная проверка ~/.ssh и консолей — только для индикатора, окно не открываем
+        quickSshAudit().then((a) => setSshCritical(a.counts.critical)).catch(() => {});
+      })
       .catch((e) => showToast("error", t("app.toastLoadError", { error: e })));
 
     // Загружаем AI сессии; если нет — создаём первую
@@ -276,6 +284,8 @@ function MainApp() {
       <Layout
         onOpenSettings={() => setShowSettings(true)}
         onOpenStats={statsEnabled ? () => setShowStats(true) : undefined}
+        onOpenSshKeys={() => setShowSshKeys(true)}
+        sshKeysAlert={sshCritical}
       />
       <ToastContainer />
       {showPalette && <CommandPalette onClose={() => setShowPalette(false)} />}
@@ -287,6 +297,9 @@ function MainApp() {
         />
       )}
       {showStats && <StatsDialog onClose={() => setShowStats(false)} />}
+      {showSshKeys && (
+        <SshKeysDialog onClose={() => setShowSshKeys(false)} onAudit={(a) => setSshCritical(a.counts.critical)} />
+      )}
       {showAbout && <AboutDialog onClose={() => setShowAbout(false)} />}
     </>
   );

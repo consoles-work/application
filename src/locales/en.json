@@ -480,5 +480,246 @@
     "description": "Multi-project terminal manager with a built-in knowledge base and AI assistant.",
     "site": "Website",
     "github": "Source code on GitHub"
+  },
+  "sshKeys": {
+    "title": "SSH keys",
+    "subtitle": "Local check: ~/.ssh, ~/.ssh/config, ssh-agent and consoles — no connection to servers",
+    "alertTooltip": "SSH keys: {{count}} critical issue(s)",
+    "refresh": "Refresh",
+    "loading": "Checking keys…",
+    "loadError": "Could not check keys: {{error}}",
+    "footer": "The app only reads files. It writes to disk only via “Fix permissions” and “Create key”.",
+    "tileKeys": "Keys",
+    "tileKeysSub": "in agent: {{agent}} · {{agentState}}",
+    "agent": {
+      "ok": "agent running",
+      "empty": "agent empty",
+      "unavailable": "agent unavailable"
+    },
+    "tileNoPassphrase": "No passphrase",
+    "tileNoPassphraseSub": "of {{total}} private keys",
+    "tileProblems": "Problems",
+    "tileProblemsSub": "critical: {{critical}} · info: {{info}}",
+    "tileConsoles": "Consoles without own key",
+    "tileConsolesSub": "of {{total}} SSH consoles",
+    "tabIssues": "Problems · {{count}}",
+    "tabKeys": "Keys · {{count}}",
+    "tabConsoles": "Consoles · {{count}}",
+    "tabConfig": "~/.ssh/config · {{count}}",
+    "noIssues": "No problems found",
+    "fixLabel": "What to do:",
+    "fixPerms": "Fix permissions",
+    "permsFixed": "Permissions fixed",
+    "permsFixError": "Could not change permissions: {{error}}",
+    "goToConsole": "Show in tree",
+    "editConsole": "Edit console",
+    "keysHint": "Keys from {{dir}}, plus those set in consoles and in ~/.ssh/config",
+    "noKeys": "No keys found",
+    "usedBy": "consoles: {{count}}",
+    "notUsed": "not used",
+    "notUsedLong": "No console and no Host in ~/.ssh/config uses this key",
+    "usedByTitle": "Where it is used",
+    "viaDefault": "as a default key",
+    "viaConfig": "via ~/.ssh/config",
+    "score": {
+      "strong": "strong",
+      "ok": "fine",
+      "weak": "weak",
+      "unsafe": "unsafe"
+    },
+    "scoreHint": "Score 0–100: algorithm and key size, +5 with a passphrase, −10 without",
+    "encrypted": "Protected by a passphrase",
+    "notEncrypted": "No passphrase",
+    "inAgent": "in agent",
+    "fPath": "Path",
+    "fFingerprint": "Fingerprint",
+    "fComment": "Comment",
+    "fPassphrase": "Passphrase",
+    "fFormat": "Format",
+    "fMode": "Permissions",
+    "fModified": "Modified",
+    "fAgent": "In ssh-agent",
+    "fError": "Error",
+    "yes": "yes",
+    "no": "no",
+    "unknown": "unknown",
+    "noPrivate": "no private key",
+    "noPub": "no .pub",
+    "randomartHint": "Visual fingerprint (as in ssh-keygen -lv): handy for comparing keys by eye",
+    "copyPublic": "Copy public key",
+    "copyFingerprint": "Copy fingerprint",
+    "copied": "Copied: {{what}}",
+    "whatPublic": "public key",
+    "whatFingerprint": "fingerprint",
+    "create": "Create key",
+    "createTitle": "New ED25519 key",
+    "createHint": "The key is created in ~/.ssh on this computer. It is not sent to any server: add the public key there yourself.",
+    "createName": "File name",
+    "createComment": "Comment",
+    "createCommentPlaceholder": "e.g. work-laptop",
+    "createPassphrase": "Passphrase",
+    "createRepeat": "Repeat",
+    "createGenerate": "Generate",
+    "createGenerateHint": "Random 24-character passphrase",
+    "createMismatch": "Does not match",
+    "createBadName": "Latin letters, digits and _ . - @, no .pub at the end",
+    "createClash": "A file with this name already exists",
+    "createNoPassphrase": "Without a passphrase the key file alone grants access to servers. Better set one — the app fills it in for you if you save it in the console.",
+    "createRemember": "Save the passphrase: it cannot be recovered. You can store it in the console’s “Key passphrase” field.",
+    "createSubmit": "Create",
+    "creating": "Creating…",
+    "created": "Key created: {{path}}",
+    "createError": "Could not create key: {{error}}",
+    "noConsoles": "No SSH consoles yet",
+    "colConsole": "Console",
+    "colHost": "Host",
+    "colKey": "Key",
+    "colFlags": "Notes",
+    "via": {
+      "console": "own",
+      "config": "config",
+      "default": "default"
+    },
+    "viaPassword": "password only",
+    "viaAgentOnly": "ssh-agent only",
+    "flagNoHostCheck": "no host check",
+    "flagPassword": "+ password",
+    "noConfig": "{{path}} does not exist",
+    "configHint": "{{path}} and files pulled in via Include — read only",
+    "configGlobal": "Before the first Host (all hosts)",
+    "configConsoles": "Consoles:",
+    "fileMissing": "file not found",
+    "hintMissing": "Key file not found",
+    "hintNoPrivate": "Only the public key (.pub) exists — login needs the private one",
+    "hintPerms": "Permissions {{mode}}: ssh will reject the key, 600 is required (SSH keys → Fix permissions)",
+    "hintNoPassphrase": "Key has no passphrase — the key file alone grants access",
+    "hintNeedPassphrase": "Key is protected by a passphrase — enter it below, otherwise ssh will ask on connect",
+    "issue": {
+      "agentManyKeys": {
+        "title": "ssh-agent holds {{count}} keys",
+        "why": "If a console has no own key or no IdentitiesOnly=yes, ssh offers agent keys one by one. After ~6 attempts the server drops the login: “Too many authentication failures”.",
+        "fix": "Set a key for consoles and add -o IdentitiesOnly=yes to the extra SSH arguments, or remove unneeded keys from the agent (ssh-add -d)."
+      },
+      "configIdentityMissing": {
+        "title": "Host {{host}}: IdentityFile {{path}} not found",
+        "why": "ssh skips this key and tries others — login fails or uses a different key.",
+        "fix": "Fix the path in {{file}}, line {{line}}, or remove the line."
+      },
+      "configNoHostCheck": {
+        "title": "Host {{host}}: server key check disabled",
+        "why": "StrictHostKeyChecking no or UserKnownHostsFile /dev/null — ssh will not notice a spoofed server (man-in-the-middle).",
+        "fix": "Remove these directives ({{file}}, line {{line}}). StrictHostKeyChecking accept-new is enough for new servers."
+      },
+      "configForwardAgent": {
+        "title": "Host {{host}}: agent forwarding enabled",
+        "why": "While you are connected, root or an attacker on the server can use your ssh-agent to log in to other servers with your keys.",
+        "fix": "Remove ForwardAgent ({{file}}, line {{line}}). Use ProxyJump to hop through an intermediate server."
+      },
+      "configForwardAgentAll": {
+        "title": "Agent forwarding enabled for all hosts",
+        "why": "ForwardAgent in Host * (or before the first Host) exposes your ssh-agent to every server you log in to.",
+        "fix": "Remove ForwardAgent from the common block ({{file}}, line {{line}}); if needed, enable it only for a specific trusted host."
+      },
+      "consoleDangerWeakKey": {
+        "title": "Production console “{{console}}” uses unprotected key {{key}}",
+        "why": "The console is marked as production, but its key has no passphrase or is weak: whoever gets the key file gets production.",
+        "fix": "Set a passphrase on the key (ssh-keygen -p -f <key>) and save it in the console, or use a separate ED25519 key with a passphrase for production."
+      },
+      "consoleDefaultKeys": {
+        "title": "“{{console}}”: no key set",
+        "why": "ssh tries the default keys ({{count}} in ~/.ssh) and every agent key — the settings do not show which key is used.",
+        "fix": "Set a key in the console settings so it is clear which key is used where."
+      },
+      "consoleForwardAgent": {
+        "title": "“{{console}}”: agent forwarding (-A)",
+        "why": "While the session is open, root or an attacker on the server can use your ssh-agent.",
+        "fix": "Remove -A / ForwardAgent=yes from the extra SSH arguments; use -J (ProxyJump) to hop through a server."
+      },
+      "consoleKeyMissing": {
+        "title": "“{{console}}”: key file not found",
+        "why": "The console points to {{path}}, but the file does not exist — ssh goes on without it or asks for a password.",
+        "fix": "Choose an existing key in the console settings."
+      },
+      "consoleKeyNoPrivate": {
+        "title": "“{{console}}”: only the public key exists",
+        "why": "Login needs the private key, but {{path}} has only a .pub and the key is not in the agent.",
+        "fix": "Point to the private key (the file without .pub) or load the key into the agent."
+      },
+      "consoleNoHostCheck": {
+        "title": "“{{console}}”: server key check disabled",
+        "why": "StrictHostKeyChecking=no or UserKnownHostsFile=/dev/null in extra arguments — ssh will not notice a spoofed server.",
+        "fix": "Remove these options. The app already accepts new servers automatically (accept-new)."
+      },
+      "consolePassphraseMissing": {
+        "title": "“{{console}}”: passphrase for {{key}} not saved",
+        "why": "The key is encrypted and not in the agent — ssh will ask for the passphrase on every connect.",
+        "fix": "Enter the passphrase in the “Key passphrase” field — the app fills it in for you."
+      },
+      "consolePassphraseUnused": {
+        "title": "“{{console}}”: passphrase saved, but {{key}} is not encrypted",
+        "why": "This key does not need a passphrase — the key was probably replaced or its protection removed.",
+        "fix": "Check that the right key is set; if it is, set a passphrase on it or clear the “Key passphrase” field."
+      },
+      "consolePasswordOnly": {
+        "title": "“{{console}}”: password-only login",
+        "why": "A password can be guessed or captured by a spoofed server; a key is stronger and never sent to the server.",
+        "fix": "Create a key, add it to the server and set it in the console (the password can stay as a fallback)."
+      },
+      "keyDsa": {
+        "title": "{{key}}: DSA key",
+        "why": "DSA is considered insecure and disabled since OpenSSH 7.0 — many servers will reject it.",
+        "fix": "Create an ED25519 key and replace this one with it."
+      },
+      "keyDuplicate": {
+        "title": "{{key}}: the same key is also in {{others}}",
+        "why": "One key under several names: easy to change the passphrase or permissions of one file and forget the other.",
+        "fix": "Keep one file and use it in all consoles."
+      },
+      "keyMultiWorkspace": {
+        "title": "{{key}}: used in {{count}} workspaces",
+        "why": "One key opens servers from different zones (personal, work, clients): leaking one file opens everything, and access cannot be revoked for just one zone.",
+        "fix": "Use one key per trust zone (e.g. per workspace) and move consoles over gradually."
+      },
+      "keyNoPassphrase": {
+        "title": "{{key}}: no passphrase",
+        "why": "The key file is ready-made access: a stolen laptop, a backup or malware gets into every server with this key.",
+        "fix": "ssh-keygen -p -f {{path}} — set a passphrase (nothing changes on servers), then save it in the consoles."
+      },
+      "keyPermsOpen": {
+        "title": "{{key}}: permissions {{mode}} — ssh will reject the key",
+        "why": "The private key is readable by others. ssh refuses to use it (“UNPROTECTED PRIVATE KEY FILE”), and other users on the system can read it.",
+        "fix": "Permissions 600 — “Fix permissions” button or chmod 600 {{path}}."
+      },
+      "keyPrivateMissing": {
+        "title": "{{key}}: private key missing",
+        "why": "The key is set in a console or ~/.ssh/config, but only the .pub exists and it is not in the agent — it cannot be used to log in.",
+        "fix": "Restore the private key or point to another one."
+      },
+      "keyRsa2048": {
+        "title": "{{key}}: RSA 2048",
+        "why": "Still acceptable, but this size is considered aging; ED25519 is shorter, faster and stronger.",
+        "fix": "Use ED25519 for new servers and replace this key when convenient."
+      },
+      "keyRsaShort": {
+        "title": "{{key}}: RSA {{bits}} — too short",
+        "why": "RSA below 2048 bits is insecure; modern OpenSSH rejects such keys.",
+        "fix": "Create an ED25519 key and replace this one with it."
+      },
+      "keyUnreadable": {
+        "title": "{{key}}: could not be parsed",
+        "why": "The file looks like a key but could not be read: {{error}}.",
+        "fix": "Check the file: ssh-keygen -l -f {{path}}."
+      },
+      "keyUnused": {
+        "title": "{{key}}: not used",
+        "why": "The key is not set in any console or in ~/.ssh/config. Forgotten keys are an extra risk.",
+        "fix": "If the key is not needed, delete it (and remove it from servers where it is authorized); otherwise set it in consoles."
+      },
+      "sshDirPerms": {
+        "title": "{{path}}: permissions {{mode}}",
+        "why": "The key folder is accessible to other users, and ssh may refuse to read a config with such permissions.",
+        "fix": "Permissions 700 — “Fix permissions” button or chmod 700 ~/.ssh."
+      }
+    }
   }
 }
