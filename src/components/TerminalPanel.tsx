@@ -224,6 +224,19 @@ function getTerminalSettings() {
   return { fontSize, fontFamily: `${fontFamily}, monospace`, scrollback, cursorStyle };
 }
 
+/**
+ * Сбрасывает «протёкший» цвет перед Enter / Ctrl+C.
+ *
+ * Цвет в терминале — общее состояние: программа включает серый (`ESC[90m`),
+ * а если её прервать (`^C` у `docker logs -f`) до `ESC[0m`, серыми станут
+ * приглашение shell и всё, что после. Сброс пишем только в xterm (не в PTY),
+ * и только в обычном буфере — полноэкранные программы (vim, htop, less)
+ * работают в альтернативном и сами управляют цветами.
+ */
+function resetLeakedSgr(term: Terminal) {
+  if (term.buffer.active.type === "normal") term.write("\x1b[0m");
+}
+
 function TerminalView({
   session,
   isActive,
@@ -390,6 +403,7 @@ function TerminalView({
 
         // Ввод пользователя → PTY
         term.onData((data) => {
+          if (/[\r\x03]/.test(data)) resetLeakedSgr(term);
           writeToPty(ptyId, data);
           trackTerminalInput(session.console_id, data);
         });
@@ -482,6 +496,7 @@ function TerminalView({
       );
       if (!confirmed) return;
     }
+    if (termRef.current) resetLeakedSgr(termRef.current);
     writeToPty(ptyId, cmd.command.replace(/\r?\n/g, "\r") + "\r").catch(() => {});
     termRef.current?.focus();
     trackUsage(METRICS.qcRuns, 1, session.console_id);

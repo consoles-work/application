@@ -717,6 +717,8 @@ pub fn tray_labels(lang: &str) -> (&'static str, &'static str) {
 }
 
 /// Надпись пункта «О программе» в меню приложения macOS.
+/// Только macOS: на других ОС меню приложения нет и функция была бы dead_code.
+#[cfg(target_os = "macos")]
 fn about_label(lang: &str) -> &'static str {
     match lang {
         "en" => "About Consoles.work",
