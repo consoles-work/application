@@ -16,6 +16,11 @@
   },
   "treePanel": {
     "header": "Жобалар",
+    "recentHeader": "Соңғылар",
+    "recentSessionOpen": "Сеанс ашық",
+    "recentRemove": "Соңғылардан алып тастау",
+    "recentClear": "Соңғыларды тазалау",
+    "recentClearConfirm": "Соңғы консольдер тізімін тазалау керек пе? Консольдердің өздері жойылмайды.",
     "searchPlaceholder": "Іздеу...",
     "searchTooltip": "Іздеу (Ctrl+F)",
     "createWorkspaceTooltip": "Жұмыс кеңістігін жасау",

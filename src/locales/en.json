@@ -16,6 +16,11 @@
   },
   "treePanel": {
     "header": "Projects",
+    "recentHeader": "Recent",
+    "recentSessionOpen": "Session open",
+    "recentRemove": "Remove from recent",
+    "recentClear": "Clear recent",
+    "recentClearConfirm": "Clear the list of recent consoles? The consoles themselves are not deleted.",
     "searchPlaceholder": "Search...",
     "searchTooltip": "Search (Ctrl+F)",
     "createWorkspaceTooltip": "Create Workspace",

@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { ChevronRight, ChevronDown, Search, X, Upload, Download, StickyNote } from "lucide-react";
+import { ChevronRight, ChevronDown, Search, X, Upload, Download, StickyNote, History, Eraser } from "lucide-react";
 import { ask } from "@tauri-apps/plugin-dialog";
-import { useAppStore } from "../stores/appStore";
+import { useAppStore, parseRecentConsoles } from "../stores/appStore";
 import type { Project } from "../types";
-import { updateWorkspace, updateProject, updateConsole, setNodeDanger, cloneConsole, cloneProject, moveConsole } from "../lib/tauriCommands";
+import { updateWorkspace, updateProject, updateConsole, setNodeDanger, cloneConsole, cloneProject, moveConsole, setSetting as persistSetting } from "../lib/tauriCommands";
 import { ContextMenu, type ContextMenuState } from "./ContextMenu";
 import { CreateWorkspaceDialog } from "./dialogs/CreateWorkspaceDialog";
 import { CreateProjectDialog } from "./dialogs/CreateProjectDialog";
@@ -20,6 +20,9 @@ import { ConsoleIconTile } from "../lib/consoleIcons";
 // ══════════════════════════════════════
 // TreePanel — дерево проектов
 // ══════════════════════════════════════
+
+// Сколько недавних консолей показывать над деревом
+const RECENT_CONSOLES_SHOWN = 5;
 
 export function TreePanel() {
   const {
@@ -38,6 +41,11 @@ export function TreePanel() {
     activateConsole,
     reconnectSession,
     showToast,
+    sessions,
+    settings,
+    setSetting: storeSetSetting,
+    removeRecentConsole,
+    clearRecentConsoles,
   } = useAppStore();
 
   const nodes = getFlatTree();
@@ -134,6 +142,53 @@ export function TreePanel() {
 
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
+  };
+
+  // ── Недавние консоли ──
+  // Консоли из ui.recentConsoles, которые ещё существуют, в виде узлов дерева —
+  // чтобы клик и ПКМ работали так же, как в самом дереве
+  const recentNodes = useMemo(() => {
+    const byId = new Map<string, { node: TreeNode; path: string; project: string }>();
+    for (const ws of workspaces) {
+      for (const proj of ws.projects) {
+        for (const con of proj.consoles) {
+          byId.set(con.id, {
+            node: {
+              id: con.id,
+              type: "console",
+              name: con.name,
+              icon: con.connectionType === "ssh" ? "S" : "L",
+              color: proj.color,
+              depth: 2,
+              is_expanded: false,
+              has_children: false,
+              data: con,
+            },
+            path: `${ws.name} › ${proj.name}`,
+            project: proj.name,
+          });
+        }
+      }
+    }
+    return parseRecentConsoles(settings["ui.recentConsoles"])
+      .map((id) => byId.get(id))
+      .filter((r): r is { node: TreeNode; path: string; project: string } => !!r)
+      .slice(0, RECENT_CONSOLES_SHOWN);
+  }, [workspaces, settings["ui.recentConsoles"]]);
+
+  const recentCollapsed = settings["ui.recentConsolesCollapsed"] === "true";
+  const toggleRecentCollapsed = () => {
+    const next = recentCollapsed ? "false" : "true";
+    storeSetSetting("ui.recentConsolesCollapsed", next);
+    persistSetting("ui.recentConsolesCollapsed", next).catch(() => {});
+  };
+
+  const handleClearRecent = async () => {
+    const confirmed = await ask(t("treePanel.recentClearConfirm"), {
+      title: t("treePanel.recentClear"),
+      kind: "warning",
+    });
+    if (confirmed) clearRecentConsoles();
   };
 
   // ── Поиск по дереву ──
@@ -580,6 +635,66 @@ export function TreePanel() {
             </div>
           )}
         </div>
+
+        {/* Недавние консоли — внизу панели, под деревом */}
+        {!searchActive && recentNodes.length > 0 && (
+          <div className="border-t border-border shrink-0 py-1">
+            <div className="flex items-center px-3 gap-1">
+              <button
+                onClick={toggleRecentCollapsed}
+                className="flex-1 flex items-center gap-1.5 py-1 text-2xs font-semibold text-text-muted uppercase tracking-wider hover:text-text-primary"
+              >
+                {recentCollapsed ? <ChevronRight size={11} /> : <ChevronDown size={11} />}
+                <History size={11} />
+                {t("treePanel.recentHeader")}
+              </button>
+              {!recentCollapsed && (
+                <button
+                  onClick={handleClearRecent}
+                  className="text-text-muted hover:text-text-primary p-0.5 rounded"
+                  title={t("treePanel.recentClear")}
+                >
+                  <Eraser size={11} />
+                </button>
+              )}
+            </div>
+            {!recentCollapsed && recentNodes.map(({ node, path, project }) => {
+              const con = node.data as ConsoleConfig;
+              const isOpen = sessions.some((s) => s.console_id === node.id);
+              return (
+                <div
+                  key={`recent-${node.id}`}
+                  className={`tree-item ${
+                    selectedNode?.type === "console" && selectedNode.id === node.id ? "active" : ""
+                  }`}
+                  title={path}
+                  onClick={() => handleClick(node)}
+                  onContextMenu={(e) => handleContextMenu(e, node)}
+                >
+                  <ConsoleIconTile con={con} />
+                  <span className="truncate text-xs shrink">{node.name}</span>
+                  <span className="truncate flex-1 min-w-0 text-2xs text-text-muted">{project}</span>
+                  {con.isDanger && (
+                    <span className="shrink-0 text-2xs text-red-400" title={con.dangerLabel || "DANGER"}>⚠</span>
+                  )}
+                  {isOpen && (
+                    <span
+                      className="shrink-0 w-1.5 h-1.5 rounded-full bg-green-500"
+                      title={t("treePanel.recentSessionOpen")}
+                    />
+                  )}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeRecentConsole(node.id); }}
+                    className="shrink-0 text-text-muted hover:text-text-primary"
+                    title={t("treePanel.recentRemove")}
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Контекстное меню */}

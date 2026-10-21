@@ -16,6 +16,11 @@
   },
   "treePanel": {
     "header": "Projects",
+    "recentHeader": "Недавние",
+    "recentSessionOpen": "Сессия открыта",
+    "recentRemove": "Убрать из недавних",
+    "recentClear": "Очистить недавние",
+    "recentClearConfirm": "Очистить список недавних консолей? Сами консоли не удаляются.",
     "searchPlaceholder": "Поиск...",
     "searchTooltip": "Поиск (Ctrl+F)",
     "createWorkspaceTooltip": "Создать Workspace",

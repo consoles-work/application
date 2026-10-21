@@ -16,6 +16,11 @@
   },
   "treePanel": {
     "header": "Projets",
+    "recentHeader": "Récentes",
+    "recentSessionOpen": "Session ouverte",
+    "recentRemove": "Retirer des récentes",
+    "recentClear": "Effacer les récentes",
+    "recentClearConfirm": "Effacer la liste des consoles récentes ? Les consoles elles-mêmes ne sont pas supprimées.",
     "searchPlaceholder": "Rechercher...",
     "searchTooltip": "Rechercher (Ctrl+F)",
     "createWorkspaceTooltip": "Créer un espace de travail",

@@ -12,6 +12,21 @@ import type {
 import type { ChatMessage } from "../lib/aiProviders";
 import type { AiSession } from "../types";
 
+// Недавние консоли: id в порядке использования, свежие первыми, в настройке
+// ui.recentConsoles. Храним с запасом — удалённые консоли отсеиваются при показе.
+const RECENT_CONSOLES_KEY = "ui.recentConsoles";
+const RECENT_CONSOLES_STORED = 20;
+
+export function parseRecentConsoles(raw: string | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const ids = JSON.parse(raw);
+    return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 export interface Toast {
   id: string;
   type: "success" | "error" | "info";
@@ -100,6 +115,10 @@ interface AppState {
   reconnectSession: (sessionId: string) => void;
   // Активировать последний экземпляр консоли; false — если у неё нет открытых сессий
   activateConsole: (consoleId: string) => boolean;
+  // Поднять консоль в начало списка недавних
+  touchRecentConsole: (consoleId: string) => void;
+  removeRecentConsole: (consoleId: string) => void;
+  clearRecentConsoles: () => void;
 
   // ── Actions: wiki ──
   setWikiPages: (pages: WikiPage[]) => void;
@@ -308,7 +327,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   // их за собой ровно так же, как клик по дереву. Побеждает последнее действие.
   // Экземпляры одной консоли держим в массиве подряд: так порядок sessions
   // совпадает с визуальным (вкладка → подвкладки) и Cmd+Tab идёт по порядку.
-  openSession: (session) =>
+  openSession: (session) => {
     set((state) => {
       const group = state.sessions.filter((s) => s.console_id === session.console_id);
       const instance =
@@ -328,7 +347,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         selectedNode: { type: "console", id: added.console_id },
         lastSessionByConsole: { ...state.lastSessionByConsole, [added.console_id]: added.id },
       };
-    }),
+    });
+    get().touchRecentConsole(session.console_id);
+  },
 
   closeSession: (sessionId) =>
     set((state) => {
@@ -365,19 +386,19 @@ export const useAppStore = create<AppState>((set, get) => ({
       };
     }),
 
-  setActiveSession: (sessionId) =>
-    set((state) => {
-      const session = state.sessions.find((s) => s.id === sessionId);
-      return {
-        activeSessionId: sessionId,
-        selectedNode: session
-          ? { type: "console" as const, id: session.console_id }
-          : state.selectedNode,
-        lastSessionByConsole: session
-          ? { ...state.lastSessionByConsole, [session.console_id]: session.id }
-          : state.lastSessionByConsole,
-      };
-    }),
+  setActiveSession: (sessionId) => {
+    const session = get().sessions.find((s) => s.id === sessionId);
+    set((state) => ({
+      activeSessionId: sessionId,
+      selectedNode: session
+        ? { type: "console" as const, id: session.console_id }
+        : state.selectedNode,
+      lastSessionByConsole: session
+        ? { ...state.lastSessionByConsole, [session.console_id]: session.id }
+        : state.lastSessionByConsole,
+    }));
+    if (session) get().touchRecentConsole(session.console_id);
+  },
 
   activateConsole: (consoleId) => {
     const { sessions, lastSessionByConsole, setActiveSession } = get();
@@ -387,6 +408,29 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!target) return false;
     setActiveSession(target.id);
     return true;
+  },
+
+  touchRecentConsole: (consoleId) => {
+    const ids = parseRecentConsoles(get().settings[RECENT_CONSOLES_KEY]);
+    if (ids[0] === consoleId) return; // уже первая — не пишем в БД на каждое переключение
+    const value = JSON.stringify(
+      [consoleId, ...ids.filter((id) => id !== consoleId)].slice(0, RECENT_CONSOLES_STORED)
+    );
+    set((state) => ({ settings: { ...state.settings, [RECENT_CONSOLES_KEY]: value } }));
+    persistSetting(RECENT_CONSOLES_KEY, value).catch(() => {});
+  },
+
+  removeRecentConsole: (consoleId) => {
+    const value = JSON.stringify(
+      parseRecentConsoles(get().settings[RECENT_CONSOLES_KEY]).filter((id) => id !== consoleId)
+    );
+    set((state) => ({ settings: { ...state.settings, [RECENT_CONSOLES_KEY]: value } }));
+    persistSetting(RECENT_CONSOLES_KEY, value).catch(() => {});
+  },
+
+  clearRecentConsoles: () => {
+    set((state) => ({ settings: { ...state.settings, [RECENT_CONSOLES_KEY]: "[]" } }));
+    persistSetting(RECENT_CONSOLES_KEY, "[]").catch(() => {});
   },
 
   reconnectSession: (sessionId) =>
