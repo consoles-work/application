@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
+import { WebLinksAddon } from "@xterm/addon-web-links";
 import { buildSshCommand } from "../lib/connectionString";
 import { listen } from "@tauri-apps/api/event";
 import { StickyNote, ChevronDown, ChevronRight, Zap, Settings2, Play } from "lucide-react";
@@ -16,6 +17,8 @@ import { trackUsage, trackTerminalInput, METRICS } from "../lib/usageStats";
 import { getThemeById, resolveThemeId } from "../lib/themes";
 import type { TerminalSession, ConsoleConfig, Project, QuickCommand } from "../types";
 import { QuickCommandsDialog } from "./dialogs/QuickCommandsDialog";
+import { LinkifiedText } from "./LinkifiedText";
+import { isOpenLinkClick, openLink, OPEN_LINK_KEY } from "../lib/links";
 import { useTranslation } from "react-i18next";
 import i18n from "../lib/i18n";
 
@@ -51,6 +54,80 @@ function tabTitle(session: TerminalSession): string {
 }
 
 // ══════════════════════════════════════
+// Перестановка вкладок перетаскиванием
+// ══════════════════════════════════════
+// HTML5 DnD в Tauri WebKit не работает — как в дереве, слушаем mousemove/mouseup
+// на window. Перетаскивание начинается после сдвига на 6px, иначе это клик.
+// Вкладки размечены data-tab-id, полоса — data-tab-bar.
+
+const TAB_DRAG_THRESHOLD = 6;
+
+interface TabDrag {
+  id: string;
+  beforeId: string | null; // место вставки: перед этой вкладкой, null — в конец
+}
+
+function useTabReorder(onDrop: (id: string, beforeId: string | null) => void) {
+  const [drag, setDrag] = useState<TabDrag | null>(null);
+
+  const onMouseDown = (e: React.MouseEvent<HTMLElement>, id: string) => {
+    // С крестика не тащим: отпускание над ним закрыло бы вкладку
+    if (e.button !== 0 || (e.target as HTMLElement).closest(".terminal-tab-close")) return;
+    const bar = e.currentTarget.closest<HTMLElement>("[data-tab-bar]");
+    if (!bar) return;
+    const startX = e.clientX;
+    let active = false;
+    let beforeId: string | null = null;
+
+    const onMove = (ev: MouseEvent) => {
+      if (!active && Math.abs(ev.clientX - startX) < TAB_DRAG_THRESHOLD) return;
+      active = true;
+      document.body.style.cursor = "grabbing";
+      // Встаём перед первой вкладкой, чья середина правее курсора
+      const target = Array.from(bar.querySelectorAll<HTMLElement>("[data-tab-id]")).find((el) => {
+        const r = el.getBoundingClientRect();
+        return ev.clientX < r.left + r.width / 2;
+      });
+      beforeId = target?.dataset.tabId ?? null;
+      setDrag({ id, beforeId });
+    };
+
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      if (!active) return;
+      document.body.style.cursor = "";
+      setDrag(null);
+      onDrop(id, beforeId);
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
+  return { drag, onMouseDown };
+}
+
+/** Где рисовать полоску места вставки; null — перестановка ничего не меняет */
+function dropMarker(ids: string[], drag: TabDrag | null): { id: string; side: "left" | "right" } | null {
+  if (!drag) return null;
+  const from = ids.indexOf(drag.id);
+  const to = drag.beforeId ? ids.indexOf(drag.beforeId) : ids.length;
+  if (from === -1 || to === from || to === from + 1) return null;
+  return to < ids.length ? { id: ids[to], side: "left" } : { id: ids[ids.length - 1], side: "right" };
+}
+
+function DropMarker({ side }: { side: "left" | "right" }) {
+  return (
+    <span
+      className={`absolute top-1 bottom-1 w-0.5 rounded bg-accent pointer-events-none ${
+        side === "left" ? "-left-px" : "-right-px"
+      }`}
+    />
+  );
+}
+
+// ══════════════════════════════════════
 // TerminalPanel — вкладки + терминалы
 // ══════════════════════════════════════
 
@@ -61,6 +138,8 @@ export function TerminalPanel() {
     setActiveSession,
     activateConsole,
     closeSession,
+    moveConsoleTab,
+    moveSessionTab,
     terminalSelection,
     showAiPanel,
   } = useAppStore();
@@ -77,6 +156,18 @@ export function TerminalPanel() {
   }
   const activeSession = sessions.find((s) => s.id === activeSessionId);
   const activeGroup = groups.find((g) => g.consoleId === activeSession?.console_id);
+
+  // Перетащенная вкладка становится активной — как в браузере
+  const consoleDrag = useTabReorder((consoleId, beforeId) => {
+    moveConsoleTab(consoleId, beforeId);
+    activateConsole(consoleId);
+  });
+  const sessionDrag = useTabReorder((sessionId, beforeId) => {
+    moveSessionTab(sessionId, beforeId);
+    setActiveSession(sessionId);
+  });
+  const consoleMarker = dropMarker(groups.map((g) => g.consoleId), consoleDrag.drag);
+  const sessionMarker = dropMarker(activeGroup?.items.map((s) => s.id) ?? [], sessionDrag.drag);
 
   const handleCloseTab = async (e: React.MouseEvent, session: TerminalSession) => {
     e.stopPropagation();
@@ -101,7 +192,7 @@ export function TerminalPanel() {
   return (
     <div className="h-full flex flex-col bg-surface-0">
       {/* ── Вкладки (консоли) ── */}
-      <div className="h-9 flex items-center bg-surface-1 border-b border-border shrink-0 overflow-x-auto">
+      <div data-tab-bar className="h-9 flex items-center bg-surface-1 border-b border-border shrink-0 overflow-x-auto">
         {groups.map(({ consoleId, items }) => {
           const con = findConsoleById(consoleId);
           const isDanger = con?.isDanger ?? false;
@@ -111,11 +202,14 @@ export function TerminalPanel() {
           return (
             <div
               key={consoleId}
-              className={`terminal-tab ${isActive ? "active" : ""} ${
+              data-tab-id={consoleId}
+              className={`terminal-tab relative ${isActive ? "active" : ""} ${
                 isDanger ? "border-b-red-500/60" : ""
-              }`}
+              } ${consoleDrag.drag?.id === consoleId ? "opacity-40" : ""}`}
+              onMouseDown={(e) => consoleDrag.onMouseDown(e, consoleId)}
               onClick={() => activateConsole(consoleId)}
             >
+              {consoleMarker?.id === consoleId && <DropMarker side={consoleMarker.side} />}
               {isDanger && (
                 <span className="text-red-400 text-xs mr-1">⚠</span>
               )}
@@ -157,15 +251,20 @@ export function TerminalPanel() {
 
       {/* ── Подвкладки (экземпляры активной консоли), только если их больше одного ── */}
       {activeGroup && activeGroup.items.length > 1 && (
-        <div className="h-7 flex items-center bg-surface-0 border-b border-border shrink-0 overflow-x-auto">
+        <div data-tab-bar className="h-7 flex items-center bg-surface-0 border-b border-border shrink-0 overflow-x-auto">
           {activeGroup.items.map((session) => {
             const isActive = session.id === activeSessionId;
             return (
               <div
                 key={session.id}
-                className={`terminal-tab py-1 ${isActive ? "active" : ""}`}
+                data-tab-id={session.id}
+                className={`terminal-tab relative py-1 ${isActive ? "active" : ""} ${
+                  sessionDrag.drag?.id === session.id ? "opacity-40" : ""
+                }`}
+                onMouseDown={(e) => sessionDrag.onMouseDown(e, session.id)}
                 onClick={() => setActiveSession(session.id)}
               >
+                {sessionMarker?.id === session.id && <DropMarker side={sessionMarker.side} />}
                 <span className="truncate max-w-[140px]">{tabTitle(session)}</span>
                 <button
                   className="terminal-tab-close ml-1.5 text-text-muted hover:text-danger text-xs shrink-0"
@@ -179,9 +278,11 @@ export function TerminalPanel() {
         </div>
       )}
 
-      {/* ── Терминальные инстансы (все рендерятся, только активный виден) ── */}
+      {/* ── Терминальные инстансы (все рендерятся, только активный виден) ──
+          Порядок — по id (время открытия), а не как у вкладок: перестановка вкладок
+          не должна двигать DOM-узлы xterm. */}
       <div className="flex-1 overflow-hidden relative">
-        {sessions.map((session) => {
+        {[...sessions].sort((a, b) => a.id.localeCompare(b.id)).map((session) => {
           const con = findConsoleById(session.console_id);
           return (
             <TerminalView
@@ -302,6 +403,22 @@ function TerminalView({
     const themeId = resolveThemeId(useAppStore.getState().settings["ui.theme"] ?? "dark");
     const xtermTheme = getThemeById(themeId).xterm;
 
+    // Ссылки открываются по Cmd+клик (Ctrl+клик не на macOS): обычный клик
+    // остаётся за выделением текста. Штатный обработчик xterm делает window.open,
+    // который в Tauri ничего не открывает — отдаём ссылку в системный браузер.
+    const container = containerRef.current;
+    const links = {
+      activate: (e: MouseEvent, uri: string) => {
+        if (isOpenLinkClick(e)) openLink(uri);
+      },
+      hover: () => {
+        container.title = i18n.t("terminalPanel.openLinkHint", { key: OPEN_LINK_KEY });
+      },
+      leave: () => {
+        container.title = "";
+      },
+    };
+
     const term = new Terminal({
       fontFamily,
       fontSize,
@@ -313,6 +430,8 @@ function TerminalView({
       // Unicode-API (term.unicode) в xterm 6 помечен как proposed: без этого флага
       // обращение к нему бросает исключение и терминал не успевает открыться.
       allowProposedApi: true,
+      // Гиперссылки OSC 8 (`ls --hyperlink`, вывод компиляторов) — только http(s)
+      linkHandler: links,
     });
 
     const fitAddon = new FitAddon();
@@ -323,6 +442,9 @@ function TerminalView({
     const unicode11 = new Unicode11Addon();
     term.loadAddon(unicode11);
     term.unicode.activeVersion = "11";
+
+    // URL в обычном выводе
+    term.loadAddon(new WebLinksAddon(links.activate, { hover: links.hover, leave: links.leave }));
 
     // Фон темы xterm 6 кладёт на .xterm-scrollable-element — тот не покрывает ни
     // padding, ни остаток высоты от деления на строку, а .xterm-viewport под ним
@@ -572,7 +694,7 @@ function TerminalView({
               noteExpanded ? "whitespace-pre-wrap max-h-24 overflow-y-auto" : "truncate"
             }`}
           >
-            {note}
+            <LinkifiedText text={note} />
           </span>
           {noteExpanded ? (
             <ChevronDown size={12} className="text-text-muted shrink-0 mt-0.5" />

@@ -115,6 +115,10 @@ interface AppState {
   reconnectSession: (sessionId: string) => void;
   // Активировать последний экземпляр консоли; false — если у неё нет открытых сессий
   activateConsole: (consoleId: string) => boolean;
+  // Перетаскивание вкладок: консоль целиком встаёт перед вкладкой beforeConsoleId,
+  // экземпляр — перед beforeSessionId своей же консоли (null — в конец)
+  moveConsoleTab: (consoleId: string, beforeConsoleId: string | null) => void;
+  moveSessionTab: (sessionId: string, beforeSessionId: string | null) => void;
   // Поднять консоль в начало списка недавних
   touchRecentConsole: (consoleId: string) => void;
   removeRecentConsole: (consoleId: string) => void;
@@ -409,6 +413,36 @@ export const useAppStore = create<AppState>((set, get) => ({
     setActiveSession(target.id);
     return true;
   },
+
+  // Экземпляры консоли переезжают группой — порядок sessions остаётся «подряд»
+  moveConsoleTab: (consoleId, beforeConsoleId) =>
+    set((state) => {
+      if (consoleId === beforeConsoleId) return {};
+      const moved = state.sessions.filter((s) => s.console_id === consoleId);
+      const rest = state.sessions.filter((s) => s.console_id !== consoleId);
+      const at = beforeConsoleId ? rest.findIndex((s) => s.console_id === beforeConsoleId) : -1;
+      const idx = at === -1 ? rest.length : at;
+      return { sessions: [...rest.slice(0, idx), ...moved, ...rest.slice(idx)] };
+    }),
+
+  moveSessionTab: (sessionId, beforeSessionId) =>
+    set((state) => {
+      const moved = state.sessions.find((s) => s.id === sessionId);
+      if (!moved || sessionId === beforeSessionId) return {};
+      const rest = state.sessions.filter((s) => s.id !== sessionId);
+      if (!rest.some((s) => s.console_id === moved.console_id)) return {};
+      let idx = beforeSessionId
+        ? rest.findIndex((s) => s.id === beforeSessionId && s.console_id === moved.console_id)
+        : -1;
+      if (idx === -1) {
+        // В конец своей группы
+        rest.forEach((s, i) => {
+          if (s.console_id === moved.console_id) idx = i;
+        });
+        idx += 1;
+      }
+      return { sessions: [...rest.slice(0, idx), moved, ...rest.slice(idx)] };
+    }),
 
   touchRecentConsole: (consoleId) => {
     const ids = parseRecentConsoles(get().settings[RECENT_CONSOLES_KEY]);

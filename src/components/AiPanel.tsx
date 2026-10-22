@@ -14,6 +14,7 @@ import {
   Check,
 } from "lucide-react";
 import { useAppStore } from "../stores/appStore";
+import { LinkifiedText } from "./LinkifiedText";
 import {
   streamCompletion,
   getProvider,
@@ -553,7 +554,7 @@ export function AiPanel() {
                   : "bg-surface-2 text-text-primary"
               }`}
             >
-              {msg.content || (
+              {msg.content ? <LinkifiedText text={msg.content} /> : (
                 <span className="text-text-muted animate-pulse">●●●</span>
               )}
             </div>

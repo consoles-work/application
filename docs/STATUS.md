@@ -1,6 +1,6 @@
 # DevConsole Hub — Статус проекта
 
-> Последнее обновление: 2026-10-21 (недавние консоли внизу левой панели: переход, удаление из списка, очистка; сброс цвета, протёкшего в терминале после `^C` у программы; раздел «SSH-ключи»: инвентаризация и аудит ключей, консолей и ~/.ssh/config, создание ключа; исследование по мотивам Purple; постоянная подпись dev-сборки на macOS; ссылка на consoles.work в заголовке, диалог «О программе» с сайтом и GitHub, версия в одном месте + `npm run version:bump`, CHANGELOG.md, версия 0.2.0; крестик закрытия виден на всех вкладках терминала; запуск из «Программ»/Dock показывает окно, спрятанное в трей; настройки воркспейса и проекта: иконка/цвет после создания, из меню проекта убраны VS Code/Finder; README актуализирован; диалог консоли: вкладки, хостинг из списка, иконка и цвет консоли; окно запоминает размер; Tauri 2.12; статистика использования: окно со временем по проектам, вводом и быстрыми командами; счётчик запусков быстрых команд и сэкономленное время; быстрые команды консоли, подтверждение выхода; этап 19 — ключ БД из пароля, запланирован)
+> Последнее обновление: 2026-10-22 (перестановка вкладок и подвкладок терминала перетаскиванием; кликабельные ссылки в терминале по Cmd+клик, в wiki, AI-чате и заметке консоли; недавние консоли внизу левой панели: переход, удаление из списка, очистка; сброс цвета, протёкшего в терминале после `^C` у программы; раздел «SSH-ключи»: инвентаризация и аудит ключей, консолей и ~/.ssh/config, создание ключа; исследование по мотивам Purple; постоянная подпись dev-сборки на macOS; ссылка на consoles.work в заголовке, диалог «О программе» с сайтом и GitHub, версия в одном месте + `npm run version:bump`, CHANGELOG.md, версия 0.2.0; крестик закрытия виден на всех вкладках терминала; запуск из «Программ»/Dock показывает окно, спрятанное в трей; настройки воркспейса и проекта: иконка/цвет после создания, из меню проекта убраны VS Code/Finder; README актуализирован; диалог консоли: вкладки, хостинг из списка, иконка и цвет консоли; окно запоминает размер; Tauri 2.12; статистика использования: окно со временем по проектам, вводом и быстрыми командами; счётчик запусков быстрых команд и сэкономленное время; быстрые команды консоли, подтверждение выхода; этап 19 — ключ БД из пароля, запланирован)
 
 ---
 
@@ -19,10 +19,12 @@
 | Файл | Статус | Примечания |
 |------|--------|------------|
 | `src/types/index.ts` | ✅ Готово | Все интерфейсы: WikiPage (camelCase), isDanger/dangerLabel, SSH-поля (включая `sshPassphrase`, `sshPassword`), AppSettings, AiSession, AiMessage; **`reconnectKey` в `TerminalSession`** |
-| `src/stores/appStore.ts` | ✅ Готово | CRUD + Toast + Wiki + Settings + AI сессии; `toggleNodeExpanded` сохраняет состояние; **`moveConsoleToProject`**; **`reconnectSession`**; `touchRecentConsole` / `removeRecentConsole` / `clearRecentConsoles` / `parseRecentConsoles` — недавние консоли (`ui.recentConsoles`) |
+| `src/stores/appStore.ts` | ✅ Готово | CRUD + Toast + Wiki + Settings + AI сессии; `toggleNodeExpanded` сохраняет состояние; **`moveConsoleToProject`**; **`reconnectSession`**; `touchRecentConsole` / `removeRecentConsole` / `clearRecentConsoles` / `parseRecentConsoles` — недавние консоли (`ui.recentConsoles`); `moveConsoleTab` / `moveSessionTab` — перестановка вкладок терминала |
 | `src/lib/tauriCommands.ts` | ✅ Готово | Все IPC-обёртки: дерево, PTY, wiki, clone, settings, AI сессии, `setNodeExpanded`, `exportData`/`previewImport`/`applyImport`, **`moveConsole`**, **`enableAutostart`/`disableAutostart`/`getAutostartStatus`** |
 | `src/lib/themes.ts` | ✅ Готово | 18 тем (9 тёмных + 9 светлых, флаг `dark`) с UI-цветами, полной xterm-палитрой и цветами водяного знака (`watermark.prod` / `watermark.plain`), resolveThemeId, applyTheme |
 | `src/lib/connectionString.ts` | ✅ Готово | `buildSshCommand` и другие форматы строки подключения (команда / `user@host:port` / список параметров) |
+| `src/lib/links.ts` | ✅ Готово | Кликабельные ссылки: `findLinks` / `splitLinks`, `isSafeExternalUrl` (http/https/mailto), `openLink`, `isOpenLinkClick` / `OPEN_LINK_KEY` |
+| `src/components/LinkifiedText.tsx` | ✅ Готово | Текст с кликабельными ссылками (AI-чат, заметка консоли) |
 | `src/lib/appInfo.ts` | ✅ Готово | Версия (`__APP_VERSION__` / `__APP_COMMIT__` из Vite), `SITE_URL`, `GITHUB_URL`, `openExternal` |
 | `src/components/AboutDialog.tsx` | ✅ Готово | «О программе»: версия, коммит, ссылки на сайт и GitHub; из меню macOS (событие `show-about`) и из Настроек |
 | `src/lib/quickCommandStats.ts` | ✅ Готово | Оценка сэкономленного быстрыми командами времени: `TYPING_CHARS_PER_MINUTE` (200), `sumQuickCommandStats`, `formatSavedTime` |
@@ -33,8 +35,8 @@
 | `src/lib/serversMarkdown.ts` | ✅ Готово | `buildServersMarkdown` — публичный Markdown-отчёт по SSH-серверам воркспейса/проекта; колонка «Хостинг» только если заполнена |
 | `src/components/Layout.tsx` | ✅ Готово | Четырёхпанельный layout с resizable сплиттерами + кнопка Settings в titlebar; **кнопка 📊 статистики (если `stats.enabled`)**; кнопка «SSH-ключи» с красной точкой при критичных проблемах |
 | `src/components/TreePanel.tsx` | ✅ Готово | Дерево + раскрытие + контекстное меню + inline rename (F2) + danger/ssh badge + клонирование + поиск + кнопки Export/Import + **drag-and-drop консолей (mouse-event, ghost-портал, подтверждение)**; секция «Недавние» — 5 последних консолей внизу под деревом (сворачивается, `ui.recentConsolesCollapsed`; убрать из списка, очистить) |
-| `src/components/TerminalPanel.tsx` | ✅ Готово | xterm.js + PTY + danger-баннер + SSH + startup + динамические настройки; индикатор-точка при выделении; `reconnectKey` в key-пропе; повторные fit() на 100ms/400ms при открытии и 200ms при смене вкладки; **контекстное меню по ПКМ (`TerminalContextMenu`): Копировать / Вставить / Выделить всё / Очистить строку / Очистить экран / Сбросить терминал; горячие клавиши Cmd+C/Cmd+V; буфер через `navigator.clipboard`** |
-| `src/components/WikiPanel.tsx` | ✅ Готово | TipTap редактор + привязка к узлу + автосохранение debounce + теги + поиск по wiki (FTS5) |
+| `src/components/TerminalPanel.tsx` | ✅ Готово | xterm.js + PTY + danger-баннер + SSH + startup + динамические настройки; индикатор-точка при выделении; `reconnectKey` в key-пропе; повторные fit() на 100ms/400ms при открытии и 200ms при смене вкладки; **контекстное меню по ПКМ (`TerminalContextMenu`): Копировать / Вставить / Выделить всё / Очистить строку / Очистить экран / Сбросить терминал; горячие клавиши Cmd+C/Cmd+V; буфер через `navigator.clipboard`**; ссылки по Cmd+клик (`addon-web-links` + OSC 8), ссылки в заметке консоли; перестановка вкладок и подвкладок перетаскиванием (`useTabReorder`) |
+| `src/components/WikiPanel.tsx` | ✅ Готово | TipTap редактор + привязка к узлу + автосохранение debounce + теги + поиск по wiki (FTS5); ссылки (`extension-link`, autolink, клик — в браузер, разметка URL-текста старых страниц) |
 | `src/components/WikiToolbar.tsx` | ✅ Готово | H1/H2/H3, Bold/Italic/Code, списки, TaskList, CodeBlock, HR, Undo/Redo |
 | `src/components/CommandPalette.tsx` | ✅ Готово | Fuzzy-поиск по дереву, ↑↓/Enter/Esc, danger badge |
 | `src/components/SettingsDialog.tsx` | ✅ Готово | 4 вкладки: Данные, Терминал, Интерфейс, Агенты; раздельные API-ключи per-провайдер; **автозапуск (чекбокс); поведение при закрытии (трей / завершить)**; статистика использования (вкл./выкл., очистка) |
@@ -71,7 +73,7 @@
 | Файл | Статус | Примечания |
 |------|--------|------------|
 | `src/lib/aiProviders.ts` | ✅ Готово | OpenAI + Anthropic; стриминг SSE; единый интерфейс `AiProvider` |
-| `src/components/AiPanel.tsx` | ✅ Готово | Сессии (дропдаун, +, переименование, удаление с подтверждением); история из SQLite; стриминг без потерь при смене позиции; автозаголовок; контекст из терминала |
+| `src/components/AiPanel.tsx` | ✅ Готово | Сессии (дропдаун, +, переименование, удаление с подтверждением); история из SQLite; стриминг без потерь при смене позиции; автозаголовок; контекст из терминала; кликабельные ссылки в сообщениях |
 | `src/components/Layout.tsx` | ✅ Готово | AI панель в двух позициях (right/bottom) с resizable-сплиттером |
 | `src/styles/globals.css` | ✅ Готово | `.panel-resizer-horizontal` для нижней позиции AI панели |
 
@@ -116,6 +118,14 @@
 ---
 
 ## История изменений
+
+### 2026-10-22 — Перестановка вкладок терминала *(в рабочем дереве, не закоммичено)*
+
+- Вкладки консолей и подвкладки экземпляров переставляются перетаскиванием (mouse-события, порог 6px, полоска места вставки); `appStore.ts`: `moveConsoleTab`, `moveSessionTab`; порядок не сохраняется между запусками (PLAN.md, этап 32)
+
+### 2026-10-22 — Кликабельные ссылки *(в рабочем дереве, не закоммичено)*
+
+- Ссылки открываются в системном браузере, только `http`/`https`/`mailto`: в терминале — по Cmd+клик (Ctrl+клик не на macOS), включая гиперссылки OSC 8; в wiki — кликом (autolink при наборе и вставке, URL-текст в старых страницах размечается при открытии); в AI-чате и заметке консоли — кликом. Новые `src/lib/links.ts`, `LinkifiedText.tsx`, зависимость `@tiptap/extension-link` (PLAN.md, этап 31)
 
 ### 2026-10-21 — Недавние консоли в левой панели *(в рабочем дереве, не закоммичено)*
 

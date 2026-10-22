@@ -88,6 +88,7 @@
     "closeTabTitle": "Fermer l'onglet",
     "closeGroupConfirm": "Fermer «{{title}}» et toutes ses instances ({{count}})?",
     "ptyError": "Erreur de démarrage PTY: {{error}}",
+    "openLinkHint": "{{key}}+clic pour ouvrir le lien",
     "noTerminals": "Aucun terminal ouvert",
     "clickConsole": "Cliquez sur une console dans l'arbre de projets à gauche",
     "dangerWarning": "Marqué comme «{{label}}». Soyez prudent — vérifiez les commandes avant de les exécuter."

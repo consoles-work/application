@@ -88,6 +88,7 @@
     "closeTabTitle": "Close tab",
     "closeGroupConfirm": "Close «{{title}}» and all its instances ({{count}})?",
     "ptyError": "PTY launch error: {{error}}",
+    "openLinkHint": "{{key}}+click to open link",
     "noTerminals": "No open terminals",
     "clickConsole": "Click a console in the project tree on the left",
     "dangerWarning": "Marked as «{{label}}». Be careful — double-check commands before running."

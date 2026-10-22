@@ -462,6 +462,10 @@ body,
   @apply mb-2;
 }
 
+.wiki-editor .ProseMirror a {
+  @apply text-accent underline underline-offset-2 cursor-pointer;
+}
+
 .wiki-editor .ProseMirror code {
   @apply bg-surface-3 px-1.5 py-0.5 rounded text-xs font-mono text-accent;
 }

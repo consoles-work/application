@@ -88,6 +88,7 @@
     "closeTabTitle": "关闭标签页",
     "closeGroupConfirm": "关闭 «{{title}}» 及其所有实例（{{count}}）？",
     "ptyError": "PTY 启动错误: {{error}}",
+    "openLinkHint": "{{key}}+点击 打开链接",
     "noTerminals": "没有打开的终端",
     "clickConsole": "点击左侧项目树中的控制台",
     "dangerWarning": "已标记为「{{label}}」。请注意 — 执行命令前请仔细检查。"

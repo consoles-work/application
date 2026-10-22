@@ -1,15 +1,17 @@
 import { useEffect, useRef, useCallback, useState, KeyboardEvent } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
 import Placeholder from "@tiptap/extension-placeholder";
 import { TaskList } from "@tiptap/extension-task-list";
 import { TaskItem } from "@tiptap/extension-task-item";
+import Link from "@tiptap/extension-link";
 import { createLowlight, common } from "lowlight";
 import { Plus, Trash2, Pin, Search, X } from "lucide-react";
 
 import { useAppStore } from "../stores/appStore";
 import { trackUsage, METRICS } from "../lib/usageStats";
+import { findLinks, isSafeExternalUrl, openLink } from "../lib/links";
 import { WikiToolbar } from "./WikiToolbar";
 import {
   loadWikiPages,
@@ -23,6 +25,27 @@ import { useTranslation } from "react-i18next";
 const lowlight = createLowlight(common);
 
 // ── Утилиты ──────────────────────────────────────────────────
+
+/**
+ * Превратить URL-текст в ссылки. Autolink срабатывает только при наборе, а страницы,
+ * написанные до появления ссылок, хранят URL простым текстом. Транзакция не попадает
+ * в историю и не вызывает onUpdate — страница сохранится с ссылками при следующей правке.
+ */
+function linkifyPlainUrls(editor: Editor) {
+  const linkType = editor.schema.marks.link;
+  const { tr, doc } = editor.state;
+  doc.descendants((node, pos) => {
+    if (node.type.spec.code) return false; // блок кода
+    if (!node.isText || !node.text) return;
+    if (node.marks.some((m) => m.type === linkType || m.type.spec.code)) return;
+    for (const { start, end, url } of findLinks(node.text)) {
+      tr.addMark(pos + start, pos + end, linkType.create({ href: url }));
+    }
+  });
+  if (!tr.docChanged) return;
+  tr.setMeta("addToHistory", false).setMeta("preventUpdate", true);
+  editor.view.dispatch(tr);
+}
 
 function newPage(parentType: WikiPage["parentType"], parentId: string): WikiPage {
   const now = new Date().toISOString();
@@ -195,7 +218,28 @@ export function WikiPanel() {
       Placeholder.configure({ placeholder: t("wikiPanel.editorPlaceholder") }),
       TaskList,
       TaskItem.configure({ nested: true }),
+      Link.configure({
+        // Штатное открытие — window.open, в Tauri не работает: открываем сами (handleDOMEvents)
+        openOnClick: false,
+        autolink: true,
+        linkOnPaste: true,
+        // Только со схемой: «main.rs» и «config.py» autolink иначе принял бы за домены
+        isAllowedUri: (url) => isSafeExternalUrl(url),
+      }),
     ],
+    editorProps: {
+      handleDOMEvents: {
+        // Клик по ссылке — в системный браузер. Если клик закончил выделение
+        // текста внутри ссылки, не открываем: пользователь её редактирует.
+        click: (view, event) => {
+          const a = (event.target as HTMLElement).closest("a");
+          if (!a) return false;
+          event.preventDefault();
+          if (view.state.selection.empty) openLink(a.getAttribute("href"));
+          return true;
+        },
+      },
+    },
     content: "",
     onUpdate: ({ editor }) => {
       const page = activePageRef.current;
@@ -223,6 +267,7 @@ export function WikiPanel() {
     const currentJson = JSON.stringify(editor.getJSON());
     if (currentJson === activePage.content) return;
     editor.commands.setContent(parsed || "");
+    linkifyPlainUrls(editor);
   }, [activeWikiPageId, editor]);
 
   const scheduleSave = useCallback((page: WikiPage) => {
