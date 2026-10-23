@@ -1,6 +1,12 @@
 // ══════════════════════════════════════════════
 // AI провайдеры: OpenAI, Anthropic, Ollama, Claude CLI
 // ══════════════════════════════════════════════
+// HTTP-провайдеры (OpenAI, Anthropic, Ollama) стримят ответ прямо из фронта:
+//  1. Запрос в формате провайдера (ключ — в заголовке).
+//  2. Не 2xx — ошибка с кодом и телом ответа.
+//  3. Тело читается по строкам SSE; из каждой строки провайдер достаёт кусок
+//     текста, кусок сразу уходит в onChunk. Отмена — через AbortSignal.
+// Claude CLI — подпроцесс на Rust-стороне (ai_local.rs), сюда не попадает.
 
 export type ProviderId = "openai" | "anthropic" | "ollama" | "claude-cli";
 
@@ -49,17 +55,7 @@ export const OpenAiProvider: AiProvider = {
     ];
   },
 
-  parseChunk(line) {
-    if (!line.startsWith("data: ")) return null;
-    const data = line.slice(6);
-    if (data === "[DONE]") return null;
-    try {
-      const json = JSON.parse(data);
-      return json.choices?.[0]?.delta?.content ?? null;
-    } catch {
-      return null;
-    }
-  },
+  parseChunk: parseOpenAiChunk,
 };
 
 export const AnthropicProvider: AiProvider = {
@@ -101,20 +97,11 @@ export const AnthropicProvider: AiProvider = {
   },
 
   parseChunk(line) {
-    if (!line.startsWith("data: ")) return null;
-    const data = line.slice(6);
-    try {
-      const json = JSON.parse(data);
-      if (
-        json.type === "content_block_delta" &&
-        json.delta?.type === "text_delta"
-      ) {
-        return json.delta.text ?? null;
-      }
-      return null;
-    } catch {
-      return null;
-    }
+    const json = sseJson(line);
+
+    const isText = json?.type === "content_block_delta" && json.delta?.type === "text_delta";
+
+    return isText ? json.delta.text ?? null : null;
   },
 };
 
@@ -136,17 +123,7 @@ export const OllamaProvider: AiProvider = {
   },
 
   // Формат ответа совместим с OpenAI
-  parseChunk(line) {
-    if (!line.startsWith("data: ")) return null;
-    const data = line.slice(6);
-    if (data === "[DONE]") return null;
-    try {
-      const json = JSON.parse(data);
-      return json.choices?.[0]?.delta?.content ?? null;
-    } catch {
-      return null;
-    }
-  },
+  parseChunk: parseOpenAiChunk,
 };
 
 /**
@@ -174,42 +151,79 @@ export function getProvider(id: string): AiProvider {
   return AI_PROVIDERS.find((p) => p.id === id) ?? OpenAiProvider;
 }
 
-export async function streamCompletion(
-  provider: AiProvider,
-  messages: ChatMessage[],
-  model: string,
-  apiKey: string,
-  onChunk: (text: string) => void,
-  signal?: AbortSignal
-): Promise<void> {
-  if (!provider.buildFetchParams || !provider.parseChunk) {
-    throw new Error(`Провайдер ${provider.name} не работает через HTTP`);
-  }
-  const [url, init] = provider.buildFetchParams(messages, model, apiKey);
+export interface StreamRequest {
+  provider: AiProvider;
+  messages: ChatMessage[];
+  model: string;
+  apiKey: string;
+  onChunk: (text: string) => void;
+  signal?: AbortSignal;
+}
+
+/** Ответ HTTP-провайдера по кускам; завершается, когда поток закончился (или отменён — AbortError) */
+export async function streamCompletion({ provider, messages, model, apiKey, onChunk, signal }: StreamRequest): Promise<void> {
+  const { buildFetchParams, parseChunk } = provider;
+
+  if (!buildFetchParams || !parseChunk) throw new Error(`Провайдер ${provider.name} не работает через HTTP`);
+
+  // 1. Запрос.
+  const [url, init] = buildFetchParams(messages, model, apiKey);
+
   const response = await fetch(url, { ...init, signal });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`API error ${response.status}: ${errorText}`);
-  }
+  // 2. Ошибка провайдера.
+  if (!response.ok) throw new Error(`API error ${response.status}: ${await response.text()}`);
 
   const reader = response.body?.getReader();
+
   if (!reader) throw new Error("No response body");
 
+  // 3. Строки SSE → куски текста.
+  await readLines(reader, (line) => {
+    const text = parseChunk(line);
+
+    if (text) onChunk(text);
+  });
+}
+
+// ── Детали ──
+
+/** Шаг 3: непустые строки потока; хвост без перевода строки ждёт следующего чтения */
+async function readLines(reader: ReadableStreamDefaultReader<Uint8Array>, onLine: (line: string) => void) {
   const decoder = new TextDecoder();
+
   let buffer = "";
 
-  while (true) {
+  for (;;) {
     const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
+
+    if (done) return;
+
+    const lines = (buffer + decoder.decode(value, { stream: true })).split("\n");
+
     buffer = lines.pop() ?? "";
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-      const text = provider.parseChunk!(trimmed);
-      if (text) onChunk(text);
-    }
+
+    lines.map((l) => l.trim()).filter(Boolean).forEach(onLine);
   }
+}
+
+/** Строка SSE `data: {...}` → JSON; другие строки, `[DONE]` и битый JSON — null.
+ *  any: формат куска свой у каждого провайдера, поля читаются через `?.` */
+function sseJson(line: string): any {
+  if (!line.startsWith("data: ")) return null;
+
+  const data = line.slice(6);
+
+  if (data === "[DONE]") return null;
+
+  try {
+    return JSON.parse(data);
+  } catch {
+    return null;
+  }
+}
+
+/** OpenAI и совместимые (Ollama): кусок — choices[0].delta.content */
+function parseOpenAiChunk(line: string): string | null {
+  return sseJson(line)?.choices?.[0]?.delta?.content ?? null;
 }

@@ -4,7 +4,23 @@ import { useAppStore } from "../stores/appStore";
 import { searchWiki } from "../lib/tauriCommands";
 import type { WikiPage } from "../types";
 import { useTranslation } from "react-i18next";
+import { useListNavigation } from "../hooks/useListNavigation";
 
+// ══════════════════════════════════════
+// GlobalSearch — полнотекстовый поиск по всей wiki (Cmd+Shift+K)
+// ══════════════════════════════════════
+// Запрос уходит после паузы в наборе. Выбор страницы переключает контекст
+// дерева на её узел (глобальная — снимает выбор); WikiPanel загружает
+// страницы контекста и открывает выбранную.
+
+const SEARCH_DELAY_MS = 300;
+
+const CONTEXT_LABEL: Record<WikiPage["parentType"], string> = {
+  global: "globalSearch.contextGlobal",
+  workspace: "globalSearch.contextWorkspace",
+  project: "globalSearch.contextProject",
+  console: "globalSearch.contextConsole",
+};
 
 interface GlobalSearchProps {
   onClose: () => void;
@@ -14,61 +30,39 @@ export function GlobalSearch({ onClose }: GlobalSearchProps) {
   const { selectNode, setActiveWikiPage } = useAppStore();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<WikiPage[]>([]);
-  const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { t } = useTranslation();
+
+  const handleSelect = (page: WikiPage) => {
+    selectNode(page.parentType === "global" ? null : { type: page.parentType, id: page.parentId });
+
+    setActiveWikiPage(page.id);
+
+    onClose();
+  };
+
+  const nav = useListNavigation(results, handleSelect, onClose, query);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
+  // Пауза в наборе — запрос; ошибка поиска — как «ничего не найдено»
   useEffect(() => {
-    setSelectedIndex(0);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!query.trim()) { setResults([]); return; }
-    debounceRef.current = setTimeout(() => {
-      searchWiki(query.trim()).then(setResults).catch(() => {});
-    }, 300);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    if (!query.trim()) {
+      setResults([]);
+
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      searchWiki(query.trim())
+        .then(setResults)
+        .catch(() => setResults([]));
+    }, SEARCH_DELAY_MS);
+
+    return () => clearTimeout(timer);
   }, [query]);
-
-  const handleSelect = (page: WikiPage) => {
-    // Переключаем контекст дерева — WikiPanel реагирует и загружает страницы
-    if (page.parentType !== "global") {
-      selectNode({ type: page.parentType as "workspace" | "project" | "console", id: page.parentId });
-    } else {
-      selectNode(null);
-    }
-    // Устанавливаем нужную страницу активной — WikiPanel подхватит после загрузки
-    setActiveWikiPage(page.id);
-    onClose();
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") { onClose(); return; }
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setSelectedIndex((i) => Math.min(i + 1, results.length - 1));
-    }
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setSelectedIndex((i) => Math.max(i - 1, 0));
-    }
-    if (e.key === "Enter" && results[selectedIndex]) {
-      handleSelect(results[selectedIndex]);
-    }
-  };
-
-  const contextLabel = (page: WikiPage) => {
-    switch (page.parentType) {
-      case "global": return t("globalSearch.contextGlobal");
-      case "workspace": return t("globalSearch.contextWorkspace");
-      case "project": return t("globalSearch.contextProject");
-      case "console": return t("globalSearch.contextConsole");
-      default: return page.parentType;
-    }
-  };
 
   return createPortal(
     <div
@@ -86,7 +80,7 @@ export function GlobalSearch({ onClose }: GlobalSearchProps) {
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
+            onKeyDown={nav.onKeyDown}
             placeholder={t("globalSearch.placeholder")}
             className="flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
           />
@@ -95,18 +89,16 @@ export function GlobalSearch({ onClose }: GlobalSearchProps) {
 
         {/* Results */}
         <div className="max-h-80 overflow-y-auto py-1">
-          {query.trim() && results.length === 0 ? (
-            <div className="px-4 py-6 text-center text-text-muted text-xs">
-              {t("globalSearch.nothingFound")}
-            </div>
-          ) : (
-            results.map((page, i) => (
+          {query.trim() && results.length === 0 && (
+            <div className="px-4 py-6 text-center text-text-muted text-xs">{t("globalSearch.nothingFound")}</div>
+          )}
+          {results.map((page, i) => (
               <div
                 key={page.id}
                 className={`flex items-start gap-3 px-4 py-2.5 cursor-pointer transition-colors ${
-                  i === selectedIndex ? "bg-accent-subtle" : "hover:bg-surface-3"
+                  i === nav.index ? "bg-accent-subtle" : "hover:bg-surface-3"
                 }`}
-                onMouseEnter={() => setSelectedIndex(i)}
+                onMouseEnter={() => nav.setIndex(i)}
                 onClick={() => handleSelect(page)}
               >
                 <span className="text-text-muted text-sm shrink-0 mt-0.5">📄</span>
@@ -116,7 +108,7 @@ export function GlobalSearch({ onClose }: GlobalSearchProps) {
                       {page.title || t("wikiPanel.untitled")}
                     </span>
                     <span className="text-2xs px-1.5 py-0.5 rounded bg-surface-3 text-text-muted shrink-0">
-                      {contextLabel(page)}
+                      {t(CONTEXT_LABEL[page.parentType])}
                     </span>
                   </div>
                   {page.tags.length > 0 && (
@@ -130,8 +122,7 @@ export function GlobalSearch({ onClose }: GlobalSearchProps) {
                   )}
                 </div>
               </div>
-            ))
-          )}
+          ))}
         </div>
 
         {/* Footer */}

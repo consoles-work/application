@@ -110,6 +110,7 @@
     "deletePageConfirm": "Удалить страницу \"{{title}}\"?",
     "deletePageTooltip": "Удалить страницу",
     "toastPageDeleted": "Страница удалена",
+    "toastSaveError": "Не удалось сохранить страницу: {{error}}",
     "savedAt": "Сохранено: {{time}}",
     "untitled": "Без названия",
     "contextGlobal": "Глобальная wiki",

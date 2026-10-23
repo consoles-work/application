@@ -8,13 +8,20 @@ import { getUsageStats, clearUsageStats, type UsageStat } from "../lib/tauriComm
 import { flushUsage, localDay, METRICS } from "../lib/usageStats";
 import { formatSavedTime } from "../lib/quickCommandStats";
 import { getThemeById, resolveThemeId } from "../lib/themes";
+import { allConsoles, allProjects } from "../lib/tree";
+import { useEscape } from "../hooks/useEscape";
 
 // ══════════════════════════════════════
 // StatsDialog — статистика использования за сегодня / 7 / 30 дней
 // ══════════════════════════════════════
-// Данные читаются один раз (30 дней), периоды фильтруются на клиенте.
+// 1. Открытие: накопленное в памяти сначала уходит в БД (иначе последних секунд
+//    не видно), затем читаются 30 дней. Не прочиталось — тост и пустой отчёт.
+// 2. Период (сегодня / 7 / 30 дней) фильтруется на клиенте: итоги, время по
+//    проектам (кольцо), активное время по часам или дням, консоли.
+// 3. Клик по проекту на кольце или в легенде — консоли только этого проекта.
 // Цвет проекта закрепляется по месячному рейтингу, чтобы при смене периода
-// проект не перекрашивался.
+// проект не перекрашивался; не попавшие в палитру — серым «Другие».
+// Удалённые проекты и консоли — общей подписью.
 
 type Period = "today" | "week" | "month";
 const PERIOD_DAYS: Record<Period, number> = { today: 1, week: 7, month: 30 };
@@ -26,26 +33,46 @@ const OTHER_COLOR = "#8a8a86";
 const MAX_SLICES = PALETTE_LIGHT.length;
 const OTHER_ID = "__other__";
 
-function shiftDay(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  return localDay(d);
-}
+/** Какая метрика в какую колонку таблицы консолей */
+const CONSOLE_FIELD: Record<string, "time" | "typed" | "qcRuns" | "qcChars" | undefined> = {
+  [METRICS.consoleTime]: "time",
+  [METRICS.typed]: "typed",
+  [METRICS.qcRuns]: "qcRuns",
+  [METRICS.qcChars]: "qcChars",
+};
 
-// «45 сек» / «12 мин» / «2 ч 05 мин»
-function formatDuration(sec: number, t: TFunction): string {
-  const s = Math.round(sec);
-  if (s < 60) return t("stats.durSec", { value: s });
-  const m = Math.floor(s / 60);
-  if (m < 60) return t("stats.durMin", { value: m });
-  return t("stats.durHourMin", { hours: Math.floor(m / 60), minutes: String(m % 60).padStart(2, "0") });
-}
+/** Консолей в таблице — не больше */
+const CONSOLES_SHOWN = 12;
 
 interface Slice {
   id: string;
   label: string;
   value: number;
   color: string;
+}
+
+interface Bar {
+  key: string;
+  label: string;
+  tip: string;
+  value: number;
+}
+
+interface ConsoleTotals {
+  id: string;
+  projectId: string;
+  time: number;
+  typed: number;
+  qcRuns: number;
+  qcChars: number;
+}
+
+interface PeriodReport {
+  total: Record<string, number>;
+  slices: Slice[];
+  bars: Bar[];
+  consoles: ConsoleTotals[];
+  empty: boolean;
 }
 
 export function StatsDialog({ onClose }: { onClose: () => void }) {
@@ -60,111 +87,49 @@ export function StatsDialog({ onClose }: { onClose: () => void }) {
   const palette = dark ? PALETTE_DARK : PALETTE_LIGHT;
   const nf = (n: number) => Math.round(n).toLocaleString(i18n.language);
 
+  // 1. Данные за месяц.
   const load = async () => {
-    // Сначала сбрасываем накопленное в памяти — иначе последних секунд не будет видно
     await flushUsage();
+
     try {
       setRows(await getUsageStats(shiftDay(PERIOD_DAYS.month - 1)));
     } catch (e) {
       showToast("error", t("stats.loadError", { error: e }));
+
       setRows([]);
     }
   };
 
+  // Один раз при открытии; повторно — кнопкой «Обновить»
   useEffect(() => {
     load();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEscape(onClose);
+
+  // Новый период — выбор проекта сбрасывается
   useEffect(() => setSelectedProject(null), [period]);
 
-  // Имена проектов/консолей из текущего дерева; удалённые — общей подписью
-  const names = useMemo(() => {
-    const projects = new Map<string, string>();
-    const consoles = new Map<string, { name: string; projectId: string }>();
-    for (const ws of workspaces) {
-      for (const p of ws.projects) {
-        projects.set(p.id, `${p.icon} ${p.name}`);
-        for (const c of p.consoles) consoles.set(c.id, { name: c.name, projectId: p.id });
-      }
-    }
-    return { projects, consoles };
-  }, [workspaces]);
+  const names = useMemo(
+    () => ({
+      projects: new Map(allProjects(workspaces).map(({ project: p }) => [p.id, `${p.icon} ${p.name}`])),
+      consoles: new Map(allConsoles(workspaces).map(({ console: c }) => [c.id, c.name])),
+    }),
+    [workspaces]
+  );
+
   const projectName = (id: string) =>
     id === OTHER_ID ? t("stats.otherProjects") : names.projects.get(id) ?? t("stats.deletedProject");
-  const consoleName = (id: string) => names.consoles.get(id)?.name ?? t("stats.deletedConsole");
 
-  // Цвет проекта — по месячному рейтингу времени (стабилен между периодами)
-  const colorByProject = useMemo(() => {
-    const totals = new Map<string, number>();
-    for (const r of rows ?? []) {
-      if (r.metric === METRICS.consoleTime) totals.set(r.projectId, (totals.get(r.projectId) ?? 0) + r.value);
-    }
-    const ranked = [...totals.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
-    return new Map(ranked.slice(0, MAX_SLICES).map((id, i) => [id, palette[i]]));
-  }, [rows, palette]);
+  const consoleName = (id: string) => names.consoles.get(id) ?? t("stats.deletedConsole");
 
-  const data = useMemo(() => {
-    const from = shiftDay(PERIOD_DAYS[period] - 1);
-    const list = (rows ?? []).filter((r) => r.day >= from);
-    const total: Record<string, number> = {};
-    const byProject = new Map<string, number>();
-    const byConsole = new Map<string, { projectId: string; time: number; typed: number; qcRuns: number; qcChars: number }>();
-    const timeline = new Map<string, number>(); // час ("0".."23") или день
-    for (const r of list) {
-      total[r.metric] = (total[r.metric] ?? 0) + r.value;
-      if (r.metric === METRICS.active) {
-        const key = period === "today" ? String(r.hour) : r.day;
-        timeline.set(key, (timeline.get(key) ?? 0) + r.value);
-      }
-      if (!r.consoleId) continue;
-      if (r.metric === METRICS.consoleTime) byProject.set(r.projectId, (byProject.get(r.projectId) ?? 0) + r.value);
-      const c = byConsole.get(r.consoleId) ?? { projectId: r.projectId, time: 0, typed: 0, qcRuns: 0, qcChars: 0 };
-      if (r.metric === METRICS.consoleTime) c.time += r.value;
-      if (r.metric === METRICS.typed) c.typed += r.value;
-      if (r.metric === METRICS.qcRuns) c.qcRuns += r.value;
-      if (r.metric === METRICS.qcChars) c.qcChars += r.value;
-      byConsole.set(r.consoleId, c);
-    }
+  // 2. Цвета и отчёт за период.
+  const colorByProject = useMemo(() => projectColors(rows ?? [], palette), [rows, palette]);
 
-    // Срезы: проекты с цветом из палитры, остальные — одним серым «Другие»
-    const slices: Slice[] = [];
-    let other = 0;
-    for (const [id, value] of [...byProject.entries()].sort((a, b) => b[1] - a[1])) {
-      const color = colorByProject.get(id);
-      if (color) slices.push({ id, label: "", value, color });
-      else other += value;
-    }
-    if (other > 0) slices.push({ id: OTHER_ID, label: "", value: other, color: OTHER_COLOR });
-
-    // Столбики: 24 часа сегодня или N дней
-    const bars: { key: string; label: string; tip: string; value: number }[] = [];
-    if (period === "today") {
-      for (let h = 0; h < 24; h++) {
-        bars.push({ key: String(h), label: String(h), tip: `${h}:00–${h + 1}:00`, value: timeline.get(String(h)) ?? 0 });
-      }
-    } else {
-      for (let i = PERIOD_DAYS[period] - 1; i >= 0; i--) {
-        const day = shiftDay(i);
-        const d = new Date(`${day}T00:00:00`);
-        bars.push({
-          key: day,
-          label: String(d.getDate()),
-          tip: d.toLocaleDateString(i18n.language, { weekday: "short", day: "numeric", month: "short" }),
-          value: timeline.get(day) ?? 0,
-        });
-      }
-    }
-
-    const consoles = [...byConsole.entries()]
-      .map(([id, c]) => ({ id, ...c }))
-      .filter((c) => c.time > 0 || c.typed > 0 || c.qcRuns > 0)
-      .sort((a, b) => b.time - a.time || b.typed - a.typed);
-
-    return { total, slices, bars, consoles, empty: list.length === 0 };
-  }, [rows, period, colorByProject, i18n.language]);
+  const data = useMemo(
+    () => periodReport(rows ?? [], period, colorByProject, i18n.language),
+    [rows, period, colorByProject, i18n.language]
+  );
 
   const m = (k: string) => data.total[k] ?? 0;
   const typed = m(METRICS.typed);
@@ -173,23 +138,30 @@ export function StatsDialog({ onClose }: { onClose: () => void }) {
 
   const handleClear = async () => {
     const ok = await ask(t("stats.clearConfirm"), { title: t("stats.clear"), kind: "warning" });
+
     if (!ok) return;
+
     try {
       await clearUsageStats();
+
       setRows([]);
+
       showToast("success", t("stats.cleared"));
     } catch (e) {
       showToast("error", String(e));
     }
   };
 
-  const visibleConsoles = (selectedProject
-    ? data.consoles.filter((c) =>
-        selectedProject === OTHER_ID ? !colorByProject.has(c.projectId) : c.projectId === selectedProject
-      )
-    : data.consoles
-  ).slice(0, 12);
+  // 3. Консоли выбранного проекта («Другие» — проекты без цвета).
+  const inSelection = (c: ConsoleTotals) =>
+    !selectedProject ||
+    (selectedProject === OTHER_ID ? !colorByProject.has(c.projectId) : c.projectId === selectedProject);
+
+  const visibleConsoles = data.consoles.filter(inSelection).slice(0, CONSOLES_SHOWN);
   const maxConsoleTime = Math.max(1, ...visibleConsoles.map((c) => c.time));
+  const slicesTotal = data.slices.reduce((a, s) => a + s.value, 0);
+
+  const toggleProject = (id: string) => setSelectedProject((cur) => (cur === id ? null : id));
 
   return (
     <div
@@ -220,11 +192,9 @@ export function StatsDialog({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          {rows === null ? (
-            <div className="text-xs text-text-muted py-10 text-center">{t("stats.loading")}</div>
-          ) : data.empty ? (
-            <div className="text-xs text-text-muted py-10 text-center">{t("stats.empty")}</div>
-          ) : (
+          {rows === null && <div className="text-xs text-text-muted py-10 text-center">{t("stats.loading")}</div>}
+          {rows !== null && data.empty && <div className="text-xs text-text-muted py-10 text-center">{t("stats.empty")}</div>}
+          {rows !== null && !data.empty && (
             <>
               {/* ── Плитки-итоги ── */}
               <div className="grid grid-cols-3 gap-2">
@@ -275,7 +245,7 @@ export function StatsDialog({ onClose }: { onClose: () => void }) {
                       hover={hoverSlice}
                       selected={selectedProject}
                       onHover={setHoverSlice}
-                      onSelect={(id) => setSelectedProject((cur) => (cur === id ? null : id))}
+                      onSelect={toggleProject}
                       centerLabel={(s, total) =>
                         s
                           ? { title: projectName(s.id), value: formatDuration(s.value, t), sub: `${Math.round((s.value * 100) / total)}%` }
@@ -283,31 +253,29 @@ export function StatsDialog({ onClose }: { onClose: () => void }) {
                       }
                     />
                     <div className="flex-1 min-w-0 space-y-0.5">
-                      {(() => {
-                        const total = data.slices.reduce((a, s) => a + s.value, 0);
-                        return data.slices.map((s) => {
-                          const active = selectedProject === s.id;
-                          const dim = (hoverSlice && hoverSlice !== s.id) || (selectedProject && !active);
-                          return (
-                            <button
-                              key={s.id}
-                              className={`w-full flex items-center gap-2 px-2 py-1 rounded text-left text-xs transition-opacity ${
-                                active ? "bg-surface-2" : "hover:bg-surface-2"
-                              } ${dim ? "opacity-50" : ""}`}
-                              onMouseEnter={() => setHoverSlice(s.id)}
-                              onMouseLeave={() => setHoverSlice(null)}
-                              onClick={() => setSelectedProject((cur) => (cur === s.id ? null : s.id))}
-                            >
-                              <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: s.color }} />
-                              <span className="flex-1 truncate text-text-primary">{projectName(s.id)}</span>
-                              <span className="text-text-secondary tabular-nums">{formatDuration(s.value, t)}</span>
-                              <span className="w-10 text-right text-text-muted tabular-nums">
-                                {Math.round((s.value * 100) / total)}%
-                              </span>
-                            </button>
-                          );
-                        });
-                      })()}
+                      {data.slices.map((s) => {
+                        const active = selectedProject === s.id;
+                        const dim = (hoverSlice && hoverSlice !== s.id) || (selectedProject && !active);
+
+                        return (
+                          <button
+                            key={s.id}
+                            className={`w-full flex items-center gap-2 px-2 py-1 rounded text-left text-xs transition-opacity ${
+                              active ? "bg-surface-2" : "hover:bg-surface-2"
+                            } ${dim ? "opacity-50" : ""}`}
+                            onMouseEnter={() => setHoverSlice(s.id)}
+                            onMouseLeave={() => setHoverSlice(null)}
+                            onClick={() => toggleProject(s.id)}
+                          >
+                            <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: s.color }} />
+                            <span className="flex-1 truncate text-text-primary">{projectName(s.id)}</span>
+                            <span className="text-text-secondary tabular-nums">{formatDuration(s.value, t)}</span>
+                            <span className="w-10 text-right text-text-muted tabular-nums">
+                              {Math.round((s.value * 100) / slicesTotal)}%
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -441,15 +409,16 @@ function Donut({
   const label = centerLabel(focus, total);
 
   const point = (r: number, a: number) => [c + r * Math.sin(a), c - r * Math.cos(a)];
-  let angle = 0;
+
+  // Начальный угол среза — сумма долей предыдущих
+  const starts = slices.map((_, i) => slices.slice(0, i).reduce((a, s) => a + (s.value / total) * Math.PI * 2, 0));
 
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        {slices.map((s) => {
-          const start = angle;
+        {slices.map((s, i) => {
+          const start = starts[i];
           const sweep = (s.value / total) * Math.PI * 2;
-          angle += sweep;
           const isFocus = focus?.id === s.id;
           const ro = isFocus ? rOuter + 4 : rOuter;
           const dim = focus && !isFocus;
@@ -511,7 +480,7 @@ function Bars({
   color,
   format,
 }: {
-  bars: { key: string; label: string; tip: string; value: number }[];
+  bars: Bar[];
   color: string;
   format: (v: number) => string;
 }) {
@@ -563,4 +532,137 @@ function Bars({
         )}
     </div>
   );
+}
+
+// ══════════════════════════════════════
+// Расчёты (чистые функции)
+// ══════════════════════════════════════
+
+/** Цвет проекта — по месячному рейтингу времени в консолях (стабилен между периодами) */
+function projectColors(rows: UsageStat[], palette: string[]): Map<string, string> {
+  const totals = new Map<string, number>();
+
+  for (const r of rows.filter((r) => r.metric === METRICS.consoleTime)) totals.set(r.projectId, (totals.get(r.projectId) ?? 0) + r.value);
+
+  const ranked = [...totals.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
+
+  return new Map(ranked.slice(0, MAX_SLICES).map((id, i) => [id, palette[i]]));
+}
+
+/** Шаг 2: итоги по метрикам, срезы по проектам, столбики активного времени, консоли */
+function periodReport(rows: UsageStat[], period: Period, colorByProject: Map<string, string>, lang: string): PeriodReport {
+  const from = shiftDay(PERIOD_DAYS[period] - 1);
+
+  const list = rows.filter((r) => r.day >= from);
+
+  const total: Record<string, number> = {};
+
+  for (const r of list) total[r.metric] = (total[r.metric] ?? 0) + r.value;
+
+  // Активное время: по часам сегодня, иначе по дням
+  const timeline = sumBy(
+    list.filter((r) => r.metric === METRICS.active),
+    (r) => (period === "today" ? String(r.hour) : r.day)
+  );
+
+  const consoleRows = list.filter((r) => r.consoleId);
+
+  const byProject = sumBy(consoleRows.filter((r) => r.metric === METRICS.consoleTime), (r) => r.projectId);
+
+  const consoles = consoleTotals(consoleRows)
+    .filter((c) => c.time > 0 || c.typed > 0 || c.qcRuns > 0)
+    .sort((a, b) => b.time - a.time || b.typed - a.typed);
+
+  return {
+    total,
+    slices: projectSlices(byProject, colorByProject),
+    bars: period === "today" ? hourBars(timeline) : dayBars(timeline, PERIOD_DAYS[period], lang),
+    consoles,
+    empty: list.length === 0,
+  };
+}
+
+/** Проекты с цветом из палитры — каждый своим срезом, остальные — одним серым «Другие» */
+function projectSlices(byProject: Map<string, number>, colorByProject: Map<string, string>): Slice[] {
+  const sorted = [...byProject.entries()].sort((a, b) => b[1] - a[1]);
+
+  const colored = sorted.flatMap(([id, value]) => {
+    const color = colorByProject.get(id);
+
+    return color ? [{ id, label: "", value, color }] : [];
+  });
+
+  const other = sorted.filter(([id]) => !colorByProject.has(id)).reduce((a, [, v]) => a + v, 0);
+
+  return other > 0 ? [...colored, { id: OTHER_ID, label: "", value: other, color: OTHER_COLOR }] : colored;
+}
+
+function consoleTotals(rows: UsageStat[]): ConsoleTotals[] {
+  const byConsole = new Map<string, ConsoleTotals>();
+
+  for (const r of rows) {
+    const c = byConsole.get(r.consoleId) ?? { id: r.consoleId, projectId: r.projectId, time: 0, typed: 0, qcRuns: 0, qcChars: 0 };
+
+    const field = CONSOLE_FIELD[r.metric];
+
+    if (field) c[field] += r.value;
+
+    byConsole.set(r.consoleId, c);
+  }
+
+  return [...byConsole.values()];
+}
+
+/** 24 столбика — часы сегодняшнего дня */
+function hourBars(timeline: Map<string, number>): Bar[] {
+  return Array.from({ length: 24 }, (_, h) => ({
+    key: String(h),
+    label: String(h),
+    tip: `${h}:00–${h + 1}:00`,
+    value: timeline.get(String(h)) ?? 0,
+  }));
+}
+
+/** Столбик на каждый день периода, старые слева */
+function dayBars(timeline: Map<string, number>, days: number, lang: string): Bar[] {
+  return Array.from({ length: days }, (_, i) => {
+    const day = shiftDay(days - 1 - i);
+    const d = new Date(`${day}T00:00:00`);
+
+    return {
+      key: day,
+      label: String(d.getDate()),
+      tip: d.toLocaleDateString(lang, { weekday: "short", day: "numeric", month: "short" }),
+      value: timeline.get(day) ?? 0,
+    };
+  });
+}
+
+function sumBy(rows: UsageStat[], key: (r: UsageStat) => string): Map<string, number> {
+  const sums = new Map<string, number>();
+
+  for (const r of rows) sums.set(key(r), (sums.get(key(r)) ?? 0) + r.value);
+
+  return sums;
+}
+
+function shiftDay(days: number): string {
+  const d = new Date();
+
+  d.setDate(d.getDate() - days);
+
+  return localDay(d);
+}
+
+// «45 сек» / «12 мин» / «2 ч 05 мин»
+function formatDuration(sec: number, t: TFunction): string {
+  const s = Math.round(sec);
+
+  if (s < 60) return t("stats.durSec", { value: s });
+
+  const m = Math.floor(s / 60);
+
+  if (m < 60) return t("stats.durMin", { value: m });
+
+  return t("stats.durHourMin", { hours: Math.floor(m / 60), minutes: String(m % 60).padStart(2, "0") });
 }

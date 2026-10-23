@@ -4,7 +4,7 @@ import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { Ban } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../../stores/appStore";
-import type { ConsoleConfig, QuickCommandColor, SshKeyFile } from "../../types";
+import type { ConsoleConfig, ConsoleFields, QuickCommandColor, SshKeyFile, Workspace } from "../../types";
 import { CopyConnectionButton } from "../CopyConnectionButton";
 import { UnderlineTabs } from "../UnderlineTabs";
 import { SuggestInput, type SuggestOption } from "../SuggestInput";
@@ -12,6 +12,9 @@ import { QUICK_COMMAND_COLORS } from "../../lib/quickCommandColors";
 import { CONSOLE_ICONS, ConsoleIconTile } from "../../lib/consoleIcons";
 import { inspectSshKey } from "../../lib/tauriCommands";
 import { permsTooOpen, formatMode } from "../../lib/sshAudit";
+import { allConsoles } from "../../lib/tree";
+import { useEscape } from "../../hooks/useEscape";
+import type { TFunction } from "i18next";
 
 /** Значения формы консоли — общие для создания и редактирования */
 export interface ConsoleFormValues {
@@ -54,6 +57,26 @@ export function consoleFormValues(con?: ConsoleConfig): ConsoleFormValues {
   };
 }
 
+/** Значения формы → поля для create_console / update_console_config: обрезанные строки, порт по умолчанию 22 */
+export function consoleFields(v: ConsoleFormValues): ConsoleFields {
+  return {
+    name: v.name.trim(),
+    startupCmd: v.startupCmd.trim() || undefined,
+    connectionType: v.connectionType,
+    sshHost: v.sshHost.trim(),
+    sshPort: parseInt(v.sshPort) || 22,
+    sshUser: v.sshUser.trim(),
+    sshKeyPath: v.sshKeyPath.trim(),
+    sshExtraArgs: v.sshExtraArgs.trim(),
+    sshPassphrase: v.sshPassphrase,
+    sshPassword: v.sshPassword,
+    note: v.note,
+    hosting: v.hosting.trim(),
+    icon: v.icon,
+    color: v.color,
+  };
+}
+
 type Tab = "main" | "startup" | "info" | "look";
 
 interface Props {
@@ -75,9 +98,28 @@ const boxInputCls = "w-full px-2.5 py-1.5 rounded-md bg-surface-2 border border-
 const boxTextCls = "w-full px-2.5 py-1.5 rounded-md bg-surface-2 border border-border text-xs text-text-primary outline-none focus:border-accent";
 const sideBtnCls = "px-2.5 py-1.5 text-xs bg-surface-3 hover:bg-surface-1 text-text-secondary rounded-md border border-border shrink-0";
 
+type HintTone = "red" | "amber" | "muted";
+
+const HINT_TONE_CLS: Record<HintTone, string> = {
+  red: "text-red-500",
+  amber: "text-amber-500",
+  muted: "text-text-muted",
+};
+
+/** Подсказка под полем ключа: ждём паузы в наборе, чтобы не дёргать диск на каждую букву */
+const KEY_INSPECT_DELAY_MS = 400;
+
 /**
- * Диалог консоли с вкладками. Шапка и кнопки закреплены, прокручивается только
- * содержимое вкладки — «Сохранить» всегда на виду.
+ * Диалог консоли с вкладками — общий для создания и настроек. Шапка и кнопки
+ * закреплены, прокручивается только содержимое вкладки — «Сохранить» всегда на виду.
+ *
+ * Сохранение:
+ *  1. Без имени — на вкладку «Основное», ничего не сохраняем.
+ *  2. SSH без хоста — туда же, с тостом.
+ *  3. Сохраняет владелец формы (onSubmit). Успех — форма закрывается; ошибка —
+ *     тост, форма остаётся с введёнными значениями.
+ * Под полем ключа — что видно о файле ключа локально (есть ли, права, passphrase).
+ * В поле хостинга — подсказки из уже введённых у других консолей.
  */
 export function ConsoleForm({ title, initial, submitLabel, submittingLabel, existing, autoFocusName, onSubmit, onClose }: Props) {
   const [v, setV] = useState<ConsoleFormValues>(initial);
@@ -92,53 +134,49 @@ export function ConsoleForm({ title, initial, submitLabel, submittingLabel, exis
   const { workspaces, showToast } = useAppStore();
   const { t } = useTranslation();
 
-  useEffect(() => { if (autoFocusName) nameRef.current?.focus(); }, [autoFocusName]);
-
-  // Подсказка под полем ключа: файл есть ли, защищён ли passphrase, права (локально, раздел «SSH-ключи»)
   const [keyInfo, setKeyInfo] = useState<SshKeyFile | null>(null);
+
+  useEffect(() => {
+    if (autoFocusName) nameRef.current?.focus();
+  }, [autoFocusName]);
+
+  useEscape(onClose);
+
+  // Сведения о файле ключа — после паузы в наборе; ответ на старый путь отбрасываем
   useEffect(() => {
     const path = v.sshKeyPath.trim();
-    if (v.connectionType !== "ssh" || !path) { setKeyInfo(null); return; }
+
+    if (v.connectionType !== "ssh" || !path) {
+      setKeyInfo(null);
+
+      return;
+    }
+
     let cancelled = false;
+
     const timer = setTimeout(() => {
-      inspectSshKey(path).then((k) => { if (!cancelled) setKeyInfo(k); }).catch(() => {});
-    }, 400);
-    return () => { cancelled = true; clearTimeout(timer); };
+      inspectSshKey(path)
+        .then((k) => {
+          if (!cancelled) setKeyInfo(k);
+        })
+        // Подсказка необязательна: не прочитали — её просто нет
+        .catch((e) => console.warn("inspect ssh key", e));
+    }, KEY_INSPECT_DELAY_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [v.sshKeyPath, v.connectionType]);
-  const keyHints: { text: string; tone: "red" | "amber" | "muted" }[] = [];
-  if (keyInfo) {
-    if (!keyInfo.privateExists && !keyInfo.publicExists) keyHints.push({ text: t("sshKeys.hintMissing"), tone: "red" });
-    else if (!keyInfo.privateExists) keyHints.push({ text: t("sshKeys.hintNoPrivate"), tone: "amber" });
-    if (keyInfo.privateExists && permsTooOpen(keyInfo.mode)) keyHints.push({ text: t("sshKeys.hintPerms", { mode: formatMode(keyInfo.mode) }), tone: "red" });
-    if (keyInfo.privateExists && keyInfo.encrypted === false) keyHints.push({ text: t("sshKeys.hintNoPassphrase"), tone: "amber" });
-    if (keyInfo.encrypted === true && !v.sshPassphrase && !keyInfo.agentLoaded) keyHints.push({ text: t("sshKeys.hintNeedPassphrase"), tone: "muted" });
-  }
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [onClose]);
+  const hints = keyInfo ? keyHints(keyInfo, v.sshPassphrase, t) : [];
 
-  // Уже использованные хостинги: без дублей с точностью до регистра, по алфавиту
-  const hostingOptions = useMemo<SuggestOption[]>(() => {
-    const map = new Map<string, SuggestOption>();
-    for (const ws of workspaces)
-      for (const proj of ws.projects)
-        for (const con of proj.consoles) {
-          const h = con.hosting?.trim();
-          if (!h) continue;
-          const key = h.toLowerCase();
-          const entry = map.get(key);
-          if (entry) entry.count = (entry.count ?? 0) + 1;
-          else map.set(key, { value: h, count: 1 });
-        }
-    return [...map.values()].sort((a, b) => a.value.localeCompare(b.value));
-  }, [workspaces]);
+  const hostingOptions = useMemo(() => hostingSuggestions(workspaces), [workspaces]);
 
   const handleBrowseKey = async () => {
     try {
       const selected = await openDialog({ multiple: false, directory: false });
+
       if (typeof selected === "string") set("sshKeyPath", selected);
     } catch (e) {
       showToast("error", t("dialogs.toastFileSelectError", { error: e }));
@@ -147,15 +185,28 @@ export function ConsoleForm({ title, initial, submitLabel, submittingLabel, exis
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!v.name.trim()) { setTab("main"); return; }
-    if (v.connectionType === "ssh" && !v.sshHost.trim()) {
+
+    // 1–2. Обязательные поля.
+    if (!v.name.trim()) {
       setTab("main");
-      showToast("error", t("dialogs.toastSshHostRequired"));
+
       return;
     }
+
+    if (v.connectionType === "ssh" && !v.sshHost.trim()) {
+      setTab("main");
+
+      showToast("error", t("dialogs.toastSshHostRequired"));
+
+      return;
+    }
+
+    // 3. Сохранение.
     setLoading(true);
+
     try {
       await onSubmit(v);
+
       onClose();
     } catch (err) {
       showToast("error", t("dialogs.toastError", { error: err }));
@@ -270,8 +321,8 @@ export function ConsoleForm({ title, initial, submitLabel, submittingLabel, exis
                         {t("common.browse")}
                       </button>
                     </div>
-                    {keyHints.map((h) => (
-                      <div key={h.text} className={`text-2xs mt-1 ${h.tone === "red" ? "text-red-500" : h.tone === "amber" ? "text-amber-500" : "text-text-muted"}`}>
+                    {hints.map((h) => (
+                      <div key={h.text} className={`text-2xs mt-1 ${HINT_TONE_CLS[h.tone]}`}>
                         {h.text}
                       </div>
                     ))}
@@ -475,4 +526,40 @@ export function ConsoleForm({ title, initial, submitLabel, submittingLabel, exis
     </div>,
     document.body
   );
+}
+
+/**
+ * Что видно о ключе локально: файла нет / есть только .pub / права шире 600 /
+ * ключ без passphrase / passphrase нужна, а не задана (и ключа нет в агенте).
+ */
+function keyHints(key: SshKeyFile, passphrase: string, t: TFunction): { text: string; tone: HintTone }[] {
+  const missing = !key.privateExists && !key.publicExists;
+
+  const hints: ({ text: string; tone: HintTone } | false)[] = [
+    missing && { text: t("sshKeys.hintMissing"), tone: "red" },
+    !missing && !key.privateExists && { text: t("sshKeys.hintNoPrivate"), tone: "amber" },
+    key.privateExists && permsTooOpen(key.mode) && { text: t("sshKeys.hintPerms", { mode: formatMode(key.mode) }), tone: "red" },
+    key.privateExists && key.encrypted === false && { text: t("sshKeys.hintNoPassphrase"), tone: "amber" },
+    key.encrypted === true && !passphrase && !key.agentLoaded && { text: t("sshKeys.hintNeedPassphrase"), tone: "muted" },
+  ];
+
+  return hints.filter((h): h is { text: string; tone: HintTone } => !!h);
+}
+
+/** Уже использованные хостинги: без дублей с точностью до регистра, по алфавиту, со счётчиком */
+function hostingSuggestions(workspaces: Workspace[]): SuggestOption[] {
+  const byKey = new Map<string, SuggestOption>();
+
+  for (const { console: con } of allConsoles(workspaces)) {
+    const hosting = con.hosting?.trim();
+
+    if (!hosting) continue;
+
+    const entry = byKey.get(hosting.toLowerCase());
+
+    if (entry) entry.count = (entry.count ?? 0) + 1;
+    else byKey.set(hosting.toLowerCase(), { value: hosting, count: 1 });
+  }
+
+  return [...byKey.values()].sort((a, b) => a.value.localeCompare(b.value));
 }

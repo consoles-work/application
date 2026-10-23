@@ -1,30 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import {
-  Bot,
-  Send,
-  Square,
-  X,
-  PanelRight,
-  PanelBottom,
-  ChevronDown,
-  ChevronRight,
-  Trash2,
-  Plus,
-  Pencil,
-  Check,
-} from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Bot, Send, Square, X, PanelRight, PanelBottom, ChevronDown, ChevronRight, Trash2, Plus, Pencil, Check } from "lucide-react";
 import { useAppStore } from "../stores/appStore";
 import { LinkifiedText } from "./LinkifiedText";
-import {
-  streamCompletion,
-  getProvider,
-  AI_PROVIDERS,
-  type ChatMessage,
-} from "../lib/aiProviders";
+import { streamCompletion, getProvider, AI_PROVIDERS, type AiProvider, type ChatMessage } from "../lib/aiProviders";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
 import {
-  setSetting,
   createAiSession,
   deleteAiSession,
   renameAiSession,
@@ -35,67 +16,43 @@ import {
   aiRun,
   aiCancel,
 } from "../lib/tauriCommands";
-import type { AiMessage } from "../types";
 import { trackUsage, METRICS } from "../lib/usageStats";
 
-// Вне компонента — переживает ремонт при смене позиции панели
-let _abortController: AbortController | null = null;
-// ID сообщения ассистента, которое сейчас стримится (для финализации в БД)
-let _streamingMsgId: string | null = null;
-// ID последней загруженной сессии — предотвращает перезагрузку из БД при ремонте компонента
-let _loadedSessionId: string | null = null;
-// ID чат-сессии, которую сейчас стримит локальный CLI (фильтр событий ai://*)
-let _cliSessionId: string | null = null;
+// ══════════════════════════════════════
+// AiPanel — AI-чат рядом с терминалом
+// ══════════════════════════════════════
+// Отправка вопроса:
+//  1. Пусто и нет выделенного в терминале — нечего отправлять. HTTP-провайдеру
+//     нужен API-ключ; локальный CLI работает по подписке пользователя.
+//  2. Выделенное в терминале (до 4000 символов) прикладывается с просьбой
+//     объяснить; после отправки этот же текст контекстом больше не предлагается.
+//  3. Сообщение пользователя и пустое сообщение ассистента сразу пишутся в БД —
+//     ответ дописывается в него по мере прихода.
+//  4. CLI — процесс на бэкенде, ответ приходит событиями (подписка одна на
+//     панель); HTTP — поток fetch прямо отсюда.
+//  5. Конец: ошибка — её текст вместо пустого ответа; остановка — остаётся
+//     полученное. Финальный текст — в БД; первый ответ нового чата даёт ему
+//     заголовок.
+// Позиция панели меняется ремонтом компонента: состояние чата — в сторе, а
+// идущий стрим — в переменных модуля, иначе ремонт оборвал бы его.
 
-/**
- * Локальный CLI получает один промпт, а не массив сообщений, — историю
- * приходится укладывать в текст. Одиночный вопрос отправляем как есть.
- */
-function buildCliPrompt(history: ChatMessage[]): string {
-  if (history.length <= 1) return history[history.length - 1]?.content ?? "";
-  const transcript = history
-    .map((m) => (m.role === "user" ? `## Пользователь\n${m.content}` : `## Ассистент\n${m.content}`))
-    .join("\n\n");
-  return `Ниже — история диалога. Ответь на последнее сообщение пользователя.\n\n${transcript}`;
-}
+const NEW_CHAT_TITLE = "Новый чат";
 
-function uuid() {
-  return crypto.randomUUID();
-}
+/** Шаг 2: сколько выделенного уходит в вопрос и сколько показывается в панели */
+const CONTEXT_SEND_LIMIT = 4000;
+const CONTEXT_PREVIEW_LIMIT = 500;
 
-/**
- * Дописывает последнее сообщение ассистента в БД и снимает флаг стриминга.
- * Общая для HTTP-провайдеров (finally в handleSend) и для локального CLI
- * (обработчик ai://done) — сохранение истории в обоих случаях ведёт фронт.
- */
-async function finalizeAssistantMessage(sessionId: string) {
-  const state = useAppStore.getState();
-  const finalMessages = state.aiMessages;
-  const finalAssistant = finalMessages[finalMessages.length - 1];
-  if (finalAssistant?.role === "assistant" && _streamingMsgId) {
-    await updateAiMessage(_streamingMsgId, finalAssistant.content).catch(() => {});
-    // Автозаголовок если это первый ответ
-    const session = state.aiSessions.find((s) => s.id === sessionId);
-    if (finalMessages.length === 2 && session?.title === "Новый чат") {
-      const title = finalAssistant.content.trim().slice(0, 40).replace(/\n/g, " ") || "Чат";
-      await renameAiSession(sessionId, title).catch(() => {});
-      state.updateAiSessionTitle(sessionId, title);
-    }
-  }
-  _streamingMsgId = null;
-  state.setAiIsStreaming(false);
-}
-
-/** Дописать текст к последнему сообщению ассистента в UI */
-function appendToAssistant(chunk: string) {
-  useAppStore.getState().setAiMessages((m: ChatMessage[]) => {
-    const last = m[m.length - 1];
-    if (last?.role === "assistant") {
-      return [...m.slice(0, -1), { ...last, content: last.content + chunk }];
-    }
-    return m;
-  });
-}
+// Идущий стрим — вне компонента: переживает ремонт при смене позиции панели
+const stream = {
+  /** HTTP-провайдер: отмена fetch */
+  abort: null as AbortController | null,
+  /** Сообщение ассистента в БД, которое сейчас дописывается */
+  messageId: null as string | null,
+  /** CLI: чат, ответ для которого сейчас идёт (фильтр событий ai://*) */
+  cliSessionId: null as string | null,
+  /** Чат, история которого уже в сторе — ремонт не перечитывает её из БД */
+  loadedSessionId: null as string | null,
+};
 
 export function AiPanel() {
   const {
@@ -105,15 +62,13 @@ export function AiPanel() {
     setAiPanelPosition,
     toggleAiPanel,
     showToast,
-    setSetting: storeSetting,
-    // Сессии
+    saveSetting,
     aiSessions,
     addAiSession,
     removeAiSession,
     updateAiSessionTitle,
     activeAiSessionId,
     setActiveAiSessionId,
-    // Состояние чата — в store, не теряется при смене позиции
     aiMessages,
     setAiMessages,
     aiInput,
@@ -130,108 +85,91 @@ export function AiPanel() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-scroll to bottom on new messages
+  const providerId = settings["ai.provider"] ?? "openai";
+  const provider = getProvider(providerId);
+  const apiKey = settings[`ai.apiKey.${providerId}`] ?? settings["ai.apiKey"] ?? "";
+  const model = chatModel(provider, settings["ai.model"] ?? "");
+  const showContext = !!terminalSelection && terminalSelection !== dismissedSelection;
+  const activeSession = aiSessions.find((s) => s.id === activeAiSessionId);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [aiMessages]);
 
-  // Show context block when selection changes
+  // Новое выделение в терминале — блок контекста раскрывается
   useEffect(() => {
-    if (terminalSelection && terminalSelection !== dismissedSelection) {
-      setContextExpanded(true);
-    }
-  }, [terminalSelection, dismissedSelection]);
+    if (showContext) setContextExpanded(true);
+  }, [showContext, terminalSelection]);
 
-  // Загружаем историю при смене сессии.
-  // Если сессия не изменилась (компонент просто ремонтировался при смене позиции) — НЕ перезагружаем,
-  // чтобы не потерять текст стриминга, который ещё не сохранён в БД.
+  // История — при смене чата. Ремонт панели (смена позиции) её не перечитывает:
+  // текст идущего ответа ещё не в БД и потерялся бы.
   useEffect(() => {
-    if (!activeAiSessionId) return;
-    if (_loadedSessionId === activeAiSessionId) return;
-    _loadedSessionId = activeAiSessionId;
-    loadAiMessages(activeAiSessionId).then((msgs: AiMessage[]) => {
-      setAiMessages(msgs.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })));
-    }).catch(() => {});
-  }, [activeAiSessionId]);
+    if (!activeAiSessionId || stream.loadedSessionId === activeAiSessionId) return;
 
-  // Фокус на поле переименования
+    stream.loadedSessionId = activeAiSessionId;
+
+    loadAiMessages(activeAiSessionId)
+      .then((msgs) => setAiMessages(msgs.map((m) => ({ role: m.role, content: m.content }))))
+      .catch((e) => showToast("error", `Не удалось загрузить историю: ${e}`));
+  }, [activeAiSessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (renamingId) renameInputRef.current?.focus();
   }, [renamingId]);
 
-  // ── События локального движка (claude CLI) ──
-  // Подписка ставится один раз: слушатели фильтруют по _cliSessionId, поэтому
+  // ── События локального CLI ──
+  // Подписка одна на панель: слушатели фильтруют по stream.cliSessionId, поэтому
   // пересоздавать их на каждую отправку не нужно (иначе чанки задвоятся).
   useEffect(() => {
     const unlisteners: Array<() => void> = [];
-    let disposed = false;
-    const add = (p: Promise<() => void>) =>
-      p.then((u) => (disposed ? u() : unlisteners.push(u))).catch(() => {});
 
-    add(
+    let disposed = false;
+
+    const keep = (subscribing: Promise<() => void>) =>
+      subscribing
+        .then((unlisten) => (disposed ? unlisten() : unlisteners.push(unlisten)))
+        .catch((e) => console.warn("ai:// subscribe", e));
+
+    keep(
       listen<{ sessionId: string; text: string }>("ai://chunk", (e) => {
-        if (e.payload.sessionId === _cliSessionId) appendToAssistant(e.payload.text);
+        if (e.payload.sessionId === stream.cliSessionId) appendToAssistant(e.payload.text);
       })
     );
-    add(
-      listen<{ sessionId: string; content: string; ok: boolean }>("ai://done", async (e) => {
-        if (e.payload.sessionId !== _cliSessionId) return;
-        const sid = _cliSessionId;
-        _cliSessionId = null;
-        // Финальный текст берём из payload: ai://done может опередить
-        // отрисовку последнего чанка. Пустой content бывает при отмене
-        // до первого токена — тогда оставляем накопленное.
-        if (e.payload.content.trim()) {
-          useAppStore.getState().setAiMessages((m) => {
-            const last = m[m.length - 1];
-            if (last?.role === "assistant") {
-              return [...m.slice(0, -1), { ...last, content: e.payload.content }];
-            }
-            return m;
-          });
-        }
-        await finalizeAssistantMessage(sid);
+
+    keep(
+      listen<{ sessionId: string; content: string; ok: boolean }>("ai://done", (e) => {
+        // Финальный текст берём из payload: ai://done может опередить отрисовку
+        // последнего чанка. Пустой — при отмене до первого токена: оставляем накопленное.
+        if (e.payload.sessionId !== stream.cliSessionId) return;
+
+        if (e.payload.content.trim()) setLastAssistant(e.payload.content);
+
+        finishCliAnswer();
       })
     );
-    add(
-      listen<{ sessionId: string; message: string }>("ai://error", async (e) => {
-        if (e.payload.sessionId !== _cliSessionId) return;
-        const sid = _cliSessionId;
-        _cliSessionId = null;
-        useAppStore.getState().setAiMessages((m) => {
-          const last = m[m.length - 1];
-          if (last?.role === "assistant" && last.content === "") {
-            return [...m.slice(0, -1), { role: "assistant", content: `Ошибка: ${e.payload.message.slice(0, 500)}` }];
-          }
-          return m;
-        });
-        await finalizeAssistantMessage(sid);
+
+    keep(
+      listen<{ sessionId: string; message: string }>("ai://error", (e) => {
+        if (e.payload.sessionId !== stream.cliSessionId) return;
+
+        showErrorInsteadOfEmpty(e.payload.message.slice(0, 500));
+
+        finishCliAnswer();
       })
     );
 
     return () => {
       disposed = true;
+
       unlisteners.forEach((u) => u());
     };
   }, []);
 
-  const provider = getProvider(settings["ai.provider"] ?? "openai");
-  const apiKey = settings[`ai.apiKey.${settings["ai.provider"] ?? "openai"}`] ?? settings["ai.apiKey"] ?? "";
-  // ai.model один на все провайдеры и не сбрасывается при их переключении.
-  // Для CLI чужой алиас (напр. "gpt-4o") — жёсткая ошибка запуска, поэтому
-  // здесь откатываемся на модель по умолчанию. У HTTP-провайдеров имя модели
-  // может быть произвольным (кастомные деплойменты), их не трогаем.
-  const savedModel = settings["ai.model"] ?? "";
-  const model =
-    provider.isLocalCli && !provider.models.includes(savedModel)
-      ? provider.defaultModel
-      : savedModel || provider.defaultModel;
-  const showContext = terminalSelection && terminalSelection !== dismissedSelection;
-  const activeSession = aiSessions.find((s) => s.id === activeAiSessionId);
-
-  const handleNewSession = useCallback(async () => {
+  // ── Чаты ──
+  const handleNewSession = async () => {
     try {
-      const session = await createAiSession("Новый чат", settings["ai.provider"] ?? "openai", model);
+      const session = await createAiSession(NEW_CHAT_TITLE, providerId, model);
+
       addAiSession(session);
       setActiveAiSessionId(session.id);
       setAiMessages([]);
@@ -239,176 +177,164 @@ export function AiPanel() {
     } catch {
       showToast("error", "Не удалось создать сессию");
     }
-  }, [settings, model, addAiSession, setActiveAiSessionId, setAiMessages, showToast]);
+  };
 
-  const handleSwitchSession = useCallback(async (id: string) => {
-    if (id === activeAiSessionId) { setShowSessionList(false); return; }
-    setActiveAiSessionId(id);
+  // Сообщения загрузит эффект смены чата
+  const handleSwitchSession = (id: string) => {
     setShowSessionList(false);
-    // Сообщения загрузятся через useEffect
-  }, [activeAiSessionId, setActiveAiSessionId]);
 
-  const handleDeleteSession = useCallback(async (id: string) => {
+    if (id !== activeAiSessionId) setActiveAiSessionId(id);
+  };
+
+  // Последний чат не удаляется — только очищается
+  const handleDeleteSession = async (id: string) => {
     const session = aiSessions.find((s) => s.id === id);
-    const confirmed = await ask(
-      `Удалить чат «${session?.title ?? "чат"}»? Это действие нельзя отменить.`,
-      { title: "Удалить чат", kind: "warning" }
-    );
+
+    const confirmed = await ask(`Удалить чат «${session?.title ?? "чат"}»? Это действие нельзя отменить.`, {
+      title: "Удалить чат",
+      kind: "warning",
+    });
+
     if (!confirmed) return;
 
-    if (aiSessions.length <= 1) {
-      // Нельзя удалить последнюю — очищаем
-      await clearAiSession(id).catch(() => {});
-      setAiMessages([]);
-      return;
-    }
     try {
+      if (aiSessions.length <= 1) {
+        await clearAiSession(id);
+
+        setAiMessages([]);
+
+        return;
+      }
+
       await deleteAiSession(id);
+
       removeAiSession(id);
+
       if (id === activeAiSessionId) setAiMessages([]);
     } catch {
       showToast("error", "Не удалось удалить сессию");
     }
-  }, [aiSessions, activeAiSessionId, removeAiSession, setAiMessages, showToast]);
-
-  const handleStartRename = (id: string, currentTitle: string) => {
-    setRenamingId(id);
-    setRenameValue(currentTitle);
   };
 
   const handleFinishRename = async () => {
-    if (!renamingId || !renameValue.trim()) { setRenamingId(null); return; }
-    try {
-      await renameAiSession(renamingId, renameValue.trim());
-      updateAiSessionTitle(renamingId, renameValue.trim());
-    } catch {}
+    const id = renamingId;
+    const title = renameValue.trim();
+
     setRenamingId(null);
+
+    if (!id || !title) return;
+
+    try {
+      await renameAiSession(id, title);
+
+      updateAiSessionTitle(id, title);
+    } catch (e) {
+      showToast("error", `Не удалось переименовать: ${e}`);
+    }
   };
 
-  const handleClearChat = useCallback(async () => {
+  const handleClearChat = async () => {
     if (!activeAiSessionId) return;
-    const confirmed = await ask(
-      "Очистить историю этого чата? Это действие нельзя отменить.",
-      { title: "Очистить чат", kind: "warning" }
-    );
-    if (!confirmed) return;
-    await clearAiSession(activeAiSessionId).catch(() => {});
-    setAiMessages([]);
-  }, [activeAiSessionId, setAiMessages]);
 
-  const handleSend = useCallback(async () => {
+    const confirmed = await ask("Очистить историю этого чата? Это действие нельзя отменить.", { title: "Очистить чат", kind: "warning" });
+
+    if (!confirmed) return;
+
+    try {
+      await clearAiSession(activeAiSessionId);
+
+      setAiMessages([]);
+    } catch (e) {
+      showToast("error", `Не удалось очистить чат: ${e}`);
+    }
+  };
+
+  // ── Отправка ──
+  const handleSend = async () => {
+    const sessionId = activeAiSessionId;
     const text = aiInput.trim();
-    if (!text && !showContext) return;
-    // Локальный CLI работает по подписке пользователя — ключ ему не нужен
+
+    // 1. Есть что отправлять и чем.
+    if ((!text && !showContext) || !sessionId) return;
+
     if (!provider.isLocalCli && !apiKey) {
       showToast("error", "Укажите API-ключ в Настройках → Агенты");
+
       return;
     }
-    if (!activeAiSessionId) return;
 
-    let userContent = text;
-    if (showContext && terminalSelection) {
-      const prefix = text ? `${text}\n\n` : "";
-      userContent = `${prefix}Объясни это:\n\`\`\`\n${terminalSelection.slice(0, 4000)}\n\`\`\``;
-    }
+    // 2. Вопрос с контекстом из терминала.
+    const content = showContext ? withTerminalContext(text, terminalSelection) : text;
 
-    // Сохраняем сообщение пользователя в БД
-    const userMsgId = uuid();
-    await saveAiMessage(userMsgId, activeAiSessionId, "user", userContent).catch(() => {});
-    trackUsage(METRICS.aiMessages, 1);
+    const history: ChatMessage[] = [...aiMessages, { role: "user", content }];
 
-    const userMsg: ChatMessage = { role: "user", content: userContent };
-    const newHistory = [...aiMessages, userMsg];
-    setAiMessages(newHistory);
+    setAiMessages(history);
     setAiInput("");
     setDismissedSelection(terminalSelection);
 
-    // Резервируем ID для сообщения ассистента
-    const assistantMsgId = uuid();
-    _streamingMsgId = assistantMsgId;
-    // Сохраняем пустое сообщение ассистента сразу
-    await saveAiMessage(assistantMsgId, activeAiSessionId, "assistant", "").catch(() => {});
+    trackUsage(METRICS.aiMessages, 1);
 
-    // Добавляем пустое сообщение ассистента в UI
+    // 3. Вопрос и пустой ответ — в БД.
+    stream.messageId = crypto.randomUUID();
+
+    await saveOrWarn(crypto.randomUUID(), sessionId, "user", content);
+    await saveOrWarn(stream.messageId, sessionId, "assistant", "");
+
     setAiMessages((m) => [...m, { role: "assistant", content: "" }]);
     setAiIsStreaming(true);
 
-    // ── Локальный движок: процесс на Rust-стороне, ответ придёт событиями ──
+    // 4–5. CLI: дальше — обработчики ai://chunk|done|error.
     if (provider.isLocalCli) {
-      _cliSessionId = activeAiSessionId;
-      try {
-        await aiRun(
-          activeAiSessionId,
-          model,
-          settings["ai.systemPrompt"] ?? "",
-          buildCliPrompt(newHistory)
-        );
-      } catch (e) {
-        _cliSessionId = null;
-        setAiMessages((m) => {
-          const last = m[m.length - 1];
-          if (last?.role === "assistant" && last.content === "") {
-            return [...m.slice(0, -1), { role: "assistant", content: `Ошибка: ${e}` }];
-          }
-          return m;
-        });
-        await finalizeAssistantMessage(activeAiSessionId);
-      }
-      // Дальше — обработчики ai://chunk|done|error
+      stream.cliSessionId = sessionId;
+
+      aiRun(sessionId, model, settings["ai.systemPrompt"] ?? "", cliPrompt(history)).catch((e) => {
+        showErrorInsteadOfEmpty(String(e));
+
+        finishCliAnswer();
+      });
+
       return;
     }
 
-    const controller = new AbortController();
-    _abortController = controller;
+    // 4–5. HTTP.
+    stream.abort = new AbortController();
 
     try {
-      await streamCompletion(
-        provider,
-        newHistory,
-        model,
-        apiKey,
-        appendToAssistant,
-        controller.signal
-      );
-    } catch (e: unknown) {
-      const err = e as Error;
-      if (err.name !== "AbortError") {
-        setAiMessages((m) => {
-          const last = m[m.length - 1];
-          if (last?.role === "assistant" && last.content === "") {
-            return [...m.slice(0, -1), { role: "assistant", content: `Ошибка: ${err.message}` }];
-          }
-          return m;
-        });
-      }
+      await streamCompletion({ provider, messages: history, model, apiKey, onChunk: appendToAssistant, signal: stream.abort.signal });
+    } catch (e) {
+      // Остановка пользователем — не ошибка: остаётся полученное
+      if ((e as Error).name !== "AbortError") showErrorInsteadOfEmpty((e as Error).message);
     } finally {
-      await finalizeAssistantMessage(activeAiSessionId);
-      _abortController = null;
+      stream.abort = null;
+
+      await finalizeAssistantMessage(sessionId);
     }
-  }, [aiInput, aiMessages, showContext, terminalSelection, apiKey, provider, model, settings, activeAiSessionId, setAiMessages, setAiInput, setAiIsStreaming, showToast]);
+  };
 
   const handleStop = () => {
-    if (_cliSessionId) {
-      aiCancel(_cliSessionId).catch(() => {});
-      return;
-    }
-    _abortController?.abort();
+    if (stream.cliSessionId) aiCancel(stream.cliSessionId).catch((e) => console.warn("ai cancel", e));
+    else stream.abort?.abort();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+    if (e.key !== "Enter" || e.shiftKey) return;
+
+    e.preventDefault();
+
+    handleSend();
   };
 
-  const handlePositionChange = async (pos: "right" | "bottom") => {
-    setAiPanelPosition(pos);
-    try {
-      await setSetting("ui.aiPanelPosition", pos);
-      storeSetting("ui.aiPanelPosition", pos);
-    } catch {}
-  };
+  const positionButton = (pos: "right" | "bottom", title: string, Icon: typeof PanelRight) => (
+    <button
+      onClick={() => setAiPanelPosition(pos)}
+      className={`p-1 rounded transition-colors ${
+        aiPanelPosition === pos ? "text-accent bg-accent/10" : "text-text-muted hover:text-text-secondary"
+      }`}
+      title={title}
+    >
+      <Icon className="w-3.5 h-3.5" />
+    </button>
+  );
 
   return (
     <div className="h-full flex flex-col bg-surface-0 border-l border-border">
@@ -416,7 +342,6 @@ export function AiPanel() {
       <div className="h-9 flex items-center gap-1.5 px-3 bg-surface-1 border-b border-border shrink-0">
         <Bot className="w-3.5 h-3.5 text-accent shrink-0" />
 
-        {/* Session selector */}
         <button
           className="flex-1 flex items-center gap-1 text-xs font-semibold text-text-primary hover:text-accent truncate min-w-0"
           onClick={() => setShowSessionList((v) => !v)}
@@ -426,61 +351,25 @@ export function AiPanel() {
           <ChevronDown className="w-3 h-3 shrink-0 text-text-muted" />
         </button>
 
-        {/* Новая сессия */}
-        <button
-          onClick={handleNewSession}
-          className="p-1 rounded text-text-muted hover:text-text-secondary transition-colors"
-          title="Новая сессия"
-        >
+        <button onClick={handleNewSession} className="p-1 rounded text-text-muted hover:text-text-secondary transition-colors" title="Новая сессия">
           <Plus className="w-3.5 h-3.5" />
         </button>
 
-        {/* Позиция */}
-        <button
-          onClick={() => handlePositionChange("right")}
-          className={`p-1 rounded transition-colors ${
-            aiPanelPosition === "right"
-              ? "text-accent bg-accent/10"
-              : "text-text-muted hover:text-text-secondary"
-          }`}
-          title="Справа от терминала"
-        >
-          <PanelRight className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={() => handlePositionChange("bottom")}
-          className={`p-1 rounded transition-colors ${
-            aiPanelPosition === "bottom"
-              ? "text-accent bg-accent/10"
-              : "text-text-muted hover:text-text-secondary"
-          }`}
-          title="Снизу под терминалом"
-        >
-          <PanelBottom className="w-3.5 h-3.5" />
-        </button>
+        {positionButton("right", "Справа от терминала", PanelRight)}
+        {positionButton("bottom", "Снизу под терминалом", PanelBottom)}
 
-        {/* Очистить историю */}
         {aiMessages.length > 0 && (
-          <button
-            onClick={handleClearChat}
-            className="p-1 rounded text-text-muted hover:text-text-secondary transition-colors"
-            title="Очистить чат"
-          >
+          <button onClick={handleClearChat} className="p-1 rounded text-text-muted hover:text-text-secondary transition-colors" title="Очистить чат">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         )}
 
-        {/* Закрыть */}
-        <button
-          onClick={toggleAiPanel}
-          className="p-1 rounded text-text-muted hover:text-text-primary transition-colors"
-          title="Закрыть (Cmd+I)"
-        >
+        <button onClick={toggleAiPanel} className="p-1 rounded text-text-muted hover:text-text-primary transition-colors" title="Закрыть (Cmd+I)">
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Session dropdown */}
+      {/* Список чатов */}
       {showSessionList && (
         <div className="border-b border-border bg-surface-1 shrink-0 max-h-48 overflow-y-auto">
           {aiSessions.map((s) => (
@@ -510,14 +399,21 @@ export function AiPanel() {
               )}
               <button
                 className="p-0.5 opacity-0 group-hover:opacity-100 text-text-muted hover:text-text-secondary transition-all"
-                onClick={(e) => { e.stopPropagation(); handleStartRename(s.id, s.title); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRenamingId(s.id);
+                  setRenameValue(s.title);
+                }}
                 title="Переименовать"
               >
                 {renamingId === s.id ? <Check className="w-3 h-3" /> : <Pencil className="w-3 h-3" />}
               </button>
               <button
                 className="p-0.5 opacity-0 group-hover:opacity-100 text-text-muted hover:text-danger transition-all"
-                onClick={(e) => { e.stopPropagation(); handleDeleteSession(s.id); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteSession(s.id);
+                }}
                 title="Удалить"
               >
                 <Trash2 className="w-3 h-3" />
@@ -527,57 +423,40 @@ export function AiPanel() {
         </div>
       )}
 
-      {/* Messages */}
+      {/* Сообщения */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
         {aiMessages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-text-muted">
             <Bot className="w-8 h-8 mb-2 opacity-30" />
             <div className="text-xs text-center px-4">
-              {!apiKey
-                ? "Настройте AI-провайдера в Настройках → Агенты"
-                : "Задайте вопрос или выделите текст в терминале"}
+              {apiKey ? "Задайте вопрос или выделите текст в терминале" : "Настройте AI-провайдера в Настройках → Агенты"}
             </div>
           </div>
         )}
 
         {aiMessages.map((msg, i) => (
-          <div
-            key={i}
-            className={`flex flex-col gap-1 ${
-              msg.role === "user" ? "items-end" : "items-start"
-            }`}
-          >
+          <div key={i} className={`flex flex-col gap-1 ${msg.role === "user" ? "items-end" : "items-start"}`}>
             <div
               className={`max-w-[85%] rounded-lg px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap break-words ${
-                msg.role === "user"
-                  ? "bg-accent/20 text-text-primary"
-                  : "bg-surface-2 text-text-primary"
+                msg.role === "user" ? "bg-accent/20 text-text-primary" : "bg-surface-2 text-text-primary"
               }`}
             >
-              {msg.content ? <LinkifiedText text={msg.content} /> : (
-                <span className="text-text-muted animate-pulse">●●●</span>
-              )}
+              {msg.content ? <LinkifiedText text={msg.content} /> : <span className="text-text-muted animate-pulse">●●●</span>}
             </div>
           </div>
         ))}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Context block — selection from terminal */}
+      {/* Контекст — выделенное в терминале */}
       {showContext && (
         <div className="border-t border-border shrink-0">
           <button
             className="w-full flex items-center gap-1.5 px-3 py-1.5 text-2xs text-text-secondary hover:text-text-primary hover:bg-surface-2 transition-colors"
             onClick={() => setContextExpanded((v) => !v)}
           >
-            {contextExpanded ? (
-              <ChevronDown className="w-3 h-3 shrink-0" />
-            ) : (
-              <ChevronRight className="w-3 h-3 shrink-0" />
-            )}
-            <span className="flex-1 text-left truncate">
-              Контекст из терминала
-            </span>
+            {contextExpanded ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />}
+            <span className="flex-1 text-left truncate">Контекст из терминала</span>
             <span
               className="px-1.5 py-0.5 rounded bg-surface-3 hover:bg-danger/20 cursor-pointer"
               onClick={(e) => {
@@ -592,12 +471,9 @@ export function AiPanel() {
           {contextExpanded && (
             <div className="px-3 pb-2">
               <div className="bg-surface-1 border border-border rounded px-2 py-1.5 text-2xs font-mono text-text-secondary max-h-20 overflow-y-auto whitespace-pre-wrap break-all">
-                {terminalSelection.slice(0, 500)}
-                {terminalSelection.length > 500 && (
-                  <span className="text-text-muted">
-                    {" "}
-                    …ещё {terminalSelection.length - 500} символов
-                  </span>
+                {terminalSelection.slice(0, CONTEXT_PREVIEW_LIMIT)}
+                {terminalSelection.length > CONTEXT_PREVIEW_LIMIT && (
+                  <span className="text-text-muted"> …ещё {terminalSelection.length - CONTEXT_PREVIEW_LIMIT} символов</span>
                 )}
               </div>
             </div>
@@ -605,17 +481,14 @@ export function AiPanel() {
         </div>
       )}
 
-      {/* Provider selector (compact, shown only when no provider configured) */}
+      {/* Выбор провайдера — пока он не задан */}
       {!settings["ai.provider"] && (
         <div className="border-t border-border px-3 py-2 shrink-0">
           <div className="flex gap-1">
             {AI_PROVIDERS.map((p) => (
               <button
                 key={p.id}
-                onClick={async () => {
-                  await setSetting("ai.provider", p.id).catch(() => {});
-                  storeSetting("ai.provider", p.id);
-                }}
+                onClick={() => saveSetting("ai.provider", p.id)}
                 className="flex-1 py-1 text-2xs rounded border border-border text-text-secondary hover:text-text-primary hover:bg-surface-2 transition-colors"
               >
                 {p.name}
@@ -625,26 +498,20 @@ export function AiPanel() {
         </div>
       )}
 
-      {/* Input */}
+      {/* Ввод */}
       <div className="border-t border-border p-3 shrink-0">
         <div className="flex gap-2 items-end">
           <textarea
             value={aiInput}
             onChange={(e) => setAiInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={
-              showContext ? "Вопрос (или отправить с контекстом)..." : "Введите вопрос... (Enter)"
-            }
+            placeholder={showContext ? "Вопрос (или отправить с контекстом)..." : "Введите вопрос... (Enter)"}
             rows={2}
             className="flex-1 bg-surface-1 border border-border rounded-lg px-3 py-2 text-xs text-text-primary placeholder-text-muted resize-none focus:outline-none focus:border-accent transition-colors"
             disabled={aiIsStreaming}
           />
           {aiIsStreaming ? (
-            <button
-              onClick={handleStop}
-              className="p-2 rounded-lg bg-danger/20 text-danger hover:bg-danger/30 transition-colors shrink-0"
-              title="Остановить"
-            >
+            <button onClick={handleStop} className="p-2 rounded-lg bg-danger/20 text-danger hover:bg-danger/30 transition-colors shrink-0" title="Остановить">
               <Square className="w-3.5 h-3.5" />
             </button>
           ) : (
@@ -661,4 +528,108 @@ export function AiPanel() {
       </div>
     </div>
   );
+}
+
+// ══════════════════════════════════════
+// Детали
+// ══════════════════════════════════════
+
+/**
+ * ai.model один на все провайдеры и не сбрасывается при их переключении.
+ * Для CLI чужой алиас (напр. "gpt-4o") — жёсткая ошибка запуска, поэтому
+ * откатываемся на модель по умолчанию. У HTTP-провайдеров имя модели может
+ * быть произвольным (кастомные деплойменты), его не трогаем.
+ */
+function chatModel(provider: AiProvider, saved: string): string {
+  if (provider.isLocalCli && !provider.models.includes(saved)) return provider.defaultModel;
+
+  return saved || provider.defaultModel;
+}
+
+/** Шаг 2 */
+function withTerminalContext(question: string, selection: string): string {
+  const prefix = question ? `${question}\n\n` : "";
+
+  return `${prefix}Объясни это:\n\`\`\`\n${selection.slice(0, CONTEXT_SEND_LIMIT)}\n\`\`\``;
+}
+
+/**
+ * Локальный CLI получает один промпт, а не массив сообщений, — историю
+ * приходится укладывать в текст. Одиночный вопрос отправляем как есть.
+ */
+function cliPrompt(history: ChatMessage[]): string {
+  if (history.length <= 1) return history[history.length - 1]?.content ?? "";
+
+  const transcript = history
+    .map((m) => (m.role === "user" ? `## Пользователь\n${m.content}` : `## Ассистент\n${m.content}`))
+    .join("\n\n");
+
+  return `Ниже — история диалога. Ответь на последнее сообщение пользователя.\n\n${transcript}`;
+}
+
+/** Шаг 3. Не сохранилось — чат работает дальше, но в истории после перезапуска сообщения не будет. */
+async function saveOrWarn(id: string, sessionId: string, role: "user" | "assistant", content: string) {
+  await saveAiMessage(id, sessionId, role, content).catch((e) => console.warn("save ai message", e));
+}
+
+/** Дописать текст к последнему сообщению ассистента */
+function appendToAssistant(chunk: string) {
+  updateLastAssistant((last) => ({ ...last, content: last.content + chunk }));
+}
+
+function setLastAssistant(content: string) {
+  updateLastAssistant((last) => ({ ...last, content }));
+}
+
+/** Шаг 5: текст ошибки — только вместо пустого ответа; начатый ответ не затираем */
+function showErrorInsteadOfEmpty(message: string) {
+  updateLastAssistant((last) => (last.content === "" ? { role: "assistant", content: `Ошибка: ${message}` } : last));
+}
+
+function updateLastAssistant(update: (last: ChatMessage) => ChatMessage) {
+  useAppStore.getState().setAiMessages((m) => {
+    const last = m[m.length - 1];
+
+    if (last?.role !== "assistant") return m;
+
+    return [...m.slice(0, -1), update(last)];
+  });
+}
+
+function finishCliAnswer() {
+  const sessionId = stream.cliSessionId;
+
+  stream.cliSessionId = null;
+
+  if (sessionId) finalizeAssistantMessage(sessionId);
+}
+
+/**
+ * Шаг 5: финальный текст ответа — в БД, снять флаг стриминга. Первый ответ
+ * нового чата даёт ему заголовок (40 символов ответа).
+ */
+async function finalizeAssistantMessage(sessionId: string) {
+  const state = useAppStore.getState();
+
+  const messages = state.aiMessages;
+  const answer = messages[messages.length - 1];
+  const messageId = stream.messageId;
+
+  stream.messageId = null;
+
+  state.setAiIsStreaming(false);
+
+  if (answer?.role !== "assistant" || !messageId) return;
+
+  await updateAiMessage(messageId, answer.content).catch((e) => console.warn("update ai message", e));
+
+  const session = state.aiSessions.find((s) => s.id === sessionId);
+
+  if (messages.length !== 2 || session?.title !== NEW_CHAT_TITLE) return;
+
+  const title = answer.content.trim().slice(0, 40).replace(/\n/g, " ") || "Чат";
+
+  await renameAiSession(sessionId, title).catch((e) => console.warn("rename ai session", e));
+
+  state.updateAiSessionTitle(sessionId, title);
 }

@@ -1,10 +1,12 @@
 // ══════════════════════════════════════════════════════════════════
-// LockScreen — экран ввода пароля при запуске
+// LockScreen — экран ввода пароля
 // ══════════════════════════════════════════════════════════════════
-// Показывается на весь экран, пока пароль не введён верно; основной
-// интерфейс и данные до разблокировки не монтируются вовсе (см. App.tsx).
-// Тот же экран используется для автоблокировки по бездействию (App.tsx).
-// Пароль сверяется с Argon2id-хешем в БД через команду `verify_password`.
+// При запуске (основной интерфейс и данные до разблокировки не монтируются
+// вовсе) и при автоблокировке по бездействию — см. App.tsx.
+// 1. Пустой пароль не проверяем.
+// 2. Пароль сверяется с хешем в БД. Исходы: а) верный — разблокировка;
+//    б) неверный — сообщение, поле очищается; в) проверка не удалась — то же
+//    сообщение, поле остаётся.
 // Фон — декоративный «терминал»: на canvas медленно ползут строки команд
 // цветами активной темы.
 
@@ -41,105 +43,6 @@ const LINES = [
   "   Active: active (running)",
 ];
 
-function readPalette() {
-  const cs = getComputedStyle(document.documentElement);
-  const accent = cs.getPropertyValue("--accent").trim().replace(/\s+/g, ", ") || "88, 166, 255";
-  return {
-    accent,
-    muted: cs.getPropertyValue("--text-muted").trim() || "#484f58",
-  };
-}
-
-/** Анимированный фон: несколько колонок терминального вывода, скролл вверх */
-function TerminalBackground() {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-
-    let palette = readPalette();
-    const lineH = 18;
-    const colW = 380;
-    let width = 0;
-    let height = 0;
-    // Для каждой колонки — смещение по списку строк, скорость и фаза скролла
-    let cols: { offset: number; speed: number; scroll: number }[] = [];
-
-    const resize = () => {
-      const rect = canvas.getBoundingClientRect();
-      const dpr = Math.max(1, window.devicePixelRatio || 1);
-      width = rect.width;
-      height = rect.height;
-      canvas.width = Math.round(width * dpr);
-      canvas.height = Math.round(height * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const n = Math.max(1, Math.ceil(width / colW));
-      cols = Array.from({ length: n }, () => ({
-        offset: Math.floor(Math.random() * LINES.length),
-        speed: 0.008 + Math.random() * 0.012, // px/мс
-        scroll: Math.random() * lineH,
-      }));
-    };
-    resize();
-    window.addEventListener("resize", resize);
-
-    const themeObserver = new MutationObserver(() => { palette = readPalette(); });
-    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class", "data-theme"] });
-
-    let raf = 0;
-    let last = performance.now();
-    const draw = (now: number) => {
-      const dt = Math.min(64, now - last);
-      last = now;
-      ctx.clearRect(0, 0, width, height);
-      ctx.font = '12px "JetBrains Mono", "SF Mono", Menlo, monospace';
-      ctx.textBaseline = "top";
-
-      const rows = Math.ceil(height / lineH) + 2;
-      cols.forEach((col, ci) => {
-        col.scroll += col.speed * dt;
-        while (col.scroll >= lineH) {
-          col.scroll -= lineH;
-          col.offset = (col.offset + 1) % LINES.length;
-        }
-        const x = 24 + ci * colW;
-        for (let r = 0; r < rows; r++) {
-          const text = LINES[(col.offset + r) % LINES.length];
-          const y = r * lineH - col.scroll;
-          // Затухание к верху и низу экрана
-          const fade = Math.sin(Math.PI * Math.min(1, Math.max(0, y / height)));
-          const isCmd = text.startsWith("$");
-          ctx.globalAlpha = (isCmd ? 0.45 : 0.25) * fade;
-          ctx.fillStyle = isCmd ? `rgb(${palette.accent})` : palette.muted;
-          ctx.fillText(text, x, y);
-        }
-      });
-      ctx.globalAlpha = 1;
-      raf = requestAnimationFrame(draw);
-    };
-    raf = requestAnimationFrame(draw);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", resize);
-      themeObserver.disconnect();
-    };
-  }, []);
-
-  return (
-    <>
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
-      {/* Мягкое свечение акцентным цветом в центре */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse at center, rgb(var(--accent) / 0.12) 0%, transparent 60%)" }}
-      />
-    </>
-  );
-}
-
 /** idle — экран показан автоблокировкой по бездействию, а не при запуске */
 export function LockScreen({ onUnlock, idle = false }: { onUnlock: () => void; idle?: boolean }) {
   const { t } = useTranslation();
@@ -149,14 +52,17 @@ export function LockScreen({ onUnlock, idle = false }: { onUnlock: () => void; i
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 1. Пустой или уже проверяется.
     if (!password || busy) return;
+
+    // 2. Проверка.
     setBusy(true);
     setError(false);
+
     try {
-      if (await verifyPassword(password)) {
-        onUnlock();
-        return;
-      }
+      if (await verifyPassword(password)) return onUnlock();
+
       setError(true);
       setPassword("");
     } catch {
@@ -212,4 +118,154 @@ export function LockScreen({ onUnlock, idle = false }: { onUnlock: () => void; i
       </div>
     </div>
   );
+}
+
+// ══════════════════════════════════════
+// Фон
+// ══════════════════════════════════════
+
+const LINE_H = 18;
+const COL_W = 380;
+
+/** Колонка фона: смещение по списку строк, скорость (px/мс) и фаза скролла */
+interface Column {
+  offset: number;
+  speed: number;
+  scroll: number;
+}
+
+/** Анимированный фон: несколько колонок терминального вывода, скролл вверх */
+function TerminalBackground() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+
+    if (!canvas || !ctx) return;
+
+    let palette = readPalette();
+    let width = 0;
+    let height = 0;
+    let cols: Column[] = [];
+
+    // Размер холста — по окну с учётом плотности пикселей; колонки — заново
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+
+      width = rect.width;
+      height = rect.height;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      cols = Array.from({ length: Math.max(1, Math.ceil(width / COL_W)) }, () => ({
+        offset: Math.floor(Math.random() * LINES.length),
+        speed: 0.008 + Math.random() * 0.012,
+        scroll: Math.random() * LINE_H,
+      }));
+    };
+
+    resize();
+
+    window.addEventListener("resize", resize);
+
+    // Сменилась тема — новые цвета
+    const themeObserver = new MutationObserver(() => {
+      palette = readPalette();
+    });
+
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class", "data-theme"] });
+
+    let raf = 0;
+    let last = performance.now();
+
+    const draw = (now: number) => {
+      // Длинная пауза (вкладка была скрыта) — не прыгаем
+      const dt = Math.min(64, now - last);
+
+      last = now;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.font = '12px "JetBrains Mono", "SF Mono", Menlo, monospace';
+      ctx.textBaseline = "top";
+
+      const frame = { ctx, height, dt, palette };
+
+      cols.forEach((col, ci) => drawColumn(col, 24 + ci * COL_W, frame));
+
+      ctx.globalAlpha = 1;
+
+      raf = requestAnimationFrame(draw);
+    };
+
+    raf = requestAnimationFrame(draw);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resize);
+      themeObserver.disconnect();
+    };
+  }, []);
+
+  return (
+    <>
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+      {/* Мягкое свечение акцентным цветом в центре */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: "radial-gradient(ellipse at center, rgb(var(--accent) / 0.12) 0%, transparent 60%)" }}
+      />
+    </>
+  );
+}
+
+/** Сдвинуть колонку на dt и нарисовать: команды ($) — акцентом, вывод — приглушённо, к краям — затухание */
+function drawColumn(col: Column, x: number, { ctx, height, dt, palette }: Frame) {
+  col.scroll += col.speed * dt;
+
+  // Прокрутили строку целиком — следующая строка списка
+  while (col.scroll >= LINE_H) {
+    col.scroll -= LINE_H;
+    col.offset = (col.offset + 1) % LINES.length;
+  }
+
+  const rows = Math.ceil(height / LINE_H) + 2;
+
+  for (let r = 0; r < rows; r++) {
+    const text = LINES[(col.offset + r) % LINES.length];
+    const y = r * LINE_H - col.scroll;
+    const fade = Math.sin(Math.PI * Math.min(1, Math.max(0, y / height)));
+    const isCmd = text.startsWith("$");
+
+    ctx.globalAlpha = (isCmd ? 0.45 : 0.25) * fade;
+    ctx.fillStyle = isCmd ? `rgb(${palette.accent})` : palette.muted;
+
+    ctx.fillText(text, x, y);
+  }
+}
+
+/** Кадр анимации: холст, высота окна, прошедшее время (мс), цвета темы */
+interface Frame {
+  ctx: CanvasRenderingContext2D;
+  height: number;
+  dt: number;
+  palette: Palette;
+}
+
+interface Palette {
+  /** RGB через запятую — для rgb(...) */
+  accent: string;
+  muted: string;
+}
+
+function readPalette(): Palette {
+  const cs = getComputedStyle(document.documentElement);
+
+  return {
+    accent: cs.getPropertyValue("--accent").trim().replace(/\s+/g, ", ") || "88, 166, 255",
+    muted: cs.getPropertyValue("--text-muted").trim() || "#484f58",
+  };
 }

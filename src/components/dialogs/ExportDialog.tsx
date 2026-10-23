@@ -5,6 +5,14 @@ import { useAppStore } from "../../stores/appStore";
 import { exportData } from "../../lib/tauriCommands";
 import { useTranslation } from "react-i18next";
 
+// ══════════════════════════════════════
+// ExportDialog — экспорт в зашифрованный файл .dchub
+// ══════════════════════════════════════
+// Дерево выбранных воркспейсов (по умолчанию — всех) и отмеченные разделы.
+// Пароль необязателен: без него файл открывает любая копия приложения.
+// Ни одного воркспейса не выбрано — экспортировать нечего. Отменили выбор
+// файла — ничего. Ошибка — тост, диалог остаётся открытым.
+
 interface Props {
   onClose: () => void;
 }
@@ -18,39 +26,43 @@ export function ExportDialog({ onClose }: Props) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  // По умолчанию все воркспейсы выбраны
-  const [selectedWsIds, setSelectedWsIds] = useState<Set<string>>(
-    () => new Set(workspaces.map((ws) => ws.id))
-  );
+  const [selectedWsIds, setSelectedWsIds] = useState<Set<string>>(() => new Set(workspaces.map((ws) => ws.id)));
 
   const allSelected = selectedWsIds.size === workspaces.length;
 
-  const toggleWs = (id: string) => {
+  const toggleWs = (id: string) =>
     setSelectedWsIds((prev) => {
       const next = new Set(prev);
+
       if (next.has(id)) next.delete(id);
       else next.add(id);
+
       return next;
     });
-  };
 
   const handleExport = async () => {
     if (selectedWsIds.size === 0) return;
+
     setLoading(true);
+
     try {
       const filePath = await save({
         defaultPath: `consoles-work-export-${new Date().toISOString().slice(0, 10)}.dchub`,
         filters: [{ name: "consoles.work", extensions: ["dchub"] }],
       });
 
-      if (!filePath) {
-        setLoading(false);
-        return;
-      }
+      if (!filePath) return;
 
-      const wsIds = allSelected ? undefined : Array.from(selectedWsIds);
-      await exportData(filePath, true, includeWiki, includeAi, includeSettings, password || undefined, wsIds);
+      // Все выбраны — не перечисляем: новые воркспейсы тоже попадут
+      await exportData(
+        filePath,
+        { tree: true, wiki: includeWiki, ai: includeAi, settings: includeSettings },
+        password || undefined,
+        allSelected ? undefined : Array.from(selectedWsIds)
+      );
+
       showToast("success", t("export.toastSuccess"));
+
       onClose();
     } catch (err) {
       showToast("error", t("export.toastError", { error: err }));

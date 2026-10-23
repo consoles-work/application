@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState, KeyboardEvent } from "react";
+import { useEffect, useRef, useState, KeyboardEvent } from "react";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
@@ -22,133 +22,33 @@ import {
 import type { WikiPage } from "../types";
 import { useTranslation } from "react-i18next";
 
+// ══════════════════════════════════════
+// WikiPanel — заметки к выбранному узлу дерева
+// ══════════════════════════════════════
+// 1. Контекст — выбранный воркспейс, проект или консоль (ничего не выбрано —
+//    глобальная wiki); смена контекста загружает его страницы.
+// 2. Правка заголовка, тегов и текста сразу видна в интерфейсе и сохраняется в
+//    БД через секунду после последнего изменения; при уходе со страницы —
+//    сразу. Не сохранилось — тост.
+// 3. Поиск по всей wiki: найденная страница открывается в своём контексте.
+// 4. Удаление — после подтверждения.
+// Ссылки открываются кликом в системном браузере; старые страницы с URL
+// простым текстом получают ссылки при открытии.
+
 const lowlight = createLowlight(common);
 
-// ── Утилиты ──────────────────────────────────────────────────
+/** Шаг 2: пауза после последней правки до записи в БД */
+const SAVE_DELAY_MS = 1000;
 
-/**
- * Превратить URL-текст в ссылки. Autolink срабатывает только при наборе, а страницы,
- * написанные до появления ссылок, хранят URL простым текстом. Транзакция не попадает
- * в историю и не вызывает onUpdate — страница сохранится с ссылками при следующей правке.
- */
-function linkifyPlainUrls(editor: Editor) {
-  const linkType = editor.schema.marks.link;
-  const { tr, doc } = editor.state;
-  doc.descendants((node, pos) => {
-    if (node.type.spec.code) return false; // блок кода
-    if (!node.isText || !node.text) return;
-    if (node.marks.some((m) => m.type === linkType || m.type.spec.code)) return;
-    for (const { start, end, url } of findLinks(node.text)) {
-      tr.addMark(pos + start, pos + end, linkType.create({ href: url }));
-    }
-  });
-  if (!tr.docChanged) return;
-  tr.setMeta("addToHistory", false).setMeta("preventUpdate", true);
-  editor.view.dispatch(tr);
-}
+/** Шаг 3: пауза в наборе запроса до поиска */
+const SEARCH_DELAY_MS = 300;
 
-function newPage(parentType: WikiPage["parentType"], parentId: string): WikiPage {
-  const now = new Date().toISOString();
-  return {
-    id: crypto.randomUUID(),
-    parentType,
-    parentId,
-    title: "",
-    content: "",
-    tags: [],
-    pinned: false,
-    createdAt: now,
-    updatedAt: now,
-  };
-}
-
-function getContextLabel(parentType: WikiPage["parentType"], t: (key: string) => string): string {
-  switch (parentType) {
-    case "global": return t("wikiPanel.contextGlobal");
-    case "workspace": return t("wikiPanel.contextWorkspace");
-    case "project": return t("wikiPanel.contextProject");
-    case "console": return t("wikiPanel.contextConsole");
-  }
-}
-
-// ── Теги ──────────────────────────────────────────────────
-
-interface TagsBarProps {
-  tags: string[];
-  onChange: (tags: string[]) => void;
-}
-
-function TagsBar({ tags, onChange }: TagsBarProps) {
-  const [inputVisible, setInputVisible] = useState(false);
-  const [inputValue, setInputValue] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-  const { t } = useTranslation();
-
-  const addTag = (raw: string) => {
-    const tag = raw.trim().replace(/^#/, "").replace(/,/g, "");
-    if (tag && !tags.includes(tag)) {
-      onChange([...tags, tag]);
-    }
-    setInputValue("");
-    setInputVisible(false);
-  };
-
-  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" || e.key === ",") {
-      e.preventDefault();
-      addTag(inputValue);
-    } else if (e.key === "Escape") {
-      setInputValue("");
-      setInputVisible(false);
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    onChange(tags.filter((t) => t !== tag));
-  };
-
-  useEffect(() => {
-    if (inputVisible) inputRef.current?.focus();
-  }, [inputVisible]);
-
-  return (
-    <div className="flex items-center gap-1 px-4 py-1.5 border-b border-border/50 flex-wrap min-h-[28px]">
-      <span className="text-2xs text-text-muted shrink-0">{t("wikiPanel.tagLabel")}</span>
-      {tags.map((tag) => (
-        <span
-          key={tag}
-          className="flex items-center gap-0.5 text-2xs px-1.5 py-0.5 rounded bg-surface-3 text-text-secondary group"
-        >
-          #{tag}
-          <button
-            onClick={() => removeTag(tag)}
-            className="opacity-0 group-hover:opacity-100 hover:text-red-400 ml-0.5"
-          >
-            ×
-          </button>
-        </span>
-      ))}
-      {inputVisible ? (
-        <input
-          ref={inputRef}
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={onKeyDown}
-          onBlur={() => { if (inputValue) addTag(inputValue); else setInputVisible(false); }}
-          placeholder={t("wikiPanel.tagPlaceholder")}
-          className="text-2xs bg-surface-3 rounded px-1.5 py-0.5 outline-none text-text-primary w-20 border border-accent/50"
-        />
-      ) : (
-        <button
-          onClick={() => setInputVisible(true)}
-          className="text-2xs px-1.5 py-0.5 rounded border border-dashed border-border text-text-muted hover:text-accent hover:border-accent"
-        >
-          {t("wikiPanel.addTag")}
-        </button>
-      )}
-    </div>
-  );
-}
+const CONTEXT_LABEL: Record<WikiPage["parentType"], string> = {
+  global: "wikiPanel.contextGlobal",
+  workspace: "wikiPanel.contextWorkspace",
+  project: "wikiPanel.contextProject",
+  console: "wikiPanel.contextConsole",
+};
 
 // ── Главный компонент ────────────────────────────────────────
 
@@ -171,44 +71,101 @@ export function WikiPanel() {
   const parentId = selectedNode?.id ?? "global";
 
   const activePage = currentWikiPages.find((p) => p.id === activeWikiPageId) ?? null;
-  // Ref для избежания stale closure в onUpdate
+
+  // onUpdate редактора создаётся один раз — читает текущую страницу через ref
   const activePageRef = useRef<WikiPage | null>(null);
+
   activePageRef.current = activePage;
 
   const [showPageList, setShowPageList] = useState(false);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Поиск по wiki ──
+  // Шаг 2: правка, которая ждёт паузы, чтобы уйти в БД
+  const pendingSave = useRef<{ page: WikiPage; timer: ReturnType<typeof setTimeout> } | null>(null);
+
   const [searchActive, setSearchActive] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<WikiPage[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // 1. Страницы контекста; ответ на старый контекст отбрасываем. Не загрузились — пусто.
   useEffect(() => {
-    if (searchActive) searchInputRef.current?.focus();
-    else { setSearchQuery(""); setSearchResults([]); }
+    let cancelled = false;
+
+    loadWikiPages(parentType, parentId)
+      .then((pages) => !cancelled && setWikiPages(pages))
+      .catch(() => !cancelled && setWikiPages([]));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [parentType, parentId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 3. Поиск: открылся — фокус, закрылся — всё сбросить
+  useEffect(() => {
+    if (searchActive) {
+      searchInputRef.current?.focus();
+
+      return;
+    }
+
+    setSearchQuery("");
+    setSearchResults([]);
   }, [searchActive]);
 
+  // Пауза в наборе — запрос; не нашлось или ошибка — пусто
   useEffect(() => {
-    if (!searchQuery.trim()) { setSearchResults([]); return; }
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+
+      return;
+    }
+
     const timer = setTimeout(() => {
-      searchWiki(searchQuery).then(setSearchResults).catch(() => setSearchResults([]));
-    }, 300);
+      searchWiki(searchQuery)
+        .then(setSearchResults)
+        .catch(() => setSearchResults([]));
+    }, SEARCH_DELAY_MS);
+
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Загрузка страниц при смене контекста
-  useEffect(() => {
-    let cancelled = false;
-    loadWikiPages(parentType, parentId)
-      .then((pages) => {
-        if (!cancelled) setWikiPages(pages);
-      })
-      .catch(() => {
-        if (!cancelled) setWikiPages([]);
-      });
-    return () => { cancelled = true; };
-  }, [parentType, parentId]);
+  // 2. Сохранение.
+  const save = (page: WikiPage) =>
+    saveWikiPage(page).catch((e) => showToast("error", t("wikiPanel.toastSaveError", { error: e })));
+
+  // Ждущую правку — в БД сейчас (одна серия изменений = одна правка в статистике)
+  const flushSave = () => {
+    const pending = pendingSave.current;
+
+    if (!pending) return;
+
+    clearTimeout(pending.timer);
+
+    pendingSave.current = null;
+
+    save(pending.page);
+
+    trackUsage(METRICS.wikiEdits, 1);
+  };
+
+  const scheduleSave = (page: WikiPage) => {
+    if (pendingSave.current) clearTimeout(pendingSave.current.timer);
+
+    pendingSave.current = { page, timer: setTimeout(flushSave, SAVE_DELAY_MS) };
+  };
+
+  // Правка текущей страницы: сразу в интерфейс, в БД — после паузы
+  const editPage = (patch: Partial<WikiPage>) => {
+    const page = activePageRef.current;
+
+    if (!page) return;
+
+    const updatedAt = new Date().toISOString();
+
+    updateWikiPage(page.id, { ...patch, updatedAt });
+
+    scheduleSave({ ...page, ...patch, updatedAt });
+  };
 
   // TipTap editor
   const editor = useEditor({
@@ -241,88 +198,68 @@ export function WikiPanel() {
       },
     },
     content: "",
-    onUpdate: ({ editor }) => {
-      const page = activePageRef.current;
-      if (!page) return;
-      const json = JSON.stringify(editor.getJSON());
-      updateWikiPage(page.id, { content: json, updatedAt: new Date().toISOString() });
-      scheduleSave({ ...page, content: json, updatedAt: new Date().toISOString() });
-    },
+    onUpdate: ({ editor }) => editPage({ content: JSON.stringify(editor.getJSON()) }),
   });
 
-  // Синхронизация редактора при смене активной страницы
+  // Сменилась страница — её текст в редактор (если там уже он — не трогаем)
   useEffect(() => {
     if (!editor) return;
+
     if (!activePage) {
       editor.commands.clearContent();
+
       return;
     }
-    let parsed: object | string = "";
-    try {
-      if (activePage.content) parsed = JSON.parse(activePage.content);
-    } catch {
-      parsed = activePage.content;
-    }
-    // Не обновляем если уже актуально
-    const currentJson = JSON.stringify(editor.getJSON());
-    if (currentJson === activePage.content) return;
-    editor.commands.setContent(parsed || "");
+
+    if (JSON.stringify(editor.getJSON()) === activePage.content) return;
+
+    editor.commands.setContent(parseContent(activePage.content));
+
     linkifyPlainUrls(editor);
-  }, [activeWikiPageId, editor]);
+  }, [activeWikiPageId, editor]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const scheduleSave = useCallback((page: WikiPage) => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      saveWikiPage(page).catch(() => {});
-      trackUsage(METRICS.wikiEdits, 1);
-    }, 1000);
-  }, []);
-
-  // Немедленно сохраняем при уходе
-  useEffect(() => {
-    return () => {
-      if (saveTimer.current) {
-        clearTimeout(saveTimer.current);
-        if (activePage) saveWikiPage(activePage).catch(() => {});
-      }
-    };
-  }, [activePage]);
-
-  const handleTitleChange = (title: string) => {
-    if (!activePage) return;
-    const updatedAt = new Date().toISOString();
-    updateWikiPage(activePage.id, { title, updatedAt });
-    scheduleSave({ ...activePage, title, updatedAt });
-  };
-
-  const handleTagsChange = (tags: string[]) => {
-    if (!activePage) return;
-    const updatedAt = new Date().toISOString();
-    updateWikiPage(activePage.id, { tags, updatedAt });
-    scheduleSave({ ...activePage, tags, updatedAt });
-  };
+  // Ушли со страницы (другая страница, контекст, закрыли панель), а правка ещё
+  // ждёт паузы, — сохраняем сразу
+  useEffect(() => flushSave, [activeWikiPageId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleNewPage = () => {
     const page = newPage(parentType, parentId);
+
     addWikiPage(page);
-    saveWikiPage(page).catch(() => {});
+
+    save(page);
+
     setShowPageList(false);
   };
 
+  // 4. Удаление.
   const handleDeletePage = async () => {
     if (!activePage) return;
+
     if (!confirm(t("wikiPanel.deletePageConfirm", { title: activePage.title || t("wikiPanel.untitled") }))) return;
+
     try {
       await deleteWikiPage(activePage.id);
+
       removeWikiPage(activePage.id);
+
       showToast("success", t("wikiPanel.toastPageDeleted"));
     } catch (e) {
       showToast("error", String(e));
     }
   };
 
-  // Заголовок контекста
-  const contextLabel = getContextLabel(parentType, t);
+  // 3. Найденная страница — в своём контексте
+  const openFound = async (page: WikiPage) => {
+    try {
+      setWikiPages(await loadWikiPages(page.parentType, page.parentId));
+
+      setActiveWikiPage(page.id);
+      setSearchActive(false);
+    } catch (e) {
+      showToast("error", String(e));
+    }
+  };
 
   return (
     <div className="h-full flex flex-col bg-surface-1 min-w-0">
@@ -349,7 +286,7 @@ export function WikiPanel() {
               <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider shrink-0">
                 Wiki
               </span>
-              <span className="text-2xs text-text-muted truncate">{contextLabel}</span>
+              <span className="text-2xs text-text-muted truncate">{t(CONTEXT_LABEL[parentType])}</span>
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <button
@@ -391,18 +328,12 @@ export function WikiPanel() {
             searchResults.map((page) => (
               <div
                 key={page.id}
-                onClick={async () => {
-                  // Загружаем страницы нужного контекста и открываем найденную
-                  const pages = await loadWikiPages(page.parentType, page.parentId);
-                  setWikiPages(pages);
-                  setActiveWikiPage(page.id);
-                  setSearchActive(false);
-                }}
+                onClick={() => openFound(page)}
                 className="flex flex-col gap-0.5 px-3 py-2 cursor-pointer hover:bg-surface-3 transition-colors"
               >
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-text-primary truncate flex-1">
-                    {page.title || "Без названия"}
+                    {page.title || t("wikiPanel.untitled")}
                   </span>
                   <span className="text-2xs text-text-muted shrink-0 capitalize">
                     {page.parentType === "global" ? t("wikiPanel.contextGlobal") : page.parentType}
@@ -474,13 +405,13 @@ export function WikiPanel() {
           <input
             type="text"
             value={activePage.title}
-            onChange={(e) => handleTitleChange(e.target.value)}
+            onChange={(e) => editPage({ title: e.target.value })}
             placeholder={t("wikiPanel.titlePlaceholder")}
             className="px-4 py-2.5 bg-transparent border-b border-border text-sm font-semibold text-text-primary outline-none placeholder:text-text-muted shrink-0"
           />
 
           {/* Теги */}
-          <TagsBar tags={activePage.tags} onChange={handleTagsChange} />
+          <TagsBar tags={activePage.tags} onChange={(tags) => editPage({ tags })} />
 
           {/* Тулбар */}
           {editor && <WikiToolbar editor={editor} />}
@@ -509,6 +440,146 @@ export function WikiPanel() {
             </button>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════
+// Детали
+// ══════════════════════════════════════
+
+/**
+ * Превратить URL-текст в ссылки. Autolink срабатывает только при наборе, а страницы,
+ * написанные до появления ссылок, хранят URL простым текстом. Транзакция не попадает
+ * в историю и не вызывает onUpdate — страница сохранится с ссылками при следующей правке.
+ */
+function linkifyPlainUrls(editor: Editor) {
+  const linkType = editor.schema.marks.link;
+  const { tr, doc } = editor.state;
+
+  doc.descendants((node, pos) => {
+    // Внутрь блока кода не заходим
+    if (node.type.spec.code) return false;
+
+    // Не текст, уже ссылка или inline-код
+    if (!node.isText || !node.text || node.marks.some((m) => m.type === linkType || m.type.spec.code)) return;
+
+    for (const { start, end, url } of findLinks(node.text)) tr.addMark(pos + start, pos + end, linkType.create({ href: url }));
+  });
+
+  if (!tr.docChanged) return;
+
+  tr.setMeta("addToHistory", false).setMeta("preventUpdate", true);
+
+  editor.view.dispatch(tr);
+}
+
+function newPage(parentType: WikiPage["parentType"], parentId: string): WikiPage {
+  const now = new Date().toISOString();
+
+  return {
+    id: crypto.randomUUID(),
+    parentType,
+    parentId,
+    title: "",
+    content: "",
+    tags: [],
+    pinned: false,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/** Текст страницы: TipTap JSON; не JSON (старые страницы, Markdown) — как есть */
+function parseContent(content: string): object | string {
+  if (!content) return "";
+
+  try {
+    return JSON.parse(content);
+  } catch {
+    return content;
+  }
+}
+
+// ── Теги ──────────────────────────────────────────────────
+
+interface TagsBarProps {
+  tags: string[];
+  onChange: (tags: string[]) => void;
+}
+
+function TagsBar({ tags, onChange }: TagsBarProps) {
+  const [inputVisible, setInputVisible] = useState(false);
+  const [inputValue, setInputValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { t } = useTranslation();
+
+  const closeInput = () => {
+    setInputValue("");
+    setInputVisible(false);
+  };
+
+  // Без # в начале и без запятых; повтор не добавляем
+  const addTag = (raw: string) => {
+    const tag = raw.trim().replace(/^#/, "").replace(/,/g, "");
+
+    if (tag && !tags.includes(tag)) onChange([...tags, tag]);
+
+    closeInput();
+  };
+
+  // Enter и запятая — добавить, Escape — отменить
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape") return closeInput();
+
+    if (e.key !== "Enter" && e.key !== ",") return;
+
+    e.preventDefault();
+
+    addTag(inputValue);
+  };
+
+  const removeTag = (tag: string) => onChange(tags.filter((x) => x !== tag));
+
+  useEffect(() => {
+    if (inputVisible) inputRef.current?.focus();
+  }, [inputVisible]);
+
+  return (
+    <div className="flex items-center gap-1 px-4 py-1.5 border-b border-border/50 flex-wrap min-h-[28px]">
+      <span className="text-2xs text-text-muted shrink-0">{t("wikiPanel.tagLabel")}</span>
+      {tags.map((tag) => (
+        <span
+          key={tag}
+          className="flex items-center gap-0.5 text-2xs px-1.5 py-0.5 rounded bg-surface-3 text-text-secondary group"
+        >
+          #{tag}
+          <button
+            onClick={() => removeTag(tag)}
+            className="opacity-0 group-hover:opacity-100 hover:text-red-400 ml-0.5"
+          >
+            ×
+          </button>
+        </span>
+      ))}
+      {inputVisible ? (
+        <input
+          ref={inputRef}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={onKeyDown}
+          onBlur={() => (inputValue ? addTag(inputValue) : setInputVisible(false))}
+          placeholder={t("wikiPanel.tagPlaceholder")}
+          className="text-2xs bg-surface-3 rounded px-1.5 py-0.5 outline-none text-text-primary w-20 border border-accent/50"
+        />
+      ) : (
+        <button
+          onClick={() => setInputVisible(true)}
+          className="text-2xs px-1.5 py-0.5 rounded border border-dashed border-border text-text-muted hover:text-accent hover:border-accent"
+        >
+          {t("wikiPanel.addTag")}
+        </button>
       )}
     </div>
   );

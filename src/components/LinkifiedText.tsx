@@ -8,6 +8,7 @@ import { splitLinks, openLink } from "../lib/links";
  */
 export function LinkifiedText({ text }: { text: string }) {
   const parts = useMemo(() => splitLinks(text), [text]);
+
   return (
     <>
       {parts.map((p, i) =>

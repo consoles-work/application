@@ -1,16 +1,11 @@
 // ══════════════════════════════════════════════
-// Обёртки для вызова Rust-команд через Tauri IPC
+// tauriCommands — обёртки над Rust-командами (src-tauri/src/commands.rs)
 // ══════════════════════════════════════════════
-//
-// Каждая функция здесь соответствует #[tauri::command]
-// в src-tauri/src/commands.rs
-//
-// invoke() — это мост между TypeScript и Rust.
-// Вызов: invoke("имя_команды", { аргументы })
-// Возврат: Promise с результатом из Rust
+// Единственное место, где фронт вызывает invoke(). Аргументы — camelCase,
+// Rust принимает их в snake_case (serde).
 
 import { invoke } from "@tauri-apps/api/core";
-import type { Workspace, Project, ConsoleConfig, QuickCommand, WikiPage, AiSession, AiMessage, SshKeyFile, SshKeysReport } from "../types";
+import type { Workspace, Project, ConsoleConfig, QuickCommand, WikiPage, AiSession, AiMessage, SshKeyFile, SshKeysReport, SpawnPtyRequest, ProjectFields, ConsoleFields } from "../types";
 
 export interface DbInfo {
   path: string;
@@ -46,113 +41,29 @@ export async function deleteWorkspace(id: string): Promise<void> {
   return invoke("delete_workspace", { id });
 }
 
-export async function createProject(
-  workspaceId: string,
-  name: string,
-  icon: string,
-  color: string,
-  path: string,
-  defaultShell: string
-): Promise<Project> {
-  return invoke<Project>("create_project", {
-    workspaceId,
-    name,
-    icon,
-    color,
-    path,
-    defaultShell,
-  });
+export async function createProject(workspaceId: string, fields: ProjectFields): Promise<Project> {
+  return invoke<Project>("create_project", { workspaceId, fields });
 }
 
-export async function updateProject(
-  id: string,
-  name: string,
-  icon: string,
-  color: string,
-  path: string,
-  defaultShell: string
-): Promise<void> {
-  return invoke("update_project", { id, name, icon, color, path, defaultShell });
+export async function updateProject(id: string, fields: ProjectFields): Promise<void> {
+  return invoke("update_project", { id, fields });
 }
 
 export async function deleteProject(id: string): Promise<void> {
   return invoke("delete_project", { id });
 }
 
-export async function createConsole(
-  projectId: string,
-  name: string,
-  startupCmd?: string,
-  connectionType?: string,
-  sshHost?: string,
-  sshPort?: number,
-  sshUser?: string,
-  sshKeyPath?: string,
-  sshExtraArgs?: string,
-  sshPassphrase?: string,
-  sshPassword?: string,
-  note?: string,
-  hosting?: string,
-  icon?: string,
-  color?: string
-): Promise<ConsoleConfig> {
-  return invoke<ConsoleConfig>("create_console", {
-    projectId,
-    name,
-    startupCmd,
-    connectionType,
-    sshHost,
-    sshPort,
-    sshUser,
-    sshKeyPath,
-    sshExtraArgs,
-    sshPassphrase,
-    sshPassword,
-    note,
-    hosting,
-    icon,
-    color,
-  });
+export async function createConsole(projectId: string, fields: ConsoleFields): Promise<ConsoleConfig> {
+  return invoke<ConsoleConfig>("create_console", { projectId, fields });
 }
 
 export async function updateConsole(id: string, name: string): Promise<void> {
   return invoke("update_console", { id, name });
 }
 
-export async function updateConsoleConfig(
-  id: string,
-  name: string,
-  startupCmd: string | undefined,
-  connectionType: string,
-  sshHost: string,
-  sshPort: number,
-  sshUser: string,
-  sshKeyPath: string,
-  sshExtraArgs: string,
-  sshPassphrase: string,
-  sshPassword: string,
-  note: string,
-  hosting: string,
-  icon: string,
-  color: string
-): Promise<void> {
-  return invoke("update_console_config", {
-    id,
-    name,
-    startupCmd: startupCmd || undefined,
-    connectionType,
-    sshHost,
-    sshPort,
-    sshUser,
-    sshKeyPath,
-    sshExtraArgs,
-    sshPassphrase,
-    sshPassword,
-    note,
-    hosting,
-    icon,
-    color,
-  });
+/** Все поля из диалога настроек консоли */
+export async function updateConsoleConfig(id: string, fields: ConsoleFields): Promise<void> {
+  return invoke("update_console_config", { id, fields });
 }
 
 export async function setConsoleQuickCommands(id: string, commands: QuickCommand[]): Promise<void> {
@@ -170,16 +81,9 @@ export async function deleteConsole(id: string): Promise<void> {
 
 // ── PTY (терминал) ──
 
-export async function spawnPty(
-  shell: string,
-  cwd: string,
-  envVars: Record<string, string>,
-  sshKeyPath?: string,
-  sshPassphrase?: string,
-  sshPassword?: string
-): Promise<number> {
-  // Возвращает pty_id — числовой идентификатор сессии на Rust-стороне
-  return invoke<number>("spawn_pty", { shell, cwd, envVars, sshKeyPath, sshPassphrase, sshPassword });
+/** Возвращает pty_id — id сессии на Rust-стороне */
+export async function spawnPty(request: SpawnPtyRequest): Promise<number> {
+  return invoke<number>("spawn_pty", { request });
 }
 
 export async function writeToPty(
@@ -345,21 +249,24 @@ export async function saveTextFile(filePath: string, content: string): Promise<v
   return invoke("save_text_file", { filePath, content });
 }
 
+/** Какие разделы экспортировать / импортировать — зеркало `Sections` в export.rs */
+export interface ExportSections {
+  tree: boolean;
+  wiki: boolean;
+  ai: boolean;
+  settings: boolean;
+}
+
+/** `workspaceIds` не задан — все воркспейсы */
 export async function exportData(
   filePath: string,
-  includeTree: boolean,
-  includeWiki: boolean,
-  includeAi: boolean,
-  includeSettings: boolean,
+  sections: ExportSections,
   userPassword?: string,
   workspaceIds?: string[]
 ): Promise<void> {
   return invoke("export_data", {
     filePath,
-    includeTree,
-    includeWiki,
-    includeAi,
-    includeSettings,
+    sections,
     userPassword: userPassword || null,
     workspaceIds: workspaceIds || null,
   });
@@ -378,19 +285,13 @@ export async function previewImport(
 export async function applyImport(
   filePath: string,
   userPassword: string | undefined,
-  includeTree: boolean,
-  includeWiki: boolean,
-  includeAi: boolean,
-  includeSettings: boolean,
+  sections: ExportSections,
   mode: "merge" | "replace"
 ): Promise<void> {
   return invoke("apply_import", {
     filePath,
     userPassword: userPassword || null,
-    includeTree,
-    includeWiki,
-    includeAi,
-    includeSettings,
+    sections,
     mode,
   });
 }
@@ -441,7 +342,7 @@ export async function aiRun(
   system: string,
   prompt: string
 ): Promise<void> {
-  return invoke("ai_run", { sessionId, model, system, prompt });
+  return invoke("ai_run", { request: { sessionId, model, system, prompt } });
 }
 
 /** Прервать генерацию: убивает процесс сессии. */

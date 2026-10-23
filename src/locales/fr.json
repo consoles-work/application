@@ -110,6 +110,7 @@
     "deletePageConfirm": "Supprimer la page \"{{title}}\"?",
     "deletePageTooltip": "Supprimer la page",
     "toastPageDeleted": "Page supprimée",
+    "toastSaveError": "Impossible d’enregistrer la page : {{error}}",
     "savedAt": "Enregistré: {{time}}",
     "untitled": "Sans titre",
     "contextGlobal": "Wiki global",

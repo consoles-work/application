@@ -11,7 +11,39 @@ import i18n from "../lib/i18n";
 import { AI_PROVIDERS, getProvider, streamCompletion } from "../lib/aiProviders";
 import { APP_NAME, APP_VERSION } from "../lib/appInfo";
 
+// ══════════════════════════════════════
+// SettingsDialog — настройки приложения (Cmd+,)
+// ══════════════════════════════════════
+// Вкладки: данные (файл БД), терминал, интерфейс, агенты (AI), безопасность.
+// Любая настройка сохраняется сразу при изменении: сначала в БД, затем в стор
+// (компоненты подхватывают её без перезапуска). Не сохранилась — тост, в
+// интерфейсе остаётся прежнее значение. Смена языка переводит и меню трея.
+
 type Tab = "data" | "terminal" | "interface" | "agents" | "security";
+
+const TABS: Tab[] = ["data", "terminal", "interface", "agents", "security"];
+
+const TAB_LABEL: Record<Tab, string> = {
+  data: "settings.tabData",
+  terminal: "settings.tabTerminal",
+  interface: "settings.tabInterface",
+  agents: "settings.tabAgents",
+  security: "settings.tabSecurity",
+};
+
+const CURSOR_LABEL = {
+  block: "settings.cursorBlock",
+  underline: "settings.cursorUnderline",
+  bar: "settings.cursorBar",
+} as const;
+
+const OLLAMA_URL = "http://localhost:11434";
+
+/** Кнопка выбора: выбрана / нет */
+const CHOICE_ON = "bg-accent/15 border-accent text-accent";
+const CHOICE_OFF = "bg-surface-0 border-border text-text-primary hover:bg-surface-2";
+
+type ShowToast = (type: "success" | "error" | "info", msg: string) => void;
 
 interface SettingsDialogProps {
   onClose: () => void;
@@ -24,21 +56,30 @@ export function SettingsDialog({ onClose, onOpenAbout }: SettingsDialogProps) {
   const [dbInfo, setDbInfo] = useState<DbInfo | null>(null);
   const { t } = useTranslation();
 
+  // Не прочиталось — вместо сведений о файле прочерки
   useEffect(() => {
-    getDbInfo().then(setDbInfo).catch(() => {});
+    getDbInfo()
+      .then(setDbInfo)
+      .catch((e) => console.warn("db info", e));
   }, []);
 
   const handleSetSetting = async (key: string, value: string) => {
     try {
       await setSetting(key, value);
-      storeSetting(key, value);
-      if (key === "ui.language") {
-        i18n.changeLanguage(value);
-        updateTrayLanguage(value).catch(() => {});
-      }
     } catch (e) {
       showToast("error", t("settings.toastSaveError", { error: e }));
+
+      return;
     }
+
+    storeSetting(key, value);
+
+    if (key !== "ui.language") return;
+
+    i18n.changeLanguage(value);
+
+    // Не вышло — меню трея останется на прежнем языке до перезапуска
+    updateTrayLanguage(value).catch((e) => console.warn("tray language", e));
   };
 
   return (
@@ -60,7 +101,7 @@ export function SettingsDialog({ onClose, onOpenAbout }: SettingsDialogProps) {
 
         {/* Tabs */}
         <div className="flex border-b border-border px-5 shrink-0">
-          {(["data", "terminal", "interface", "agents", "security"] as Tab[]).map((tabKey) => (
+          {TABS.map((tabKey) => (
             <button
               key={tabKey}
               className={`py-2.5 px-3 text-xs border-b-2 transition-colors ${
@@ -70,15 +111,7 @@ export function SettingsDialog({ onClose, onOpenAbout }: SettingsDialogProps) {
               }`}
               onClick={() => setTab(tabKey)}
             >
-              {tabKey === "data"
-                ? t("settings.tabData")
-                : tabKey === "terminal"
-                ? t("settings.tabTerminal")
-                : tabKey === "agents"
-                ? t("settings.tabAgents")
-                : tabKey === "security"
-                ? t("settings.tabSecurity")
-                : t("settings.tabInterface")}
+              {t(TAB_LABEL[tabKey])}
             </button>
           ))}
         </div>
@@ -111,7 +144,7 @@ function DataTab({
   showToast,
 }: {
   dbInfo: DbInfo | null;
-  showToast: (type: "success" | "error" | "info", msg: string) => void;
+  showToast: ShowToast;
 }) {
   const { t } = useTranslation();
 
@@ -228,8 +261,8 @@ function TerminalTab({
               key={font}
               className={`px-3 py-2 text-xs rounded-lg border transition-colors text-left ${
                 fontFamily === font
-                  ? "bg-accent/15 border-accent text-accent"
-                  : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
+                  ? CHOICE_ON
+                  : CHOICE_OFF
               }`}
               style={{ fontFamily: font }}
               onClick={() => onChange("terminal.fontFamily", font)}
@@ -269,12 +302,12 @@ function TerminalTab({
               key={style}
               className={`px-4 py-1.5 text-xs rounded-lg border transition-colors ${
                 cursorStyle === style
-                  ? "bg-accent/15 border-accent text-accent"
-                  : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
+                  ? CHOICE_ON
+                  : CHOICE_OFF
               }`}
               onClick={() => onChange("terminal.cursorStyle", style)}
             >
-              {style === "block" ? t("settings.cursorBlock") : style === "underline" ? t("settings.cursorUnderline") : t("settings.cursorBar")}
+              {t(CURSOR_LABEL[style])}
             </button>
           ))}
         </div>
@@ -292,7 +325,7 @@ function AgentsTab({
 }: {
   settings: Record<string, string>;
   onChange: (key: string, value: string) => void;
-  showToast: (type: "success" | "error" | "info", msg: string) => void;
+  showToast: ShowToast;
 }) {
   const { t } = useTranslation();
   const [showKey, setShowKey] = useState(false);
@@ -306,7 +339,7 @@ function AgentsTab({
   const model = settings["ai.model"] ?? "";
   const panelPosition = settings["ui.aiPanelPosition"] ?? "right";
 
-  const providerObj = AI_PROVIDERS.find((p) => p.id === provider) ?? AI_PROVIDERS[0];
+  const providerObj = getProvider(provider);
   const isOllama = provider === "ollama";
   // Локальный движок: бинарь claude подпроцессом, API-ключ не нужен
   const isLocalCli = providerObj.isLocalCli === true;
@@ -346,53 +379,55 @@ function AgentsTab({
     }
   };
 
-  // Динамическая загрузка моделей Ollama при выборе провайдера
+  // Модели Ollama — с локального сервера, при выборе провайдера
   useEffect(() => {
     if (!isOllama) return;
+
     setOllamaLoading(true);
     setOllamaError(null);
-    fetch("http://localhost:11434/api/tags")
+
+    fetch(`${OLLAMA_URL}/api/tags`)
       .then((r) => r.json())
-      .then((data) => {
-        const models = (data.models ?? []).map((m: { name: string }) => m.name);
-        setOllamaModels(models);
-      })
+      .then((data) => setOllamaModels((data.models ?? []).map((m: { name: string }) => m.name)))
       .catch(() => setOllamaError(t("settings.agentsOllamaFetchError")))
       .finally(() => setOllamaLoading(false));
-  }, [isOllama]);
+  }, [isOllama]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeModels = isOllama ? ollamaModels : providerObj.models;
-  const activeDefault = isOllama ? (ollamaModels[0] ?? "") : providerObj.defaultModel;
-  // ai.model общий для всех провайдеров: после переключения там может лежать
-  // чужой алиас. Подсвечиваем его, только если он есть у текущего провайдера
-  // (та же логика отката, что в AiPanel).
-  const selectedModel =
-    activeModels.length > 0 && !activeModels.includes(model) ? activeDefault : model || activeDefault;
+  const activeDefault = isOllama ? ollamaModels[0] ?? "" : providerObj.defaultModel;
+  const selectedModel = highlightedModel(activeModels, model, activeDefault);
+
+  // Ключ нужен только HTTP-провайдерам в интернете: Ollama локальная, CLI — по подписке
+  const needsKey = !isOllama && !isLocalCli;
+
+  // Проверка своя у каждого провайдера; любая ошибка — исключением
+  const runConnectionTest = async () => {
+    if (isLocalCli) return setBinStatus(await aiCheck(claudeBin || undefined));
+
+    if (isOllama) {
+      const r = await fetch(`${OLLAMA_URL}/api/tags`);
+
+      if (!r.ok) throw r.status;
+
+      return;
+    }
+
+    await streamCompletion({
+      provider: providerObj,
+      messages: [{ role: "user", content: "Say: ok" }],
+      model: model || providerObj.defaultModel,
+      apiKey,
+      onChunk: () => undefined,
+    });
+  };
 
   const handleTestConnection = async () => {
     setTesting(true);
+
     try {
-      if (isLocalCli) {
-        const info = await aiCheck(claudeBin || undefined);
-        setBinStatus(info);
-        showToast("success", t("settings.agentsTestSuccess"));
-      } else if (isOllama) {
-        const r = await fetch("http://localhost:11434/api/tags");
-        if (r.ok) showToast("success", t("settings.agentsTestSuccess"));
-        else showToast("error", t("settings.agentsTestError", { error: r.status }));
-      } else {
-        if (!apiKey) { showToast("error", t("settings.agentsApiKey") + " — ?"); return; }
-        const testProvider = getProvider(provider);
-        const testModel = model || testProvider.defaultModel;
-        await streamCompletion(
-          testProvider,
-          [{ role: "user", content: "Say: ok" }],
-          testModel,
-          apiKey,
-          () => {}
-        );
-        showToast("success", t("settings.agentsTestSuccess"));
-      }
+      await runConnectionTest();
+
+      showToast("success", t("settings.agentsTestSuccess"));
     } catch (e) {
       showToast("error", t("settings.agentsTestError", { error: e }));
     } finally {
@@ -413,8 +448,8 @@ function AgentsTab({
               key={p.id}
               className={`flex-1 py-2 text-xs rounded-lg border transition-colors ${
                 provider === p.id
-                  ? "bg-accent/15 border-accent text-accent"
-                  : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
+                  ? CHOICE_ON
+                  : CHOICE_OFF
               }`}
               onClick={() => onChange("ai.provider", p.id)}
             >
@@ -425,7 +460,7 @@ function AgentsTab({
       </div>
 
       {/* API Key — скрыт для Ollama и локального CLI (ключ им не нужен) */}
-      {!isOllama && !isLocalCli && (
+      {needsKey && (
         <div>
           <label className="block text-xs font-medium text-text-secondary mb-2">
             {t("settings.agentsApiKey")} <span className="text-text-muted font-mono text-2xs">({providerObj.name})</span>
@@ -508,8 +543,8 @@ function AgentsTab({
               key={m}
               className={`px-3 py-2 text-xs rounded-lg border transition-colors text-left ${
                 selectedModel === m
-                  ? "bg-accent/15 border-accent text-accent"
-                  : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
+                  ? CHOICE_ON
+                  : CHOICE_OFF
               }`}
               onClick={() => onChange("ai.model", m)}
             >
@@ -530,8 +565,8 @@ function AgentsTab({
               key={pos}
               className={`flex-1 py-2 text-xs rounded-lg border transition-colors ${
                 panelPosition === pos
-                  ? "bg-accent/15 border-accent text-accent"
-                  : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
+                  ? CHOICE_ON
+                  : CHOICE_OFF
               }`}
               onClick={() => onChange("ui.aiPanelPosition", pos)}
             >
@@ -546,7 +581,7 @@ function AgentsTab({
       {/* Test connection */}
       <button
         onClick={handleTestConnection}
-        disabled={testing || (!isOllama && !apiKey)}
+        disabled={testing || (needsKey && !apiKey)}
         className="w-full py-2 text-xs rounded-lg border border-border bg-surface-0 hover:bg-surface-2 text-text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {testing ? t("settings.agentsTestTesting") : t("settings.agentsTestConnection")}
@@ -575,23 +610,29 @@ function InterfaceTab({
 
   const handleClearStats = async () => {
     const ok = await ask(t("stats.clearConfirm"), { title: t("stats.clear"), kind: "warning" });
+
     if (!ok) return;
+
     try {
       await clearUsageStats();
+
       showToast("success", t("stats.cleared"));
     } catch (e) {
       showToast("error", String(e));
     }
   };
 
+  // Не прочиталось — переключатель покажет «выключено»
   useEffect(() => {
-    getAutostartStatus().then(setAutostartEnabled).catch(() => {});
+    getAutostartStatus()
+      .then(setAutostartEnabled)
+      .catch((e) => console.warn("autostart status", e));
   }, []);
 
   const handleAutostart = async (enabled: boolean) => {
     try {
-      if (enabled) await enableAutostart();
-      else await disableAutostart();
+      await (enabled ? enableAutostart() : disableAutostart());
+
       setAutostartEnabled(enabled);
     } catch (e) {
       showToast("error", t("settings.autostartError", { error: e }));
@@ -621,8 +662,8 @@ function InterfaceTab({
         <button
           className={`mt-2 w-full px-3 py-2 text-xs rounded-lg border transition-colors text-left flex items-center gap-2 ${
             currentTheme === "random"
-              ? "bg-accent/15 border-accent text-accent"
-              : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
+              ? CHOICE_ON
+              : CHOICE_OFF
           }`}
           onClick={() => onChange("ui.theme", "random")}
         >
@@ -647,10 +688,10 @@ function InterfaceTab({
               key={String(toTray)}
               className={`flex-1 py-2 text-xs rounded-lg border transition-colors ${
                 closeToTray === toTray
-                  ? "bg-accent/15 border-accent text-accent"
-                  : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
+                  ? CHOICE_ON
+                  : CHOICE_OFF
               }`}
-              onClick={() => onChange("ui.closeToTray", toTray ? "true" : "false")}
+              onClick={() => onChange("ui.closeToTray", String(toTray))}
             >
               {toTray ? t("settings.closeToTray") : t("settings.closeAndQuit")}
             </button>
@@ -662,18 +703,7 @@ function InterfaceTab({
       <div>
         <label className="flex items-center justify-between cursor-pointer">
           <span className="text-xs font-medium text-text-secondary">{t("settings.autostart")}</span>
-          <button
-            onClick={() => handleAutostart(!autostartEnabled)}
-            className={`relative w-10 h-5 rounded-full transition-colors ${
-              autostartEnabled ? "bg-accent" : "bg-surface-3"
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                autostartEnabled ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
+          <Toggle on={autostartEnabled} onClick={() => handleAutostart(!autostartEnabled)} />
         </label>
         <p className="text-2xs text-text-muted mt-1">{t("settings.autostartNote")}</p>
       </div>
@@ -682,18 +712,7 @@ function InterfaceTab({
       <div>
         <label className="flex items-center justify-between cursor-pointer">
           <span className="text-xs font-medium text-text-secondary">{t("settings.statsEnabled")}</span>
-          <button
-            onClick={() => onChange("stats.enabled", statsEnabled ? "false" : "true")}
-            className={`relative w-10 h-5 rounded-full transition-colors ${
-              statsEnabled ? "bg-accent" : "bg-surface-3"
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                statsEnabled ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
+          <Toggle on={statsEnabled} onClick={() => onChange("stats.enabled", String(!statsEnabled))} />
         </label>
         <p className="text-2xs text-text-muted mt-1">{t("settings.statsNote")}</p>
         <button
@@ -714,8 +733,8 @@ function InterfaceTab({
               key={lang}
               className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
                 (settings["ui.language"] ?? "ru") === lang
-                  ? "bg-accent/15 border-accent text-accent"
-                  : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
+                  ? CHOICE_ON
+                  : CHOICE_OFF
               }`}
               onClick={() => onChange("ui.language", lang)}
             >
@@ -749,7 +768,7 @@ function SecurityTab({
 }: {
   settings: Record<string, string>;
   onChange: (key: string, value: string) => void;
-  showToast: (type: "success" | "error" | "info", msg: string) => void;
+  showToast: ShowToast;
 }) {
   const { t } = useTranslation();
   const [enabled, setEnabled] = useState<boolean | null>(null); // null — грузим
@@ -758,8 +777,12 @@ function SecurityTab({
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Не смогли проверить — показываем «пароль не задан»: так видно, что включить можно
   const reload = () => isPasswordSet().then(setEnabled).catch(() => setEnabled(false));
-  useEffect(() => { reload(); }, []);
+
+  useEffect(() => {
+    reload();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- проверка один раз при открытии вкладки
 
   const clearFields = () => {
     setCurrent("");
@@ -767,16 +790,17 @@ function SecurityTab({
     setConfirm("");
   };
 
-  // Включение / смена пароля
-  const apply = async () => {
-    if (enabled && !current) return showToast("error", t("security.errCurrent"));
-    if (!next) return showToast("error", t("security.errEmpty"));
-    if (next !== confirm) return showToast("error", t("security.errMismatch"));
+  // Установка, смена или снятие (пустой новый пароль); неверный текущий отклонит бэкенд
+  const save = async (currentPassword: string | null, newPassword: string, done: string) => {
     setBusy(true);
+
     try {
-      await setPassword(enabled ? current : null, next);
+      await setPassword(currentPassword, newPassword);
+
       clearFields();
-      showToast("success", enabled ? t("security.toastChanged") : t("security.toastEnabled"));
+
+      showToast("success", t(done));
+
       await reload();
     } catch (e) {
       showToast("error", `${e}`);
@@ -785,20 +809,22 @@ function SecurityTab({
     }
   };
 
+  // Включение / смена пароля
+  const apply = () => {
+    if (enabled && !current) return showToast("error", t("security.errCurrent"));
+
+    if (!next) return showToast("error", t("security.errEmpty"));
+
+    if (next !== confirm) return showToast("error", t("security.errMismatch"));
+
+    save(enabled ? current : null, next, enabled ? "security.toastChanged" : "security.toastEnabled");
+  };
+
   // Снятие пароля
-  const disable = async () => {
+  const disable = () => {
     if (!current) return showToast("error", t("security.errCurrent"));
-    setBusy(true);
-    try {
-      await setPassword(current, "");
-      clearFields();
-      showToast("success", t("security.toastDisabled"));
-      await reload();
-    } catch (e) {
-      showToast("error", `${e}`);
-    } finally {
-      setBusy(false);
-    }
+
+    save(current, "", "security.toastDisabled");
   };
 
   if (enabled === null) {
@@ -891,13 +917,19 @@ function AutoLockSetting({
 }) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState(value);
+
+  // Значение сменили снаружи (кнопкой-пресетом) — поле ввода за ним
   useEffect(() => setDraft(value), [value]);
 
+  // 0–1440 минут (сутки); мусор — 0, то есть «выключено»
   const commit = (raw: string) => {
-    const n = Math.min(1440, Math.max(0, parseInt(raw) || 0));
-    setDraft(String(n));
-    if (String(n) !== value) onChange(String(n));
+    const n = String(Math.min(1440, Math.max(0, parseInt(raw) || 0)));
+
+    setDraft(n);
+
+    if (n !== value) onChange(n);
   };
+
   const current = parseInt(value) || 0;
 
   return (
@@ -910,8 +942,8 @@ function AutoLockSetting({
             onClick={() => commit(String(m))}
             className={`px-2.5 py-1 text-xs rounded border transition-colors ${
               current === m
-                ? "bg-accent/15 border-accent text-accent"
-                : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
+                ? CHOICE_ON
+                : CHOICE_OFF
             }`}
           >
             {m === 0 ? t("security.autoLockOff") : t("security.autoLockMinutes", { n: m })}
@@ -958,8 +990,8 @@ function ThemeGroup({
             key={theme.id}
             className={`w-full px-3 py-2 text-xs rounded-lg border transition-colors text-left flex items-center gap-2 ${
               current === theme.id
-                ? "bg-accent/15 border-accent text-accent"
-                : "bg-surface-0 border-border text-text-primary hover:bg-surface-2"
+                ? CHOICE_ON
+                : CHOICE_OFF
             }`}
             onClick={() => onPick(theme.id)}
           >
@@ -973,4 +1005,27 @@ function ThemeGroup({
       </div>
     </div>
   );
+}
+
+function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className={`relative w-10 h-5 rounded-full transition-colors ${on ? "bg-accent" : "bg-surface-3"}`}>
+      <span
+        className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+          on ? "translate-x-5" : "translate-x-0"
+        }`}
+      />
+    </button>
+  );
+}
+
+/**
+ * ai.model общий для всех провайдеров: после переключения там может лежать
+ * чужой алиас. Подсвечиваем его, только если он есть у текущего провайдера
+ * (та же логика отката, что в AiPanel).
+ */
+function highlightedModel(models: string[], saved: string, fallback: string): string {
+  if (models.length > 0 && !models.includes(saved)) return fallback;
+
+  return saved || fallback;
 }

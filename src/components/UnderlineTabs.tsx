@@ -25,6 +25,7 @@ export function UnderlineTabs<T extends string>({
     <div className="relative flex border-b border-border" role="tablist">
       {tabs.map((tab) => {
         const isActive = tab.id === active;
+
         return (
           <button
             key={tab.id}

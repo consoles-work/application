@@ -1,17 +1,24 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { ask, save } from "@tauri-apps/plugin-dialog";
+import type { TFunction } from "i18next";
 import { useAppStore } from "../stores/appStore";
-import {
-  deleteWorkspace,
-  deleteProject,
-  deleteConsole,
-} from "../lib/tauriCommands";
-import { setNodeDanger, saveTextFile } from "../lib/tauriCommands";
-import type { TreeNode, ConsoleConfig } from "../types";
+import { deleteWorkspace, deleteProject, deleteConsole, saveTextFile } from "../lib/tauriCommands";
+import type { TreeNode, ConsoleConfig, TreeNodeType, Workspace } from "../types";
 import { buildSshCommand } from "../lib/connectionString";
 import { buildServersMarkdown } from "../lib/serversMarkdown";
+import { findProject } from "../lib/tree";
+import { useEscape } from "../hooks/useEscape";
 import { useTranslation } from "react-i18next";
+
+// ══════════════════════════════════════
+// ContextMenu — меню узла дерева (ПКМ)
+// ══════════════════════════════════════
+// Пункты зависят от типа узла; у консоли с открытым терминалом есть ещё «новый
+// экземпляр» и «переподключить». Любой пункт сначала закрывает меню.
+// Удаление — после подтверждения, вместе со всем вложенным; дерево меняется
+// после успешной команды. Создание, настройки, клонирование и пометка
+// «опасно» — у владельца меню (TreePanel). Закрывается кликом снаружи и Escape.
 
 export interface ContextMenuState {
   x: number;
@@ -33,219 +40,161 @@ interface ContextMenuProps {
   onReconnectConsole: (node: TreeNode) => void;
 }
 
-export function ContextMenu({
-  menu,
-  onClose,
-  onCreateProject,
-  onCreateConsole,
-  onToggleDanger,
-  onEditConsole,
-  onEditNode,
-  onQuickCommands,
-  onCloneConsole,
-  onCloneProject,
-  onReconnectConsole,
-}: ContextMenuProps) {
+type MenuItem = "separator" | { label: string; icon: string; action: () => void; danger?: boolean };
+
+const MENU_WIDTH = 200;
+
+/** Удаление: текст подтверждения, команда и тост — свои у каждого типа узла */
+const DELETION: Record<TreeNodeType, { label: string; confirm: string; title: string; done: string; command: (id: string) => Promise<void> }> = {
+  workspace: {
+    label: "contextMenu.deleteWorkspace",
+    confirm: "contextMenu.deleteWorkspaceConfirm",
+    title: "contextMenu.deleteWorkspaceTitle",
+    done: "contextMenu.toastWorkspaceDeleted",
+    command: deleteWorkspace,
+  },
+  project: {
+    label: "contextMenu.deleteProject",
+    confirm: "contextMenu.deleteProjectConfirm",
+    title: "contextMenu.deleteProjectTitle",
+    done: "contextMenu.toastProjectDeleted",
+    command: deleteProject,
+  },
+  console: {
+    label: "contextMenu.deleteConsole",
+    confirm: "contextMenu.deleteConsoleConfirm",
+    title: "contextMenu.deleteConsoleTitle",
+    done: "contextMenu.toastConsoleDeleted",
+    command: deleteConsole,
+  },
+};
+
+export function ContextMenu({ menu, onClose, ...actions }: ContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const {
-    removeWorkspace,
-    removeProject,
-    removeConsole,
-    openSession,
-    activateConsole,
-    sessions,
-    workspaces,
-    showToast,
-  } = useAppStore();
+  const { removeWorkspace, removeProject, removeConsole, openConsole, sessions, workspaces, showToast } = useAppStore();
   const { t } = useTranslation();
 
-  // Закрывать по клику снаружи или Escape
+  const { node } = menu;
+
+  // Закрыть по клику снаружи или Escape
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
+    const onMouseDown = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     };
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("mousedown", handleClick);
-    document.addEventListener("keydown", handleKey);
-    return () => {
-      document.removeEventListener("mousedown", handleClick);
-      document.removeEventListener("keydown", handleKey);
-    };
+
+    document.addEventListener("mousedown", onMouseDown);
+
+    return () => document.removeEventListener("mousedown", onMouseDown);
   }, [onClose]);
 
-  // Скорректировать позицию чтобы меню не выходило за экран
-  const menuWidth = 200;
-  const x = Math.min(menu.x, window.innerWidth - menuWidth - 8);
-  const y = menu.y;
+  useEscape(onClose);
 
-  const handleDeleteWorkspace = async () => {
-    onClose();
-    const confirmed = await ask(
-      t("contextMenu.deleteWorkspaceConfirm", { name: menu.node.name }),
-      { title: t("contextMenu.deleteWorkspaceTitle"), kind: "warning" }
-    );
+  // Меню не должно выходить за правый край окна
+  const x = Math.min(menu.x, window.innerWidth - MENU_WIDTH - 8);
+
+  const handleDelete = async () => {
+    const deletion = DELETION[node.type];
+
+    const confirmed = await ask(t(deletion.confirm, { name: node.name }), { title: t(deletion.title), kind: "warning" });
+
     if (!confirmed) return;
+
     try {
-      await deleteWorkspace(menu.node.id);
-      removeWorkspace(menu.node.id);
-      showToast("success", t("contextMenu.toastWorkspaceDeleted"));
+      await deletion.command(node.id);
+
+      ({ workspace: removeWorkspace, project: removeProject, console: removeConsole })[node.type](node.id);
+
+      showToast("success", t(deletion.done));
     } catch (e) {
       showToast("error", t("contextMenu.toastDeleteError", { error: e }));
-    }
-  };
-
-  const handleDeleteProject = async () => {
-    onClose();
-    const confirmed = await ask(
-      t("contextMenu.deleteProjectConfirm", { name: menu.node.name }),
-      { title: t("contextMenu.deleteProjectTitle"), kind: "warning" }
-    );
-    if (!confirmed) return;
-    try {
-      await deleteProject(menu.node.id);
-      removeProject(menu.node.id);
-      showToast("success", t("contextMenu.toastProjectDeleted"));
-    } catch (e) {
-      showToast("error", t("contextMenu.toastDeleteError", { error: e }));
-    }
-  };
-
-  const handleDeleteConsole = async () => {
-    onClose();
-    const confirmed = await ask(
-      t("contextMenu.deleteConsoleConfirm", { name: menu.node.name }),
-      { title: t("contextMenu.deleteConsoleTitle"), kind: "warning" }
-    );
-    if (!confirmed) return;
-    try {
-      await deleteConsole(menu.node.id);
-      removeConsole(menu.node.id);
-      showToast("success", t("contextMenu.toastConsoleDeleted"));
-    } catch (e) {
-      showToast("error", t("contextMenu.toastDeleteError", { error: e }));
-    }
-  };
-
-  const handleRunConsole = () => {
-    onClose();
-    if (!activateConsole(menu.node.id)) {
-      openSession({
-        id: `session-${Date.now()}`,
-        console_id: menu.node.id,
-        title: menu.node.name,
-        is_active: true,
-      });
-    }
-  };
-
-  // Ещё один экземпляр той же консоли — отдельный PTY в подвкладке
-  const handleOpenNewInstance = () => {
-    onClose();
-    openSession({
-      id: `session-${Date.now()}`,
-      console_id: menu.node.id,
-      title: menu.node.name,
-      is_active: true,
-    });
-  };
-
-  const handleToggleDanger = async () => {
-    onClose();
-    const data = menu.node.data as { isDanger?: boolean; dangerLabel?: string };
-    const isDanger = !data.isDanger;
-    const dangerLabel = data.dangerLabel || "PRODUCTION";
-    try {
-      await setNodeDanger(menu.node.id, menu.node.type, isDanger, dangerLabel);
-      onToggleDanger(menu.node);
-    } catch (e) {
-      showToast("error", t("contextMenu.toastDangerError", { error: e }));
     }
   };
 
   const handleCopySshCommand = async () => {
-    onClose();
-    const config = menu.node.data as ConsoleConfig;
     try {
-      await navigator.clipboard.writeText(buildSshCommand(config));
+      await navigator.clipboard.writeText(buildSshCommand(node.data as ConsoleConfig));
+
       showToast("success", t("dialogs.copyConnectionDone"));
     } catch (e) {
       showToast("error", t("dialogs.copyConnectionError", { error: e }));
     }
   };
 
-  // Публичный экспорт списка серверов узла (воркспейс/проект) в .md
+  // Публичный список серверов воркспейса или проекта — в .md, без секретов
   const handleExportServers = async () => {
-    onClose();
-    const { node } = menu;
-    let markdown: string | null = null;
-    if (node.type === "workspace") {
-      const ws = workspaces.find((w) => w.id === node.id);
-      if (ws) markdown = buildServersMarkdown({ type: "workspace", data: ws }, t);
-    } else if (node.type === "project") {
-      const proj = workspaces.flatMap((w) => w.projects).find((p) => p.id === node.id);
-      if (proj) markdown = buildServersMarkdown({ type: "project", data: proj }, t);
-    }
+    const markdown = serversMarkdown(node, workspaces, t);
+
     if (!markdown) {
       showToast("info", t("contextMenu.toastNoServers"));
+
       return;
     }
+
     try {
       const safeName = node.name.replace(/[\\/:*?"<>|]+/g, "_").trim() || "servers";
-      const filePath = await save({
-        defaultPath: `${safeName}-servers.md`,
-        filters: [{ name: "Markdown", extensions: ["md"] }],
-      });
+
+      const filePath = await save({ defaultPath: `${safeName}-servers.md`, filters: [{ name: "Markdown", extensions: ["md"] }] });
+
+      // Отменили выбор файла
       if (!filePath) return;
+
       await saveTextFile(filePath, markdown);
+
       showToast("success", t("contextMenu.toastServersExported"));
     } catch (e) {
       showToast("error", t("contextMenu.toastServersExportError", { error: e }));
     }
   };
 
-  const items = getMenuItems({
-    node: menu.node,
-    t,
-    onCreateProject: () => { onClose(); onCreateProject(menu.node.id); },
-    onCreateConsole: () => { onClose(); onCreateConsole(menu.node.id); },
-    onDeleteWorkspace: handleDeleteWorkspace,
-    onDeleteProject: handleDeleteProject,
-    onDeleteConsole: handleDeleteConsole,
-    onRunConsole: handleRunConsole,
-    onOpenNewInstance: handleOpenNewInstance,
-    onToggleDanger: handleToggleDanger,
-    onEditConsole: () => { onClose(); onEditConsole(menu.node); },
-    onEditNode: () => { onClose(); onEditNode(menu.node); },
-    onQuickCommands: () => { onClose(); onQuickCommands(menu.node); },
-    onCloneConsole: () => { onClose(); onCloneConsole(menu.node); },
-    onCloneProject: () => { onClose(); onCloneProject(menu.node); },
-    onReconnectConsole: () => { onClose(); onReconnectConsole(menu.node); },
-    onCopySshCommand: handleCopySshCommand,
-    onExportServers: handleExportServers,
-    sessions,
+  // Любой пункт сначала закрывает меню
+  const item = (label: string, icon: string, action: () => void, danger = false): MenuItem => ({
+    label: t(label),
+    icon,
+    action: () => {
+      onClose();
+      action();
+    },
+    danger,
+  });
+
+  const items = menuItems(node, sessions.some((s) => s.console_id === node.id), {
+    createProject: item("contextMenu.addProject", "+", () => actions.onCreateProject(node.id)),
+    createConsole: item("contextMenu.addConsole", "+", () => actions.onCreateConsole(node.id)),
+    exportServers: item("contextMenu.exportServers", "⇩", handleExportServers),
+    settings: item("contextMenu.settings", "⚙", () => actions.onEditNode(node)),
+    cloneProject: item("contextMenu.cloneProject", "⎘", () => actions.onCloneProject(node)),
+    markDanger: item("contextMenu.markAsDangerous", "⚠", () => actions.onToggleDanger(node)),
+    unmarkDanger: item("contextMenu.removeDangerFlag", "✓", () => actions.onToggleDanger(node)),
+    run: item("contextMenu.runConsole", "▶", () => openConsole(node.id, node.name)),
+    // Ещё один экземпляр той же консоли — отдельный PTY в подвкладке
+    newInstance: item("contextMenu.openNewInstance", "⧉", () => openConsole(node.id, node.name, true)),
+    reconnect: item("contextMenu.reconnectConsole", "↺", () => actions.onReconnectConsole(node)),
+    connectionSettings: item("contextMenu.connectionSettings", "⚙", () => actions.onEditConsole(node)),
+    quickCommands: item("contextMenu.quickCommands", "⚡", () => actions.onQuickCommands(node)),
+    copySsh: item("contextMenu.copySshCommand", "⧉", handleCopySshCommand),
+    cloneConsole: item("contextMenu.cloneConsole", "⎘", () => actions.onCloneConsole(node)),
+    delete: item(DELETION[node.type].label, "✕", handleDelete, true),
   });
 
   return createPortal(
     <div
       ref={ref}
       className="fixed z-50 bg-surface-2 border border-border rounded-lg shadow-xl py-1 min-w-[180px]"
-      style={{ top: y, left: x, width: menuWidth }}
+      style={{ top: menu.y, left: x, width: MENU_WIDTH }}
     >
-      {items.map((item, i) =>
-        item === "separator" ? (
+      {items.map((it, i) =>
+        it === "separator" ? (
           <div key={i} className="my-1 border-t border-border" />
         ) : (
           <button
             key={i}
             className={`w-full text-left px-3 py-1.5 text-xs hover:bg-surface-3 flex items-center gap-2 ${
-              item.danger ? "text-danger hover:text-danger" : "text-text-primary"
+              it.danger ? "text-danger hover:text-danger" : "text-text-primary"
             }`}
-            onClick={item.action}
+            onClick={it.action}
           >
-            <span className="w-4 text-center opacity-60">{item.icon}</span>
-            {item.label}
+            <span className="w-4 text-center opacity-60">{it.icon}</span>
+            {it.label}
           </button>
         )
       )}
@@ -254,74 +203,64 @@ export function ContextMenu({
   );
 }
 
-type MenuItem =
-  | "separator"
-  | { label: string; icon: string; action: () => void; danger?: boolean };
+type MenuItems = Record<
+  | "createProject"
+  | "createConsole"
+  | "exportServers"
+  | "settings"
+  | "cloneProject"
+  | "markDanger"
+  | "unmarkDanger"
+  | "run"
+  | "newInstance"
+  | "reconnect"
+  | "connectionSettings"
+  | "quickCommands"
+  | "copySsh"
+  | "cloneConsole"
+  | "delete",
+  MenuItem
+>;
 
-function getMenuItems(handlers: {
-  node: TreeNode;
-  t: (key: string) => string;
-  onCreateProject: () => void;
-  onCreateConsole: () => void;
-  onDeleteWorkspace: () => void;
-  onDeleteProject: () => void;
-  onDeleteConsole: () => void;
-  onRunConsole: () => void;
-  onOpenNewInstance: () => void;
-  onToggleDanger: () => void;
-  onEditConsole: () => void;
-  onEditNode: () => void;
-  onQuickCommands: () => void;
-  onCloneConsole: () => void;
-  onCloneProject: () => void;
-  onReconnectConsole: () => void;
-  onCopySshCommand: () => void;
-  onExportServers: () => void;
-  sessions: { console_id: string }[];
-}): MenuItem[] {
-  const { node, t } = handlers;
-  const data = node.data as { isDanger?: boolean };
-
+/** Состав меню по типу узла */
+function menuItems(node: TreeNode, hasSession: boolean, it: MenuItems): MenuItem[] {
   if (node.type === "workspace") {
-    return [
-      { label: t("contextMenu.addProject"), icon: "+", action: handlers.onCreateProject },
-      { label: t("contextMenu.exportServers"), icon: "⇩", action: handlers.onExportServers },
-      "separator",
-      { label: t("contextMenu.settings"), icon: "⚙", action: handlers.onEditNode },
-      "separator",
-      { label: t("contextMenu.deleteWorkspace"), icon: "✕", action: handlers.onDeleteWorkspace, danger: true },
-    ];
+    return [it.createProject, it.exportServers, "separator", it.settings, "separator", it.delete];
   }
 
   if (node.type === "project") {
-    return [
-      { label: t("contextMenu.addConsole"), icon: "+", action: handlers.onCreateConsole },
-      { label: t("contextMenu.cloneProject"), icon: "⎘", action: handlers.onCloneProject },
-      "separator",
-      { label: t("contextMenu.exportServers"), icon: "⇩", action: handlers.onExportServers },
-      "separator",
-      data.isDanger
-        ? { label: t("contextMenu.removeDangerFlag"), icon: "✓", action: handlers.onToggleDanger }
-        : { label: t("contextMenu.markAsDangerous"), icon: "⚠", action: handlers.onToggleDanger },
-      "separator",
-      { label: t("contextMenu.settings"), icon: "⚙", action: handlers.onEditNode },
-      "separator",
-      { label: t("contextMenu.deleteProject"), icon: "✕", action: handlers.onDeleteProject, danger: true },
-    ];
+    const danger = (node.data as { isDanger?: boolean }).isDanger ? it.unmarkDanger : it.markDanger;
+
+    return [it.createConsole, it.cloneProject, "separator", it.exportServers, "separator", danger, "separator", it.settings, "separator", it.delete];
   }
 
-  // console
-  const hasSession = handlers.sessions.some((s) => s.console_id === node.id);
-  const isSsh = (node.data as { connectionType?: string }).connectionType === "ssh";
+  const isSsh = (node.data as ConsoleConfig).connectionType === "ssh";
+
   return [
-    { label: t("contextMenu.runConsole"), icon: "▶", action: handlers.onRunConsole },
-    ...(hasSession ? [{ label: t("contextMenu.openNewInstance"), icon: "⧉", action: handlers.onOpenNewInstance } as MenuItem] : []),
-    ...(hasSession ? [{ label: t("contextMenu.reconnectConsole"), icon: "↺", action: handlers.onReconnectConsole } as MenuItem] : []),
-    { label: t("contextMenu.connectionSettings"), icon: "⚙", action: handlers.onEditConsole },
-    { label: t("contextMenu.quickCommands"), icon: "⚡", action: handlers.onQuickCommands },
-    ...(isSsh ? [{ label: t("contextMenu.copySshCommand"), icon: "⧉", action: handlers.onCopySshCommand } as MenuItem] : []),
-    { label: t("contextMenu.cloneConsole"), icon: "⎘", action: handlers.onCloneConsole },
-    "separator" as MenuItem,
-    { label: t("contextMenu.deleteConsole"), icon: "✕", action: handlers.onDeleteConsole, danger: true },
+    it.run,
+    ...(hasSession ? [it.newInstance, it.reconnect] : []),
+    it.connectionSettings,
+    it.quickCommands,
+    ...(isSsh ? [it.copySsh] : []),
+    it.cloneConsole,
+    "separator",
+    it.delete,
   ];
+}
+
+/** Markdown со списком серверов узла; null — узел не воркспейс/проект или серверов нет */
+function serversMarkdown(node: TreeNode, workspaces: Workspace[], t: TFunction): string | null {
+  if (node.type === "workspace") {
+    const ws = workspaces.find((w) => w.id === node.id);
+
+    return ws ? buildServersMarkdown({ type: "workspace", data: ws }, t) : null;
+  }
+
+  if (node.type === "project") {
+    const proj = findProject(workspaces, node.id)?.project;
+
+    return proj ? buildServersMarkdown({ type: "project", data: proj }, t) : null;
+  }
+
+  return null;
 }

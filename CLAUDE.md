@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Всегда сверяться с `docs/RULES.md`** и выполнять его правила. Главное из них: `docs/PLAN.md` и `docs/STATUS.md` держать актуальными — до работы записать в план, что собираемся делать, после — отметить, что сделано, в плане и в статусе.
 
+Код пишется по скиллу `.claude/skills/readable-flow` (шапка файла — процесс по шагам, сценарии сверху вниз, плоский поток); метрики — `.claude/skills/readable-flow/rust-metrics.sh` и `ts-metrics.sh`.
+
 ## Commands
 
 ```bash
@@ -41,11 +43,7 @@ npm run tauri build
 // src/lib/tauriCommands.ts — единственное место для invoke()
 invoke("rust_command_name", { camelCaseArgs })
 ```
-Rust-функции объявлены в `src-tauri/src/commands.rs`, зарегистрированы **в двух файлах** через `tauri::generate_handler![]`:
-- `src-tauri/src/main.rs` — используется при `npm run tauri dev` (десктоп)
-- `src-tauri/src/lib.rs` — используется при сборке под мобильные платформы
-
-**ВАЖНО: при добавлении новой команды нужно прописать её в ОБОИХ файлах**, иначе в рантайме будет ошибка `command X not found`. Аргументы автоматически конвертируются через serde: Rust использует `snake_case`, TypeScript — `camelCase` (директива `#[serde(rename_all = "camelCase")]`).
+Rust-функции объявлены в `src-tauri/src/commands.rs` (тонкий фасад: логика — в модулях `db`, `pty_manager`, `export`, `ssh_keys`, `ai_local`, `security`, `app_shell`) и зарегистрированы через `tauri::generate_handler![]` **в `src-tauri/src/lib.rs`** — единственной точке сборки приложения. `main.rs` только вызывает `devconsole_hub_lib::run()`; незарегистрированная команда даёт в рантайме `command X not found`. Аргументы автоматически конвертируются через serde: Rust использует `snake_case`, TypeScript — `camelCase` (директива `#[serde(rename_all = "camelCase")]`). Команда с большим числом полей принимает структуру (`ConsoleFields`, `ProjectFields`, `SpawnRequest`, `Sections`, `RunRequest`), а не 15 аргументов.
 
 ### Слой данных
 
@@ -93,8 +91,8 @@ SSH passphrase автоподставляется через `ssh-add` с `SSH_A
 
 ### Трей и автозапуск (macOS)
 
-- **Системный трей**: `tauri-plugin` tray-icon (feature `tray-icon` в `Cargo.toml`). `TrayIconBuilder` создаётся в `setup()` в `main.rs`. Меню: "Открыть" + "Выход".
-- **CloseRequested**: читает настройку `ui.closeToTray` (bool) через `get_setting_bool()` в `db.rs`. Если `true` — `window.hide()`, если `false` — `app.exit(0)`.
+- **Системный трей, меню приложения macOS, выход**: `src-tauri/src/app_shell.rs` (`install` вызывается из `setup()` в `lib.rs`). Меню трея: "Открыть" + "Выход"; Cmd+Q и «Выход» идут через `confirm_quit`.
+- **CloseRequested** (`app_shell::on_window_event`): настройка `ui.closeToTray` (bool) — `true` прячет окно в трей, `false` — подтверждение выхода.
 - **Автозапуск**: `tauri-plugin-autostart`, `MacosLauncher::LaunchAgent`. Команды: `enable_autostart`, `disable_autostart`, `get_autostart_status`. Настройка в Settings → Интерфейс.
 - Capability: `core:tray:default`, `autostart:allow-*` в `capabilities/default.json`.
 
@@ -105,7 +103,7 @@ HTML5 DnD API **не работает в Tauri WebKit** — использует
 - Drag активируется после сдвига ≥ 6px
 - Hit-test цели: `querySelectorAll("[data-nodetype='project']")` + `getBoundingClientRect`
 - Ghost-лейбл через `createPortal(document.body)` с `pointerEvents: none`
-- **Критично:** дроп-хендлер нужно вызывать ДО очистки `draggingConsoleRef.current`, иначе хендлер получит `null`
+- Всё это — хук `useConsoleDrag` в `TreePanel.tsx`; перетаскиваемая консоль передаётся в `onDrop` аргументом, поэтому порядок очистки состояния не важен. Перестановка вкладок терминала — тот же подход (`useTabReorder` в `TerminalPanel.tsx`)
 
 ### Текущее состояние
 
@@ -115,9 +113,8 @@ MVP завершён полностью. Все панели рабочие. PTY
 
 1. Объявить функцию с `#[tauri::command]` в `src-tauri/src/commands.rs`
 2. Добавить вспомогательную функцию в `src-tauri/src/db.rs` (если нужна БД)
-3. Зарегистрировать в `src-tauri/src/main.rs` → `invoke_handler![]`
-4. Зарегистрировать в `src-tauri/src/lib.rs` → `invoke_handler![]`
-5. Добавить TypeScript-обёртку в `src/lib/tauriCommands.ts`
+3. Зарегистрировать в `src-tauri/src/lib.rs` → `invoke_handler![]`
+4. Добавить TypeScript-обёртку в `src/lib/tauriCommands.ts`
 
 ### Файловая структура (ключевые файлы)
 
@@ -125,7 +122,9 @@ MVP завершён полностью. Все панели рабочие. PTY
 src/                              — Frontend (TypeScript + React)
   App.tsx                         — корневой компонент, горячие клавиши
   stores/appStore.ts              — Zustand store
+  hooks/                          — useEscape, useListNavigation
   lib/
+    tree.ts                       — чистые функции над деревом: поиск консоли/проекта, плоский список, поиск по дереву
     tauriCommands.ts              — ВСЕ invoke()-вызовы (единственное место)
     themes.ts                     — 18 тем UI + xterm-палитры + цвета водяного знака
     i18n.ts                       — локализация (i18next)
@@ -150,8 +149,11 @@ src/                              — Frontend (TypeScript + React)
   styles/globals.css              — CSS-переменные тем
 
 src-tauri/src/                    — Backend (Rust)
-  main.rs                         — точка входа, регистрация команд (десктоп), ~50 команд
-  lib.rs                          — то же для мобильных платформ (синхронизирован с main.rs)
+  main.rs                         — точка входа десктопа: вызывает lib::run()
+  lib.rs                          — сборка приложения: модули, плагины, регистрация ~60 команд
+  app_shell.rs                    — трей, меню приложения macOS, закрытие окна, подтверждение выхода
+  ai_local.rs                     — локальный AI-движок (Claude Code CLI подпроцессом)
+  security.rs                     — пароль на вход (Argon2id-хеш)
   commands.rs                     — #[tauri::command] функции + Rust-структуры
   db.rs                           — SQLite CRUD через rusqlite (SQLCipher)
   pty_manager.rs                  — PTY-сессии (portable-pty), SSH passphrase/password

@@ -110,6 +110,7 @@
     "deletePageConfirm": "«{{title}}» бетін жою?",
     "deletePageTooltip": "Бетті жою",
     "toastPageDeleted": "Бет жойылды",
+    "toastSaveError": "Бетті сақтау мүмкін болмады: {{error}}",
     "savedAt": "Сақталды: {{time}}",
     "untitled": "Атаусыз",
     "contextGlobal": "Жалпы Wiki",

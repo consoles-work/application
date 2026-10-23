@@ -1,8 +1,8 @@
-import { useEffect } from "react";
 import { Globe, Github, ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import appIcon from "../../src-tauri/icons/128x128.png";
 import { APP_NAME, APP_VERSION, APP_COMMIT, SITE_URL, GITHUB_URL, displayUrl, openExternal } from "../lib/appInfo";
+import { useEscape } from "../hooks/useEscape";
 
 // ══════════════════════════════════════
 // AboutDialog — «О программе»: версия, сайт, GitHub
@@ -13,11 +13,7 @@ import { APP_NAME, APP_VERSION, APP_COMMIT, SITE_URL, GITHUB_URL, displayUrl, op
 export function AboutDialog({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  useEscape(onClose);
 
   const links = [
     { url: SITE_URL, label: t("about.site"), icon: Globe },

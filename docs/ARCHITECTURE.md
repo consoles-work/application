@@ -74,11 +74,10 @@ pub fn create_workspace(name: String, icon: String, color: String) -> Result<Wor
 
 ### Регистрация команд
 
-Функции нужно явно перечислить в `invoke_handler`. **Важно: в двух файлах:**
+Функции нужно явно перечислить в `invoke_handler` — в `lib.rs`, единственной точке сборки (десктопный `main.rs` только вызывает `run()`):
 
 ```rust
-// src-tauri/src/main.rs  (десктоп)
-// src-tauri/src/lib.rs   (мобильные платформы)
+// src-tauri/src/lib.rs
 .invoke_handler(tauri::generate_handler![
     load_workspaces,
     create_workspace,
@@ -151,7 +150,7 @@ unlisten();
 ## Слой данных: SQLite
 
 База данных хранится в `~/Library/Application Support/devconsole-hub/data.db` (macOS).
-Инициализируется один раз при старте в `main.rs` → `db::init()`.
+Инициализируется один раз при старте в `lib.rs` (`setup`) → `db::init()`.
 
 ### Схема таблиц
 
@@ -416,8 +415,9 @@ src/                              — Frontend (TypeScript + React)
   styles/globals.css              — CSS-переменные тем
 
 src-tauri/src/                    — Backend (Rust)
-  main.rs                         — точка входа, регистрация команд (десктоп)
-  lib.rs                          — то же для мобильных платформ
+  main.rs                         — точка входа десктопа: вызывает lib::run()
+  lib.rs                          — сборка приложения: плагины, регистрация команд
+  app_shell.rs                    — трей, меню приложения, выход
   commands.rs                     — #[tauri::command] функции + Rust-структуры
   db.rs                           — SQLite CRUD через rusqlite
   pty_manager.rs                  — PTY-сессии через portable-pty

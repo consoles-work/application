@@ -110,6 +110,7 @@
     "deletePageConfirm": "Delete page \"{{title}}\"?",
     "deletePageTooltip": "Delete page",
     "toastPageDeleted": "Page deleted",
+    "toastSaveError": "Could not save the page: {{error}}",
     "savedAt": "Saved: {{time}}",
     "untitled": "Untitled",
     "contextGlobal": "Global wiki",

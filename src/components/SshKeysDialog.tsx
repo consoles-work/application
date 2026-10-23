@@ -6,15 +6,16 @@ import {
   Lock, LockOpen, Pencil, Plus, RefreshCw, ShieldAlert, Wrench,
 } from "lucide-react";
 import { useAppStore } from "../stores/appStore";
+import { useEscape } from "../hooks/useEscape";
 import { fixSshPermissions, generateSshKey, scanSshKeys } from "../lib/tauriCommands";
 import {
-  auditSsh, consoleKeyPaths, formatMode, permsTooOpen, scoreLevel,
+  auditSsh, consoleKeyPaths, formatMode, permsTooOpen, scoreLevel, worst, SEVERITY_ORDER,
   type ConfigRow, type ConsoleRef, type ConsoleRow, type KeyRow, type Severity, type SshAudit, type SshIssue,
 } from "../lib/sshAudit";
 import { ConsoleIcon } from "../lib/consoleIcons";
 import { EditConsoleDialog } from "./dialogs/EditConsoleDialog";
 import { UnderlineTabs } from "./UnderlineTabs";
-import type { ConsoleConfig, SshKeysReport } from "../types";
+import type { ConsoleConfig, SshKeyFile, SshKeysReport } from "../types";
 
 // ══════════════════════════════════════
 // SshKeysDialog — раздел «SSH-ключи»: инвентаризация и аудит
@@ -22,6 +23,15 @@ import type { ConsoleConfig, SshKeysReport } from "../types";
 // Всё локально: ~/.ssh, ~/.ssh/config, ssh-agent и настройки консолей.
 // К серверам не подключаемся. Пишем на диск только по кнопке:
 // «Исправить права» (chmod) и «Создать ключ» (новый файл в ~/.ssh).
+//
+// 1. Открытие: скан бэкендом (ключи из ~/.ssh и из консолей, конфиг, агент),
+//    затем аудит на фронте (sshAudit.ts). Не просканировалось — тост.
+// 2. Вкладки: проблемы (с переходом к ключу, консоли, блоку конфига), ключи,
+//    SSH-консоли, блоки ~/.ssh/config.
+// 3. После исправления прав, создания ключа и правки консоли — повторный скан:
+//    файлы и пути могли измениться.
+// 4. «Перейти к консоли» раскрывает её в дереве и закрывает окно.
+// Escape закрывает окно, но не поверх диалога редактирования консоли.
 
 type Tab = "issues" | "keys" | "consoles" | "config";
 
@@ -40,6 +50,11 @@ const SEVERITY_FLAG: Record<Severity, string> = {
   warning: "text-amber-500 border-amber-500/40",
   info: "text-sky-500 border-sky-500/40",
 };
+const SEVERITY_ICON: Record<Severity, typeof Info> = {
+  critical: ShieldAlert,
+  warning: AlertTriangle,
+  info: Info,
+};
 const SCORE_CLS = {
   strong: "text-emerald-500 border-emerald-500/40",
   ok: "text-sky-500 border-sky-500/40",
@@ -52,34 +67,6 @@ const inputCls =
 const btnCls =
   "inline-flex items-center gap-1 px-2 py-1 rounded-md text-2xs text-text-secondary border border-border hover:bg-surface-2 hover:text-text-primary";
 
-function SeverityIcon({ severity, size = 14 }: { severity: Severity; size?: number }) {
-  const Icon = severity === "critical" ? ShieldAlert : severity === "warning" ? AlertTriangle : Info;
-  return <Icon className={`shrink-0 ${SEVERITY_TEXT[severity]}`} style={{ width: size, height: size }} />;
-}
-
-function WorstDot({ issues }: { issues: SshIssue[] }) {
-  if (issues.length === 0) return null;
-  const s: Severity = issues.some((i) => i.severity === "critical")
-    ? "critical"
-    : issues.some((i) => i.severity === "warning") ? "warning" : "info";
-  return <SeverityIcon severity={s} size={13} />;
-}
-
-function refPath(r: ConsoleRef) {
-  return `${r.workspace.name} › ${r.project.name}`;
-}
-
-function formatDate(sec: number | null, lang: string) {
-  return sec ? new Date(sec * 1000).toLocaleDateString(lang) : "—";
-}
-
-/** Случайная passphrase: 24 символа без похожих (0/O, 1/l) */
-function randomPassphrase(): string {
-  const alphabet = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const bytes = crypto.getRandomValues(new Uint8Array(24));
-  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
-}
-
 export function SshKeysDialog({ onClose, onAudit }: { onClose: () => void; onAudit?: (audit: SshAudit) => void }) {
   const { t, i18n } = useTranslation();
   const { workspaces, showToast, selectNode, toggleNodeExpanded, showTreePanel, setShowTreePanel } = useAppStore();
@@ -91,8 +78,10 @@ export function SshKeysDialog({ onClose, onAudit }: { onClose: () => void; onAud
   const [creating, setCreating] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // 1. Скан и аудит.
   const load = async () => {
     setLoading(true);
+
     try {
       setReport(await scanSshKeys(consoleKeyPaths(useAppStore.getState().workspaces)));
     } catch (e) {
@@ -102,49 +91,58 @@ export function SshKeysDialog({ onClose, onAudit }: { onClose: () => void; onAud
     }
   };
 
+  // Скан — один раз при открытии; повторный — по кнопке и после изменений (шаг 3)
   useEffect(() => {
     load();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Escape закрывает окно, но не поверх диалога редактирования консоли
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !editConsole && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [editConsole, onClose]);
+  useEscape(onClose, !editConsole);
 
   const audit = useMemo(() => (report ? auditSsh(report, workspaces) : null), [report, workspaces]);
+
+  // Индикатор у кнопки в заголовке окна; onAudit — колбэк родителя, его смена аудит не повторяет
   useEffect(() => {
     if (audit) onAudit?.(audit);
   }, [audit]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Действия ──
+  const consoleById = useMemo(() => new Map((audit?.consoles ?? []).map((r) => [r.console.id, r])), [audit]);
+  const keyByPath = useMemo(() => new Map((audit?.keys ?? []).map((r) => [r.key.path, r])), [audit]);
 
+  const s = audit?.summary;
+  const problems = audit ? audit.counts.critical + audit.counts.warning : 0;
+
+  // ── Действия ──
   const copy = async (text: string, what: string) => {
     try {
       await navigator.clipboard.writeText(text);
+
       showToast("success", t("sshKeys.copied", { what }));
     } catch (e) {
       showToast("error", String(e));
     }
   };
 
+  // 3. Исправить права и пересканировать.
   const fixPerms = async (path: string) => {
     try {
       await fixSshPermissions(path);
+
       showToast("success", t("sshKeys.permsFixed"));
+
       await load();
     } catch (e) {
       showToast("error", t("sshKeys.permsFixError", { error: e }));
     }
   };
 
+  // 4. Консоль в дереве: раскрыть воркспейс и проект, показать дерево, выбрать консоль.
   const goToConsole = (ref: ConsoleRef) => {
-    // Раскрываем воркспейс и проект, чтобы консоль была видна в дереве
-    if (!ref.workspace.is_expanded) toggleNodeExpanded("workspace", ref.workspace.id);
-    if (!ref.project.is_expanded) toggleNodeExpanded("project", ref.project.id);
+    if (!ref.workspace.isExpanded) toggleNodeExpanded("workspace", ref.workspace.id);
+    if (!ref.project.isExpanded) toggleNodeExpanded("project", ref.project.id);
     if (!showTreePanel) setShowTreePanel(true);
+
     selectNode({ type: "console", id: ref.console.id });
+
     onClose();
   };
 
@@ -158,16 +156,6 @@ export function SshKeysDialog({ onClose, onAudit }: { onClose: () => void; onAud
     setTab("config");
     setHighlightConfig(index);
   };
-
-  const consoleById = useMemo(() => {
-    const m = new Map<string, ConsoleRow>();
-    for (const r of audit?.consoles ?? []) m.set(r.console.id, r);
-    return m;
-  }, [audit]);
-  const keyByPath = useMemo(() => new Map((audit?.keys ?? []).map((r) => [r.key.path, r])), [audit]);
-
-  const s = audit?.summary;
-  const problems = audit ? audit.counts.critical + audit.counts.warning : 0;
 
   return (
     <div
@@ -211,7 +199,7 @@ export function SshKeysDialog({ onClose, onAudit }: { onClose: () => void; onAud
                 label={t("sshKeys.tileProblems")}
                 value={String(problems)}
                 sub={t("sshKeys.tileProblemsSub", { critical: audit.counts.critical, info: audit.counts.info })}
-                tone={audit.counts.critical > 0 ? "critical" : problems > 0 ? "warning" : undefined}
+                tone={problemsTone(audit.counts.critical, problems)}
               />
               <Tile
                 label={t("sshKeys.tileConsoles")}
@@ -324,6 +312,15 @@ export function SshKeysDialog({ onClose, onAudit }: { onClose: () => void; onAud
       )}
     </div>
   );
+}
+
+/** Для заголовка окна: скан + аудит без открытия окна (индикатор у кнопки) */
+export async function quickSshAudit(): Promise<SshAudit> {
+  const workspaces = useAppStore.getState().workspaces;
+
+  const report = await scanSshKeys(consoleKeyPaths(workspaces));
+
+  return auditSsh(report, workspaces);
 }
 
 function Tile({ label, value, sub, tone }: { label: string; value: string; sub: string; tone?: Severity }) {
@@ -494,8 +491,7 @@ function KeyCard({
               {field(t("sshKeys.fPath"), k.displayPath)}
               {field(t("sshKeys.fFingerprint"), k.fingerprint || "—")}
               {field(t("sshKeys.fComment"), k.comment || "—")}
-              {field(t("sshKeys.fPassphrase"),
-                !k.privateExists ? t("sshKeys.noPrivate") : k.encrypted === null ? t("sshKeys.unknown") : k.encrypted ? t("sshKeys.yes") : t("sshKeys.no"))}
+              {field(t("sshKeys.fPassphrase"), passphraseText(k, t))}
               {field(t("sshKeys.fFormat"), [k.privateFormat || "—", k.publicExists ? ".pub" : t("sshKeys.noPub"), k.hasCertificate ? "cert" : ""].filter(Boolean).join(" · "))}
               {field(t("sshKeys.fMode"), (
                 <span className={k.privateExists && permsTooOpen(k.mode) ? "text-red-500" : ""}>{k.privateExists ? formatMode(k.mode) : "—"}</span>
@@ -590,11 +586,7 @@ function CreateKeyForm({
   onCreated: (path: string) => void;
 }) {
   const { showToast } = useAppStore();
-  const [name, setName] = useState(() => {
-    let n = "id_ed25519_new";
-    for (let i = 2; existing.has(n); i++) n = `id_ed25519_new${i}`;
-    return n;
-  });
+  const [name, setName] = useState(() => freeKeyName(existing));
   const [comment, setComment] = useState("");
   const [pass, setPass] = useState("");
   const [pass2, setPass2] = useState("");
@@ -606,17 +598,31 @@ function CreateKeyForm({
   const mismatch = pass !== pass2;
   const canSubmit = nameOk && !clash && !mismatch && !busy;
 
+  // Проверки имени — те же, что в ssh_keys.rs (is_valid_key_name): бэкенд всё равно откажет
   const submit = async () => {
     if (!canSubmit) return;
+
     setBusy(true);
+
     try {
       const key = await generateSshKey(name, comment, pass);
+
       showToast("success", t("sshKeys.created", { path: key.displayPath }));
+
       onCreated(key.path);
     } catch (e) {
       showToast("error", t("sshKeys.createError", { error: e }));
+
       setBusy(false);
     }
+  };
+
+  const fillRandom = () => {
+    const p = randomPassphrase();
+
+    setPass(p);
+    setPass2(p);
+    setShow(true);
   };
 
   return (
@@ -642,7 +648,7 @@ function CreateKeyForm({
             <button
               type="button"
               className={btnCls}
-              onClick={() => { const p = randomPassphrase(); setPass(p); setPass2(p); setShow(true); }}
+              onClick={fillRandom}
               title={t("sshKeys.createGenerateHint")}
             >
               {t("sshKeys.createGenerate")}
@@ -724,11 +730,9 @@ function ConsolesTab({
                 {c.sshUser ? `${c.sshUser}@` : ""}{c.sshHost}{c.sshPort && c.sshPort !== 22 ? `:${c.sshPort}` : ""}
               </td>
               <td className="py-1.5 pr-2">
-                {r.passwordOnly ? (
-                  <span className="text-amber-500">{t("sshKeys.viaPassword")}</span>
-                ) : shown.length === 0 ? (
-                  <span className="text-text-muted">{t("sshKeys.viaAgentOnly")}</span>
-                ) : (
+                {r.passwordOnly && <span className="text-amber-500">{t("sshKeys.viaPassword")}</span>}
+                {!r.passwordOnly && shown.length === 0 && <span className="text-text-muted">{t("sshKeys.viaAgentOnly")}</span>}
+                {!r.passwordOnly &&
                   shown.map((e) => (
                     <div key={e.path} className="flex items-center gap-1.5">
                       {e.key && (e.key.privateExists || e.key.publicExists) ? (
@@ -742,8 +746,7 @@ function ConsolesTab({
                       {e.key?.encrypted && <Lock className="w-3 h-3 text-emerald-500" />}
                       <span className="text-text-muted">{t(`sshKeys.via.${e.via}`)}</span>
                     </div>
-                  ))
-                )}
+                  ))}
                 {r.effective.length > shown.length && <div className="text-text-muted">+{r.effective.length - shown.length}</div>}
               </td>
               <td className="py-1.5 pr-2">
@@ -864,9 +867,59 @@ function ConfigTab({
   );
 }
 
-/** Для заголовка окна: скан + аудит без открытия окна (индикатор у кнопки) */
-export async function quickSshAudit(): Promise<SshAudit> {
-  const workspaces = useAppStore.getState().workspaces;
-  const report = await scanSshKeys(consoleKeyPaths(workspaces));
-  return auditSsh(report, workspaces);
+// ── Детали ──
+
+function SeverityIcon({ severity, size = 14 }: { severity: Severity; size?: number }) {
+  const Icon = SEVERITY_ICON[severity];
+
+  return <Icon className={`shrink-0 ${SEVERITY_TEXT[severity]}`} style={{ width: size, height: size }} />;
+}
+
+/** Значок самой серьёзной проблемы; проблем нет — ничего */
+function WorstDot({ issues }: { issues: SshIssue[] }) {
+  if (issues.length === 0) return null;
+
+  return <SeverityIcon severity={SEVERITY_ORDER[worst(issues)]} size={13} />;
+}
+
+/** Плитка «Проблемы»: есть критичные — красная, иначе любые — жёлтая */
+function problemsTone(critical: number, problems: number): Severity | undefined {
+  if (critical > 0) return "critical";
+
+  return problems > 0 ? "warning" : undefined;
+}
+
+/** Есть ли passphrase у ключа — словами */
+function passphraseText(k: SshKeyFile, t: TFunction): string {
+  if (!k.privateExists) return t("sshKeys.noPrivate");
+
+  if (k.encrypted === null) return t("sshKeys.unknown");
+
+  return k.encrypted ? t("sshKeys.yes") : t("sshKeys.no");
+}
+
+/** Свободное имя нового ключа: id_ed25519_new, id_ed25519_new2, … */
+function freeKeyName(existing: Set<string>): string {
+  let n = "id_ed25519_new";
+
+  for (let i = 2; existing.has(n); i++) n = `id_ed25519_new${i}`;
+
+  return n;
+}
+
+function refPath(r: ConsoleRef) {
+  return `${r.workspace.name} › ${r.project.name}`;
+}
+
+function formatDate(sec: number | null, lang: string) {
+  return sec ? new Date(sec * 1000).toLocaleDateString(lang) : "—";
+}
+
+/** Случайная passphrase: 24 символа без похожих (0/O, 1/l) */
+function randomPassphrase(): string {
+  const alphabet = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+
+  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
 }

@@ -1,7 +1,14 @@
 import { useAppStore } from "../../stores/appStore";
 import { createConsole, setNodeDanger } from "../../lib/tauriCommands";
 import { useTranslation } from "react-i18next";
-import { ConsoleForm, consoleFormValues, type ConsoleFormValues } from "./ConsoleForm";
+import { ConsoleForm, consoleFields, consoleFormValues, type ConsoleFormValues } from "./ConsoleForm";
+
+// ══════════════════════════════════════
+// CreateConsoleDialog — новая консоль в проекте
+// ══════════════════════════════════════
+// 1. Консоль создаётся в БД с полями из формы.
+// 2. Отмечена «опасной» — пометка сохраняется отдельно (своя команда).
+// 3. Консоль появляется в дереве, тост об успехе. Ошибку показывает форма.
 
 interface Props {
   projectId: string;
@@ -13,28 +20,17 @@ export function CreateConsoleDialog({ projectId, onClose }: Props) {
   const { t } = useTranslation();
 
   const handleSubmit = async (v: ConsoleFormValues) => {
-    const con = await createConsole(
-      projectId,
-      v.name.trim(),
-      v.startupCmd.trim() || undefined,
-      v.connectionType,
-      v.sshHost.trim(),
-      parseInt(v.sshPort) || 22,
-      v.sshUser.trim(),
-      v.sshKeyPath.trim(),
-      v.sshExtraArgs.trim(),
-      v.sshPassphrase,
-      v.sshPassword,
-      v.note,
-      v.hosting.trim(),
-      v.icon,
-      v.color
-    );
-    const finalLabel = v.dangerLabel.trim() || "PRODUCTION";
-    if (v.isDanger) {
-      await setNodeDanger(con.id, "console", true, finalLabel);
-    }
-    addConsole(projectId, { ...con, isDanger: v.isDanger, dangerLabel: finalLabel });
+    // 1. Консоль.
+    const con = await createConsole(projectId, consoleFields(v));
+
+    // 2. Пометка «опасно».
+    const dangerLabel = v.dangerLabel.trim() || "PRODUCTION";
+
+    if (v.isDanger) await setNodeDanger(con.id, "console", true, dangerLabel);
+
+    // 3. Дерево.
+    addConsole(projectId, { ...con, isDanger: v.isDanger, dangerLabel });
+
     showToast("success", t("dialogs.toastConsoleCreated", { name: con.name }));
   };
 

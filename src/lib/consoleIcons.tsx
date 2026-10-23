@@ -44,7 +44,9 @@ export const CONSOLE_ICONS: { id: string; Icon: LucideIcon }[] = [
 /** Иконка консоли: выбранная, иначе по типу подключения (SSH — сервер, local — терминал) */
 export function consoleIcon(con: Pick<ConsoleConfig, "icon" | "connectionType">): LucideIcon {
   const chosen = con.icon ? CONSOLE_ICONS.find((i) => i.id === con.icon) : undefined;
+
   if (chosen) return chosen.Icon;
+
   return con.connectionType === "ssh" ? Server : Terminal;
 }
 
@@ -58,6 +60,7 @@ export function ConsoleIcon({
 }) {
   const Icon = consoleIcon(con);
   const hex = quickCommandHex(con.color);
+
   return (
     <Icon
       size={size}
@@ -78,12 +81,10 @@ export function ConsoleIconTile({
 }) {
   const Icon = consoleIcon(con);
   const hex = quickCommandHex(con.color);
-  const title = con.connectionType === "ssh"
-    ? `SSH${con.sshHost ? ` · ${con.sshUser ? `${con.sshUser}@` : ""}${con.sshHost}` : ""}`
-    : "Local";
+
   return (
     <span
-      title={title}
+      title={connectionTitle(con)}
       className={`shrink-0 w-6 h-6 rounded-md flex items-center justify-center border ${
         hex ? "" : "bg-surface-3 border-border text-text-secondary"
       }`}
@@ -93,4 +94,13 @@ export function ConsoleIconTile({
       <Icon size={16} />
     </span>
   );
+}
+
+/** Подсказка плашки: «SSH · user@host», «SSH» без хоста или «Local» */
+function connectionTitle(con: Pick<ConsoleConfig, "connectionType" | "sshUser" | "sshHost">): string {
+  if (con.connectionType !== "ssh") return "Local";
+
+  if (!con.sshHost) return "SSH";
+
+  return `SSH · ${con.sshUser ? `${con.sshUser}@` : ""}${con.sshHost}`;
 }

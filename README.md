@@ -388,8 +388,9 @@ devconsole-hub/
 │   └── main.tsx
 ├── src-tauri/                      # Backend (Rust)
 │   ├── src/
-│   │   ├── main.rs                 # Точка входа (desktop): команды, трей, меню, плагины
-│   │   ├── lib.rs                  # Точка входа (mobile), синхронизирован с main.rs
+│   │   ├── main.rs                 # Точка входа (desktop): вызывает lib::run()
+│   │   ├── lib.rs                  # Сборка приложения: плагины, регистрация команд
+│   │   ├── app_shell.rs            # Трей, меню приложения macOS, выход
 │   │   ├── commands.rs             # Tauri-команды (#[tauri::command])
 │   │   ├── db.rs                   # SQLite CRUD (SQLCipher + FTS5 + automigration)
 │   │   ├── pty_manager.rs          # PTY: spawn / write / resize / kill + SSH auth
@@ -494,9 +495,8 @@ usage_stats (day, hour, console_id, project_id, metric, value — статист
 
 1. Объявить `#[tauri::command]` в `src-tauri/src/commands.rs`
 2. Добавить логику в `src-tauri/src/db.rs` (если нужна БД)
-3. Зарегистрировать в `src-tauri/src/main.rs` → `invoke_handler![]`
-4. Зарегистрировать в `src-tauri/src/lib.rs` → `invoke_handler![]` ⚠️ **оба файла**
-5. Добавить TypeScript-обёртку в `src/lib/tauriCommands.ts`
+3. Зарегистрировать в `src-tauri/src/lib.rs` → `invoke_handler![]`
+4. Добавить TypeScript-обёртку в `src/lib/tauriCommands.ts`
 
 > **Важно:** аргументы Rust → TypeScript автоматически конвертируются через serde: Rust `snake_case` ↔ TypeScript `camelCase` (директива `#[serde(rename_all = "camelCase")]`).
 

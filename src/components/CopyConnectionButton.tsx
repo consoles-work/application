@@ -31,11 +31,14 @@ export function CopyConnectionButton({ config }: { config: ConsoleConfig }) {
   // Закрытие меню по клику вне
   useEffect(() => {
     if (!menuOpen) return;
-    const handler = (e: MouseEvent) => {
+
+    const onMouseDown = (e: MouseEvent) => {
       if (!wrapRef.current?.contains(e.target as Node)) setMenuOpen(false);
     };
-    window.addEventListener("mousedown", handler);
-    return () => window.removeEventListener("mousedown", handler);
+
+    window.addEventListener("mousedown", onMouseDown);
+
+    return () => window.removeEventListener("mousedown", onMouseDown);
   }, [menuOpen]);
 
   const value = buildConnectionString(config, format);
@@ -43,8 +46,11 @@ export function CopyConnectionButton({ config }: { config: ConsoleConfig }) {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(value);
+
+      // Галочка на кнопке — на полторы секунды
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
+
       showToast("success", t("dialogs.copyConnectionDone"));
     } catch (e) {
       showToast("error", t("dialogs.copyConnectionError", { error: e }));

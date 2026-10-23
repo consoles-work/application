@@ -3,8 +3,21 @@ import { createPortal } from "react-dom";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../../stores/appStore";
 import { createProject, updateProject, setNodeDanger } from "../../lib/tauriCommands";
-import type { Project, ShellType } from "../../types";
+import type { Project, ProjectFields, ShellType } from "../../types";
 import { useTranslation } from "react-i18next";
+import { useEscape } from "../../hooks/useEscape";
+import { submitLabelKey } from "./dialogText";
+
+// ══════════════════════════════════════
+// CreateProjectDialog — новый проект или настройки существующего
+// ══════════════════════════════════════
+// Сохранение:
+//  1. Без имени не сохраняем.
+//  2. Новый проект создаётся в воркспейсе; у существующего обновляются поля.
+//  3. Пометка «опасно»: у нового — если отмечена, у существующего — только если
+//     изменилась (отдельная команда).
+//  4. Дерево обновляется, тост, диалог закрывается. Ошибка — тост, диалог
+//     остаётся открытым.
 
 // 27 = три полных ряда по 9 при ширине диалога w-96
 const EMOJI_OPTIONS = [
@@ -15,6 +28,7 @@ const EMOJI_OPTIONS = [
 const COLOR_OPTIONS = ["#58a6ff", "#3fb950", "#d29922", "#f85149", "#bc8cff", "#f778ba", "#39c5cf", "#ff7b72"];
 const SHELLS: ShellType[] = ["bash", "zsh", "fish", "powershell", "cmd"];
 
+
 type Props =
   | { workspaceId: string; project?: undefined; onClose: () => void }
   /** Режим редактирования существующего проекта */
@@ -24,7 +38,7 @@ export function CreateProjectDialog({ workspaceId, project, onClose }: Props) {
   const isEdit = !!project;
   const [name, setName] = useState(project?.name ?? "");
   const [path, setPath] = useState(project?.path ?? "");
-  const [shell, setShell] = useState<ShellType>(project?.default_shell || "zsh");
+  const [shell, setShell] = useState<ShellType>(project?.defaultShell || "zsh");
   const [icon, setIcon] = useState(project?.icon || "📁");
   const [color, setColor] = useState(project?.color || "#58a6ff");
   const [isDanger, setIsDanger] = useState(project?.isDanger ?? false);
@@ -37,46 +51,59 @@ export function CreateProjectDialog({ workspaceId, project, onClose }: Props) {
   // Иконка из импорта или старой версии может отсутствовать в наборе — показать её первой
   const emojiOptions = EMOJI_OPTIONS.includes(icon) || !project ? EMOJI_OPTIONS : [project.icon, ...EMOJI_OPTIONS];
 
-  useEffect(() => { inputRef.current?.focus(); }, []);
+  const fields: ProjectFields = { name: name.trim(), icon, color, path, defaultShell: shell };
+  const label = dangerLabel.trim() || "PRODUCTION";
 
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [onClose]);
+  useEffect(() => inputRef.current?.focus(), []);
+
+  useEscape(onClose);
 
   const handleBrowse = async () => {
     try {
       const selected = await openDialog({ directory: true, multiple: false });
+
       if (typeof selected === "string") setPath(selected);
     } catch (e) {
       showToast("error", t("dialogs.toastDirSelectError", { error: e }));
     }
   };
 
+  // 2–3. Новый проект
+  const create = async (workspaceId: string) => {
+    const proj = await createProject(workspaceId, fields);
+
+    if (isDanger) await setNodeDanger(proj.id, "project", true, label);
+
+    addProject(workspaceId, { ...proj, isDanger, dangerLabel: label });
+
+    showToast("success", t("dialogs.toastProjectCreated", { name: proj.name }));
+  };
+
+  // 2–3. Существующий проект
+  const saveChanges = async (project: Project) => {
+    await updateProject(project.id, fields);
+
+    const dangerChanged = isDanger !== project.isDanger || (isDanger && label !== project.dangerLabel);
+
+    if (dangerChanged) await setNodeDanger(project.id, "project", isDanger, label);
+
+    storeUpdateProject(project.id, { ...fields, isDanger, dangerLabel: label });
+
+    showToast("success", t("dialogs.toastProjectUpdated", { name: fields.name }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+
+    // 1. Имя.
+    if (!fields.name) return;
+
+    // 2–4. Сохранение.
     setLoading(true);
+
     try {
-      const finalLabel = dangerLabel.trim() || "PRODUCTION";
-      if (project) {
-        await updateProject(project.id, name.trim(), icon, color, path, shell);
-        if (isDanger !== project.isDanger || (isDanger && finalLabel !== project.dangerLabel)) {
-          await setNodeDanger(project.id, "project", isDanger, finalLabel);
-        }
-        storeUpdateProject(project.id, {
-          name: name.trim(), icon, color, path, default_shell: shell, isDanger, dangerLabel: finalLabel,
-        });
-        showToast("success", t("dialogs.toastProjectUpdated", { name: name.trim() }));
-      } else {
-        const proj = await createProject(workspaceId, name.trim(), icon, color, path, shell);
-        if (isDanger) {
-          await setNodeDanger(proj.id, "project", true, finalLabel);
-        }
-        addProject(workspaceId, { ...proj, icon, color, isDanger, dangerLabel: finalLabel });
-        showToast("success", t("dialogs.toastProjectCreated", { name: proj.name }));
-      }
+      await (project ? saveChanges(project) : create(workspaceId));
+
       onClose();
     } catch (err) {
       showToast("error", t("dialogs.toastError", { error: err }));
@@ -179,9 +206,7 @@ export function CreateProjectDialog({ workspaceId, project, onClose }: Props) {
             </button>
             <button type="submit" disabled={!name.trim() || loading}
               className="px-3 py-1.5 text-xs bg-accent text-white rounded-lg hover:bg-accent/80 disabled:opacity-40">
-              {isEdit
-                ? (loading ? t("common.saving") : t("common.save"))
-                : (loading ? t("common.creating") : t("common.create"))}
+              {t(submitLabelKey(isEdit, loading))}
             </button>
           </div>
         </form>

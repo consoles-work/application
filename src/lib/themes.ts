@@ -1,6 +1,8 @@
 // ══════════════════════════════════════════════
 // themes.ts — определения тем приложения
 // ══════════════════════════════════════════════
+// 18 тем (9 тёмных + 9 светлых): цвета интерфейса — CSS-переменные в
+// globals.css, здесь — палитра xterm и цвета водяного знака терминала.
 
 export interface XtermTheme {
   background: string;
@@ -286,28 +288,28 @@ export const THEMES: AppTheme[] = [
   },
 ];
 
-// Темы доступные для случайного выбора (все)
-export const SELECTABLE_THEMES = THEMES;
+// Тема «случайная» выбирается один раз за запуск и держится до смены настройки
+let randomThemeId: string | null = null;
 
-let _randomThemeId: string | null = null;
-
+/** Значение настройки ui.theme → id темы; "random" — случайная из всех */
 export function resolveThemeId(settingValue: string): string {
   if (settingValue !== "random") {
-    _randomThemeId = null;
+    randomThemeId = null;
+
     return settingValue;
   }
-  // Для random: выбираем один раз за сессию
-  if (!_randomThemeId) {
-    _randomThemeId = SELECTABLE_THEMES[Math.floor(Math.random() * SELECTABLE_THEMES.length)].id;
-  }
-  return _randomThemeId;
+
+  randomThemeId ??= THEMES[Math.floor(Math.random() * THEMES.length)].id;
+
+  return randomThemeId;
 }
 
+/** Неизвестный id (тему убрали из набора) — первая */
 export function getThemeById(id: string): AppTheme {
   return THEMES.find((t) => t.id === id) ?? THEMES[0];
 }
 
+/** CSS-переменные темы висят на [data-theme] в globals.css */
 export function applyTheme(settingValue: string) {
-  const id = resolveThemeId(settingValue);
-  document.documentElement.setAttribute("data-theme", id);
+  document.documentElement.setAttribute("data-theme", resolveThemeId(settingValue));
 }

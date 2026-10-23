@@ -110,6 +110,7 @@
     "deletePageConfirm": "删除页面 \"{{title}}\"？",
     "deletePageTooltip": "删除页面",
     "toastPageDeleted": "页面已删除",
+    "toastSaveError": "无法保存页面：{{error}}",
     "savedAt": "已保存: {{time}}",
     "untitled": "无标题",
     "contextGlobal": "全局 Wiki",

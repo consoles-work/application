@@ -8,6 +8,19 @@ import type { QuickCommand, QuickCommandColor } from "../../types";
 import { QUICK_COMMAND_COLORS, quickCommandHex } from "../../lib/quickCommandColors";
 import { formatSavedTime, sumQuickCommandStats, TYPING_CHARS_PER_MINUTE } from "../../lib/quickCommandStats";
 import { useTranslation } from "react-i18next";
+import { findConsole } from "../../lib/tree";
+import { useEscape } from "../../hooks/useEscape";
+
+// ══════════════════════════════════════
+// QuickCommandsDialog — кнопки быстрых команд консоли
+// ══════════════════════════════════════
+// Список кнопок (порядок, правка, удаление) и форма одной команды. Пустой
+// список — сразу форма добавления; можно открыть сразу на правке нужной
+// кнопки (ПКМ по ней под терминалом).
+// Любое изменение сохраняет список целиком; ошибка — тост, форма не
+// закрывается. Без подписи кнопка показывает первую строку команды.
+// Escape из формы — к списку, из списка — закрыть. Консоль удалили, пока
+// диалог открыт, — он закрывается.
 
 interface Props {
   consoleId: string;
@@ -28,57 +41,43 @@ type Draft = {
 
 const EMPTY_DRAFT: Draft = { id: null, label: "", command: "", description: "", color: "", confirm: false };
 
-const toDraft = (c: QuickCommand): Draft => ({
-  id: c.id,
-  label: c.label,
-  command: c.command,
-  description: c.description ?? "",
-  color: c.color ?? "",
-  confirm: c.confirm ?? false,
-});
 
 export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props) {
   const { workspaces, updateConsole: storeUpdateConsole, showToast } = useAppStore();
   const { t } = useTranslation();
 
-  const console_ = workspaces
-    .flatMap((w) => w.projects)
-    .flatMap((p) => p.consoles)
-    .find((c) => c.id === consoleId);
+  const console_ = findConsole(workspaces, consoleId)?.console;
   const commands = console_?.quickCommands ?? [];
 
-  // Пустой список — сразу форма добавления
   const [draft, setDraft] = useState<Draft | null>(() => {
     const target = commands.find((c) => c.id === initialEditId);
+
     if (target) return toDraft(target);
+
     return commands.length === 0 ? EMPTY_DRAFT : null;
   });
+
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      // Esc из формы возвращает к списку, из списка — закрывает диалог
-      if (draft && commands.length > 0) setDraft(null);
-      else onClose();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [onClose, draft, commands.length]);
+  useEscape(() => (draft && commands.length > 0 ? setDraft(null) : onClose()));
 
-  // Консоль удалили, пока диалог был открыт
   useEffect(() => {
     if (!console_) onClose();
   }, [console_, onClose]);
 
+  // Список целиком — в БД, затем в стор; false — не сохранилось
   const persist = async (next: QuickCommand[]) => {
     setSaving(true);
+
     try {
       await setConsoleQuickCommands(consoleId, next);
+
       storeUpdateConsole(consoleId, { quickCommands: next });
+
       return true;
     } catch (e) {
       showToast("error", t("dialogs.toastError", { error: e }));
+
       return false;
     } finally {
       setSaving(false);
@@ -87,20 +86,22 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!draft) return;
-    const command = draft.command.replace(/\s+$/, "");
-    if (!command.trim()) {
+
+    const fields = draftFields(draft);
+
+    if (!fields) {
       showToast("error", t("quickCommands.toastCommandRequired"));
+
       return;
     }
-    // Без подписи на кнопке показываем саму команду (первую строку)
-    const label = draft.label.trim() || command.trim().split("\n")[0];
-    const description = draft.description.trim() || undefined;
-    const color = draft.color || undefined;
-    const confirm = draft.confirm;
+
+    // Правка сохраняет счётчики запусков, новая команда — с нуля
     const next = draft.id
-      ? commands.map((c) => (c.id === draft.id ? { ...c, label, command, description, color, confirm } : c))
-      : [...commands, { id: crypto.randomUUID(), label, command, description, color, confirm }];
+      ? commands.map((c) => (c.id === draft.id ? { ...c, ...fields } : c))
+      : [...commands, { id: crypto.randomUUID(), ...fields }];
+
     if (await persist(next)) setDraft(null);
   };
 
@@ -109,15 +110,21 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
       title: t("quickCommands.deleteTitle"),
       kind: "warning",
     });
+
     if (!confirmed) return;
+
     await persist(commands.filter((c) => c.id !== cmd.id));
   };
 
   const handleMove = (index: number, delta: -1 | 1) => {
     const target = index + delta;
+
     if (target < 0 || target >= commands.length) return;
+
     const next = [...commands];
+
     [next[index], next[target]] = [next[target], next[index]];
+
     persist(next);
   };
 
@@ -347,4 +354,31 @@ function QuickCommandButtonPreview({ label, color }: { label: string; color: Qui
       <span className="truncate">{label}</span>
     </span>
   );
+}
+
+function toDraft(c: QuickCommand): Draft {
+  return {
+    id: c.id,
+    label: c.label,
+    command: c.command,
+    description: c.description ?? "",
+    color: c.color ?? "",
+    confirm: c.confirm ?? false,
+  };
+}
+
+/** Черновик → поля команды; null — команда пустая. Хвостовые пробелы и переводы строк срезаются. */
+function draftFields(draft: Draft): Omit<QuickCommand, "id" | "runCount" | "savedChars"> | null {
+  const command = draft.command.replace(/\s+$/, "");
+
+  if (!command.trim()) return null;
+
+  return {
+    // Без подписи на кнопке показываем саму команду (первую строку)
+    label: draft.label.trim() || command.trim().split("\n")[0],
+    command,
+    description: draft.description.trim() || undefined,
+    color: draft.color || undefined,
+    confirm: draft.confirm,
+  };
 }

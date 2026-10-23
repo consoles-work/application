@@ -2,9 +2,19 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../../stores/appStore";
-import { previewImport, applyImport, ImportPreview } from "../../lib/tauriCommands";
-import { loadAllWorkspaces, loadAiSessions } from "../../lib/tauriCommands";
+import { previewImport, applyImport, loadAllWorkspaces, loadAiSessions, type ImportPreview } from "../../lib/tauriCommands";
 import { useTranslation } from "react-i18next";
+
+// ══════════════════════════════════════
+// ImportDialog — импорт из файла .dchub
+// ══════════════════════════════════════
+// 1. Выбор файла; отменили — ничего.
+// 2. Превью без пароля. Исходы: а) файл под паролем — шаг ввода пароля;
+//    б) другая ошибка (не .dchub, повреждён) — текст ошибки в диалоге;
+//    в) превью — что и сколько в файле.
+// 3. Пароль: неверный — сообщение, можно ввести снова.
+// 4. Применение выбранных разделов («добавить» или «заменить»), затем дерево и
+//    AI-чаты перечитываются из БД. Ошибка — текст в диалоге.
 
 interface Props {
   onClose: () => void;
@@ -30,88 +40,76 @@ export function ImportDialog({ onClose }: Props) {
   const { showToast, setWorkspaces, setAiSessions, setActiveAiSessionId } = useAppStore();
   const { t } = useTranslation();
 
-  const handleSelectFile = async () => {
+  // Общее для всех шагов: индикатор, сброс прошлой ошибки; onError — что показать вместо текста ошибки
+  const run = async (action: () => Promise<void>, onError: (e: unknown) => void = (e) => setError(String(e))) => {
     setLoading(true);
     setError("");
-    try {
-      const selected = await open({
-        filters: [{ name: "consoles.work", extensions: ["dchub"] }],
-        multiple: false,
-      });
-      if (!selected || typeof selected !== "string") {
-        setLoading(false);
-        return;
-      }
 
-      const path = selected;
-      const name = path.split("/").pop() ?? path;
-      setFilePath(path);
-      setFileName(name);
+    try {
+      await action();
+    } catch (e) {
+      onError(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 1–2. Файл и превью без пароля.
+  const handleSelectFile = () =>
+    run(async () => {
+      const selected = await open({ filters: [{ name: "consoles.work", extensions: ["dchub"] }], multiple: false });
+
+      if (!selected || typeof selected !== "string") return;
+
+      setFilePath(selected);
+      setFileName(selected.split("/").pop() ?? selected);
 
       try {
-        const prev = await previewImport(path, undefined);
-        setPreview(prev);
+        setPreview(await previewImport(selected, undefined));
+
         setNeedsPassword(false);
         setStep("preview");
       } catch (e) {
-        const msg = String(e);
-        if (msg.includes("защищён паролем") || msg.includes("Password required")) {
-          setNeedsPassword(true);
-          setStep("password");
-        } else {
-          setError(msg);
-        }
+        if (!isPasswordRequired(e)) throw e;
+
+        setNeedsPassword(true);
+        setStep("password");
       }
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setLoading(false);
-    }
-  };
+    });
 
-  const handleCheckPassword = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const prev = await previewImport(filePath, password);
-      setPreview(prev);
-      setStep("preview");
-    } catch {
-      setError(t("import.wrongPassword"));
-    } finally {
-      setLoading(false);
-    }
-  };
+  // 3. Пароль.
+  const handleCheckPassword = () =>
+    run(
+      async () => {
+        setPreview(await previewImport(filePath, password));
 
-  const handleApply = async () => {
-    setLoading(true);
-    setError("");
-    try {
+        setStep("preview");
+      },
+      () => setError(t("import.wrongPassword"))
+    );
+
+  // 4. Применение и перечитывание.
+  const handleApply = () =>
+    run(async () => {
       await applyImport(
         filePath,
         needsPassword ? password : undefined,
-        true,
-        includeWiki,
-        includeAi,
-        includeSettings,
+        { tree: true, wiki: includeWiki, ai: includeAi, settings: includeSettings },
         mode
       );
 
-      const workspaces = await loadAllWorkspaces();
-      setWorkspaces(workspaces);
+      setWorkspaces(await loadAllWorkspaces());
 
       const sessions = await loadAiSessions();
+
       setAiSessions(sessions);
+
       if (sessions.length > 0) setActiveAiSessionId(sessions[0].id);
 
       showToast("success", t("import.toastSuccess"));
+
       onClose();
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setLoading(false);
-    }
-  };
+    });
 
   return createPortal(
     <div
@@ -340,4 +338,11 @@ export function ImportDialog({ onClose }: Props) {
     </div>,
     document.body
   );
+}
+
+/** Шаг 2а: текст ошибки задаёт export.rs (ERR_PASSWORD_REQUIRED); «Password required» — старые сборки */
+function isPasswordRequired(e: unknown): boolean {
+  const msg = String(e);
+
+  return msg.includes("защищён паролем") || msg.includes("Password required");
 }

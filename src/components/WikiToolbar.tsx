@@ -16,36 +16,10 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+// Тулбар редактора wiki: заголовки, начертание, списки, блок кода, отмена/повтор
+
 interface WikiToolbarProps {
   editor: Editor;
-}
-
-interface ToolbarButtonProps {
-  onClick: () => void;
-  isActive?: boolean;
-  title: string;
-  children: React.ReactNode;
-}
-
-function ToolbarButton({ onClick, isActive, title, children }: ToolbarButtonProps) {
-  return (
-    <button
-      type="button"
-      title={title}
-      onClick={onClick}
-      className={`flex items-center justify-center w-6 h-6 rounded text-xs transition-colors ${
-        isActive
-          ? "bg-accent/30 text-accent"
-          : "text-text-secondary hover:bg-surface-3 hover:text-text-primary"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Divider() {
-  return <div className="w-px h-4 bg-border mx-0.5 shrink-0" />;
 }
 
 export function WikiToolbar({ editor }: WikiToolbarProps) {
@@ -156,4 +130,32 @@ export function WikiToolbar({ editor }: WikiToolbarProps) {
       </ToolbarButton>
     </div>
   );
+}
+
+interface ToolbarButtonProps {
+  onClick: () => void;
+  isActive?: boolean;
+  title: string;
+  children: React.ReactNode;
+}
+
+function ToolbarButton({ onClick, isActive, title, children }: ToolbarButtonProps) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      className={`flex items-center justify-center w-6 h-6 rounded text-xs transition-colors ${
+        isActive
+          ? "bg-accent/30 text-accent"
+          : "text-text-secondary hover:bg-surface-3 hover:text-text-primary"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Divider() {
+  return <div className="w-px h-4 bg-border mx-0.5 shrink-0" />;
 }

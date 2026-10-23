@@ -32,7 +32,9 @@ export function SuggestInput({
 
   const filtered = useMemo(() => {
     const q = value.trim().toLowerCase();
+
     if (showAll || !q) return options;
+
     return options.filter((o) => o.value.toLowerCase().includes(q));
   }, [options, value, showAll]);
 
@@ -47,20 +49,43 @@ export function SuggestInput({
     setOpen(false);
   };
 
+  // Escape — закрыть список, а не весь диалог
+  const closeList = (e: React.KeyboardEvent) => {
+    if (!open) return;
+
+    e.stopPropagation();
+
+    setOpen(false);
+  };
+
+  // Enter — подставить выбранное, но не отправлять форму
+  const pickHighlighted = (e: React.KeyboardEvent) => {
+    const picked = open && highlight >= 0 ? filtered[highlight] : undefined;
+
+    if (!picked) return;
+
+    e.preventDefault();
+
+    pick(picked.value);
+  };
+
+  // Стрелки — открыть список, затем ходить по нему по кругу
+  const moveHighlight = (e: React.KeyboardEvent, step: number) => {
+    e.preventDefault();
+
+    if (!open) return openList(true);
+
+    if (filtered.length > 0) setHighlight((h) => (h + step + filtered.length) % filtered.length);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      e.preventDefault();
-      if (!open) { openList(true); return; }
-      if (filtered.length === 0) return;
-      const step = e.key === "ArrowDown" ? 1 : -1;
-      setHighlight((h) => (h + step + filtered.length) % filtered.length);
-    } else if (e.key === "Enter" && open && highlight >= 0 && filtered[highlight]) {
-      e.preventDefault(); // не отправлять форму — только подставить значение
-      pick(filtered[highlight].value);
-    } else if (e.key === "Escape" && open) {
-      e.stopPropagation(); // закрыть список, а не весь диалог
-      setOpen(false);
-    }
+    if (e.key === "Escape") return closeList(e);
+
+    if (e.key === "Enter") return pickHighlighted(e);
+
+    const step = { ArrowDown: 1, ArrowUp: -1 }[e.key];
+
+    if (step) moveHighlight(e, step);
   };
 
   return (
@@ -86,11 +111,12 @@ export function SuggestInput({
           // mousedown, а не click: иначе input успеет потерять фокус и закрыть список
           onMouseDown={(e) => {
             e.preventDefault();
-            if (open) setOpen(false);
-            else {
-              (e.currentTarget.previousElementSibling as HTMLInputElement | null)?.focus();
-              openList(true);
-            }
+
+            if (open) return setOpen(false);
+
+            (e.currentTarget.previousElementSibling as HTMLInputElement | null)?.focus();
+
+            openList(true);
           }}
           className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-text-muted hover:text-text-primary"
         >

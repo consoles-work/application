@@ -1,0 +1,5 @@
+# Пороги скилла readable-flow. Проект этот файл не читает — только запуск
+# метрик из SKILL.md (CLIPPY_CONF_DIR указывает сюда).
+cognitive-complexity-threshold = 10
+too-many-arguments-threshold = 4
+excessive-nesting-threshold = 4

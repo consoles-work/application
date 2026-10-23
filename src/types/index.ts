@@ -9,26 +9,29 @@ export interface Workspace {
   name: string;
   icon: string; // emoji или lucide icon name
   color: string; // hex цвет для маркировки
-  sort_order: number;
-  is_expanded: boolean;
+  sortOrder: number;
+  isExpanded: boolean;
   projects: Project[];
 }
 
 export interface Project {
   id: string;
-  workspace_id: string;
+  workspaceId: string;
   name: string;
   icon: string;
   color: string;
   path: string; // путь к директории проекта
-  default_shell: ShellType;
-  env_vars: Record<string, string>; // переменные окружения
-  sort_order: number;
-  is_expanded: boolean;
+  defaultShell: ShellType;
+  envVars: Record<string, string>; // переменные окружения
+  sortOrder: number;
+  isExpanded: boolean;
   isDanger: boolean;
   dangerLabel: string;
   consoles: ConsoleConfig[];
 }
+
+/** Поля проекта из диалога создания / настроек — зеркало `ProjectFields` в commands.rs */
+export type ProjectFields = Pick<Project, "name" | "icon" | "color" | "path" | "defaultShell">;
 
 export interface ConsoleConfig {
   id: string;
@@ -56,6 +59,25 @@ export interface ConsoleConfig {
   icon?: string; // ключ иконки из CONSOLE_ICONS, пусто — по типу подключения
   color?: QuickCommandColor; // цвет иконки (та же палитра, что у быстрых команд), пусто — обычный
 }
+
+/** Поля консоли из диалога создания / настроек — зеркало `ConsoleFields` в commands.rs */
+export type ConsoleFields = Pick<
+  ConsoleConfig,
+  | "name"
+  | "startupCmd"
+  | "connectionType"
+  | "sshHost"
+  | "sshPort"
+  | "sshUser"
+  | "sshKeyPath"
+  | "sshExtraArgs"
+  | "sshPassphrase"
+  | "sshPassword"
+  | "note"
+  | "hosting"
+  | "icon"
+  | "color"
+>;
 
 export interface QuickCommand {
   id: string;
@@ -96,6 +118,17 @@ export interface TerminalSession {
   instance?: number; // номер экземпляра консоли (1, 2, …) — подпись подвкладки
 }
 
+/** Что запускать в терминале — зеркало `SpawnRequest` в pty_manager.rs; пустые поля можно не передавать */
+export interface SpawnPtyRequest {
+  /** Пусто — шелл ОС по умолчанию */
+  shell: string;
+  cwd: string;
+  envVars: Record<string, string>;
+  sshKeyPath?: string;
+  sshPassphrase?: string;
+  sshPassword?: string;
+}
+
 // ── Типы ──
 
 export type ShellType = "bash" | "zsh" | "fish" | "powershell" | "cmd" | "wsl";
@@ -109,8 +142,8 @@ export interface TreeNode {
   icon: string;
   color: string;
   depth: number;
-  is_expanded: boolean;
-  has_children: boolean;
+  isExpanded: boolean;
+  hasChildren: boolean;
   data: Workspace | Project | ConsoleConfig;
 }
 
@@ -139,32 +172,6 @@ export interface AiMessage {
   content: string;
   createdAt: string;
 }
-
-// ── Настройки приложения ──
-
-export interface AppSettings {
-  theme: "dark" | "light";
-  font_size: number;
-  font_family: string;
-  terminal_font_size: number;
-  terminal_scrollback: number;
-  show_tree_panel: boolean;
-  show_wiki_panel: boolean;
-  tree_panel_width: number;
-  wiki_panel_width: number;
-}
-
-export const DEFAULT_SETTINGS: AppSettings = {
-  theme: "dark",
-  font_size: 14,
-  font_family: "Inter",
-  terminal_font_size: 14,
-  terminal_scrollback: 10000,
-  show_tree_panel: true,
-  show_wiki_panel: true,
-  tree_panel_width: 250,
-  wiki_panel_width: 350,
-};
 
 // ── SSH-ключи (зеркало src-tauri/src/ssh_keys.rs) ──
 

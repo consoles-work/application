@@ -6,12 +6,47 @@
 // TerminalPanel (реальное подключение), и кнопка «Копировать» в диалогах —
 // так копируемая строка гарантированно совпадает с тем, что выполняется.
 
-import type { ConsoleConfig } from "../types";
+import type { ConsoleConfig, Project, SpawnPtyRequest } from "../types";
+
+/**
+ * Что запускать в терминале консоли. SSH — ssh-команда с ключом, passphrase и
+ * паролем для бэкенда; иначе — шелл консоли или проекта в папке консоли или
+ * проекта (пусто — шелл ОС и домашняя папка). Переменные проекта, поверх — консоли.
+ */
+export function launchRequest(con: ConsoleConfig | undefined, project: Project | undefined): SpawnPtyRequest {
+  const envVars = { ...project?.envVars, ...con?.envVars };
+
+  if (con?.connectionType === "ssh") {
+    return {
+      shell: buildSshCommand(con),
+      cwd: "",
+      envVars,
+      sshKeyPath: con.sshKeyPath || undefined,
+      sshPassphrase: con.sshPassphrase || undefined,
+      sshPassword: con.sshPassword || undefined,
+    };
+  }
+
+  return {
+    shell: con?.shellOverride || project?.defaultShell || "",
+    cwd: con?.cwdOverride || project?.path || "",
+    envVars,
+  };
+}
+
+/** Стартовые команды консоли: по строке, без пустых */
+export function startupLines(startupCmd: string | undefined): string[] {
+  return (startupCmd ?? "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+}
 
 /** `user@host` или просто `host`, если пользователь не задан */
 export function buildSshTarget(c: Pick<ConsoleConfig, "sshHost" | "sshUser">): string {
   const host = c.sshHost || "";
   const user = c.sshUser || "";
+
   return user ? `${user}@${host}` : host;
 }
 
@@ -29,15 +64,16 @@ export function buildSshCommand(
   c: Pick<ConsoleConfig, "sshHost" | "sshPort" | "sshUser" | "sshKeyPath" | "sshExtraArgs">
 ): string {
   const port = c.sshPort || 22;
-  const keyPath = c.sshKeyPath || "";
-  const extraArgs = c.sshExtraArgs || "";
 
-  let cmd = "ssh -o StrictHostKeyChecking=accept-new";
-  if (port !== 22) cmd += ` -p ${port}`;
-  if (keyPath) cmd += ` -i "${keyPath}"`;
-  if (extraArgs) cmd += ` ${extraArgs}`;
-  cmd += ` ${buildSshTarget(c)}`;
-  return cmd;
+  const parts = [
+    "ssh -o StrictHostKeyChecking=accept-new",
+    port !== 22 && `-p ${port}`,
+    c.sshKeyPath && `-i "${c.sshKeyPath}"`,
+    c.sshExtraArgs,
+    buildSshTarget(c),
+  ];
+
+  return parts.filter(Boolean).join(" ");
 }
 
 /**
@@ -54,11 +90,12 @@ export function buildSshParamList(c: ConsoleConfig): string {
     `Host:   ${c.sshHost || "—"}`,
     `Port:   ${c.sshPort || 22}`,
     `User:   ${c.sshUser || "—"}`,
+    c.sshKeyPath && `Key:    ${c.sshKeyPath}`,
+    c.sshExtraArgs && `Args:   ${c.sshExtraArgs}`,
+    `Cmd:    ${buildSshCommand(c)}`,
   ];
-  if (c.sshKeyPath) lines.push(`Key:    ${c.sshKeyPath}`);
-  if (c.sshExtraArgs) lines.push(`Args:   ${c.sshExtraArgs}`);
-  lines.push(`Cmd:    ${buildSshCommand(c)}`);
-  return lines.join("\n");
+
+  return lines.filter(Boolean).join("\n");
 }
 
 /** Форматы, доступные в меню кнопки «Копировать» */
@@ -71,6 +108,7 @@ export function buildConnectionString(
   switch (format) {
     case "target": {
       const port = c.sshPort || 22;
+
       return port !== 22 ? `${buildSshTarget(c)}:${port}` : buildSshTarget(c);
     }
     case "params":

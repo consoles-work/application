@@ -4,6 +4,15 @@ import { useAppStore } from "../../stores/appStore";
 import { createWorkspace, updateWorkspace } from "../../lib/tauriCommands";
 import type { Workspace } from "../../types";
 import { useTranslation } from "react-i18next";
+import { useEscape } from "../../hooks/useEscape";
+import { submitLabelKey } from "./dialogText";
+
+// ══════════════════════════════════════
+// CreateWorkspaceDialog — новый воркспейс или настройки существующего
+// ══════════════════════════════════════
+// Без имени не сохраняем. Новый — создаётся и добавляется в дерево,
+// существующий — обновляются имя, иконка и цвет. Ошибка — тост, диалог
+// остаётся открытым.
 
 // 21 = три полных ряда по 7 при ширине диалога w-80
 const EMOJI_OPTIONS = [
@@ -32,28 +41,36 @@ export function CreateWorkspaceDialog({ workspace, onClose }: Props) {
   // Иконка из импорта или старой версии может отсутствовать в наборе — показать её первой
   const emojiOptions = EMOJI_OPTIONS.includes(icon) || !workspace ? EMOJI_OPTIONS : [workspace.icon, ...EMOJI_OPTIONS];
 
-  useEffect(() => { inputRef.current?.focus(); }, []);
+  useEffect(() => inputRef.current?.focus(), []);
 
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [onClose]);
+  useEscape(onClose);
+
+  const create = async () => {
+    const ws = await createWorkspace(name.trim(), icon, color);
+
+    addWorkspace(ws);
+
+    showToast("success", t("dialogs.toastWorkspaceCreated", { name: ws.name }));
+  };
+
+  const saveChanges = async (ws: Workspace) => {
+    await updateWorkspace(ws.id, name.trim(), icon, color);
+
+    storeUpdateWorkspace(ws.id, { name: name.trim(), icon, color });
+
+    showToast("success", t("dialogs.toastWorkspaceUpdated", { name: name.trim() }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!name.trim()) return;
+
     setLoading(true);
+
     try {
-      if (workspace) {
-        await updateWorkspace(workspace.id, name.trim(), icon, color);
-        storeUpdateWorkspace(workspace.id, { name: name.trim(), icon, color });
-        showToast("success", t("dialogs.toastWorkspaceUpdated", { name: name.trim() }));
-      } else {
-        const ws = await createWorkspace(name.trim(), icon, color);
-        addWorkspace(ws);
-        showToast("success", t("dialogs.toastWorkspaceCreated", { name: ws.name }));
-      }
+      await (workspace ? saveChanges(workspace) : create());
+
       onClose();
     } catch (err) {
       showToast("error", t("dialogs.toastError", { error: err }));
@@ -108,9 +125,7 @@ export function CreateWorkspaceDialog({ workspace, onClose }: Props) {
             </button>
             <button type="submit" disabled={!name.trim() || loading}
               className="px-3 py-1.5 text-xs bg-accent text-white rounded-lg hover:bg-accent/80 disabled:opacity-40">
-              {isEdit
-                ? (loading ? t("common.saving") : t("common.save"))
-                : (loading ? t("common.creating") : t("common.create"))}
+              {t(submitLabelKey(isEdit, loading))}
             </button>
           </div>
         </form>
