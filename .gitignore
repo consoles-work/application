@@ -12,3 +12,6 @@ Thumbs.db
 # Используйте .env.example как шаблон
 .env
 .env.local
+
+# Сырые JSON Trivy (скилл trivy-scan): десятки МБ, воспроизводятся сканом; отчёт report.md — в git
+docs/security/*/raw/

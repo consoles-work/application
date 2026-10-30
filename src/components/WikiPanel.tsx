@@ -2,10 +2,8 @@ import { useEffect, useRef, useState, KeyboardEvent } from "react";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
-import Placeholder from "@tiptap/extension-placeholder";
-import { TaskList } from "@tiptap/extension-task-list";
-import { TaskItem } from "@tiptap/extension-task-item";
-import Link from "@tiptap/extension-link";
+import { Placeholder } from "@tiptap/extensions";
+import { TaskList, TaskItem } from "@tiptap/extension-list";
 import { createLowlight, common } from "lowlight";
 import { Plus, Trash2, Pin, Search, X } from "lucide-react";
 
@@ -170,19 +168,23 @@ export function WikiPanel() {
   // TipTap editor
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ codeBlock: false }),
+      StarterKit.configure({
+        codeBlock: false,
+        // Подчёркивания в тулбаре нет, а Cmd+U оставлял бы невидимую в нём разметку
+        underline: false,
+        link: {
+          // Штатное открытие — window.open, в Tauri не работает: открываем сами (handleDOMEvents)
+          openOnClick: false,
+          autolink: true,
+          linkOnPaste: true,
+          // Только со схемой: «main.rs» и «config.py» autolink иначе принял бы за домены
+          isAllowedUri: (url) => isSafeExternalUrl(url),
+        },
+      }),
       CodeBlockLowlight.configure({ lowlight }),
       Placeholder.configure({ placeholder: t("wikiPanel.editorPlaceholder") }),
       TaskList,
       TaskItem.configure({ nested: true }),
-      Link.configure({
-        // Штатное открытие — window.open, в Tauri не работает: открываем сами (handleDOMEvents)
-        openOnClick: false,
-        autolink: true,
-        linkOnPaste: true,
-        // Только со схемой: «main.rs» и «config.py» autolink иначе принял бы за домены
-        isAllowedUri: (url) => isSafeExternalUrl(url),
-      }),
     ],
     editorProps: {
       handleDOMEvents: {
@@ -201,19 +203,20 @@ export function WikiPanel() {
     onUpdate: ({ editor }) => editPage({ content: JSON.stringify(editor.getJSON()) }),
   });
 
-  // Сменилась страница — её текст в редактор (если там уже он — не трогаем)
+  // Сменилась страница — её текст в редактор (если там уже он — не трогаем).
+  // emitUpdate: false — загрузка страницы не правка (в TipTap 3 по умолчанию true)
   useEffect(() => {
     if (!editor) return;
 
     if (!activePage) {
-      editor.commands.clearContent();
+      editor.commands.clearContent(false);
 
       return;
     }
 
     if (JSON.stringify(editor.getJSON()) === activePage.content) return;
 
-    editor.commands.setContent(parseContent(activePage.content));
+    editor.commands.setContent(parseContent(activePage.content), { emitUpdate: false });
 
     linkifyPlainUrls(editor);
   }, [activeWikiPageId, editor]); // eslint-disable-line react-hooks/exhaustive-deps

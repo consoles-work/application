@@ -1,4 +1,4 @@
-import type { Editor } from "@tiptap/react";
+import { useEditorState, type Editor } from "@tiptap/react";
 import {
   Bold,
   Italic,
@@ -16,7 +16,9 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-// Тулбар редактора wiki: заголовки, начертание, списки, блок кода, отмена/повтор
+// Тулбар редактора wiki: заголовки, начертание, списки, блок кода, отмена/повтор.
+// Подсветка кнопок — через useEditorState: TipTap 3 не перерисовывает
+// компонент на каждую транзакцию, перерисовывается только тулбар.
 
 interface WikiToolbarProps {
   editor: Editor;
@@ -25,25 +27,27 @@ interface WikiToolbarProps {
 export function WikiToolbar({ editor }: WikiToolbarProps) {
   const { t } = useTranslation();
 
+  const active = useEditorState({ editor, selector: ({ editor }) => activeMarks(editor) });
+
   return (
     <div className="flex items-center gap-0.5 px-2 py-1 border-b border-border bg-surface-1 flex-wrap shrink-0">
       <ToolbarButton
         title={t("wikiToolbar.h1")}
-        isActive={editor.isActive("heading", { level: 1 })}
+        isActive={active.h1}
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
       >
         <Heading1 size={13} />
       </ToolbarButton>
       <ToolbarButton
         title={t("wikiToolbar.h2")}
-        isActive={editor.isActive("heading", { level: 2 })}
+        isActive={active.h2}
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
       >
         <Heading2 size={13} />
       </ToolbarButton>
       <ToolbarButton
         title={t("wikiToolbar.h3")}
-        isActive={editor.isActive("heading", { level: 3 })}
+        isActive={active.h3}
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
       >
         <Heading3 size={13} />
@@ -53,21 +57,21 @@ export function WikiToolbar({ editor }: WikiToolbarProps) {
 
       <ToolbarButton
         title={t("wikiToolbar.bold")}
-        isActive={editor.isActive("bold")}
+        isActive={active.bold}
         onClick={() => editor.chain().focus().toggleBold().run()}
       >
         <Bold size={13} />
       </ToolbarButton>
       <ToolbarButton
         title={t("wikiToolbar.italic")}
-        isActive={editor.isActive("italic")}
+        isActive={active.italic}
         onClick={() => editor.chain().focus().toggleItalic().run()}
       >
         <Italic size={13} />
       </ToolbarButton>
       <ToolbarButton
         title={t("wikiToolbar.inlineCode")}
-        isActive={editor.isActive("code")}
+        isActive={active.code}
         onClick={() => editor.chain().focus().toggleCode().run()}
       >
         <Code size={13} />
@@ -77,21 +81,21 @@ export function WikiToolbar({ editor }: WikiToolbarProps) {
 
       <ToolbarButton
         title={t("wikiToolbar.bulletList")}
-        isActive={editor.isActive("bulletList")}
+        isActive={active.bulletList}
         onClick={() => editor.chain().focus().toggleBulletList().run()}
       >
         <List size={13} />
       </ToolbarButton>
       <ToolbarButton
         title={t("wikiToolbar.orderedList")}
-        isActive={editor.isActive("orderedList")}
+        isActive={active.orderedList}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
       >
         <ListOrdered size={13} />
       </ToolbarButton>
       <ToolbarButton
         title={t("wikiToolbar.taskList")}
-        isActive={editor.isActive("taskList")}
+        isActive={active.taskList}
         onClick={() => editor.chain().focus().toggleTaskList().run()}
       >
         <CheckSquare size={13} />
@@ -101,7 +105,7 @@ export function WikiToolbar({ editor }: WikiToolbarProps) {
 
       <ToolbarButton
         title={t("wikiToolbar.codeBlock")}
-        isActive={editor.isActive("codeBlock")}
+        isActive={active.codeBlock}
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
       >
         <Terminal size={13} />
@@ -130,6 +134,22 @@ export function WikiToolbar({ editor }: WikiToolbarProps) {
       </ToolbarButton>
     </div>
   );
+}
+
+/** Какие кнопки тулбара подсвечены при текущем выделении */
+function activeMarks(editor: Editor) {
+  return {
+    h1: editor.isActive("heading", { level: 1 }),
+    h2: editor.isActive("heading", { level: 2 }),
+    h3: editor.isActive("heading", { level: 3 }),
+    bold: editor.isActive("bold"),
+    italic: editor.isActive("italic"),
+    code: editor.isActive("code"),
+    bulletList: editor.isActive("bulletList"),
+    orderedList: editor.isActive("orderedList"),
+    taskList: editor.isActive("taskList"),
+    codeBlock: editor.isActive("codeBlock"),
+  };
 }
 
 interface ToolbarButtonProps {

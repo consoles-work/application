@@ -3,8 +3,12 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-# Системные зависимости Tauri для Linux
-RUN apt-get update && apt-get install -y \
+# Системные зависимости Tauri для Linux. upgrade — патчи безопасности базы
+# (ubuntu:22.04 не меняем: от неё зависят glibc/WebKitGTK, с которыми линкуются
+# .deb/.AppImage). --no-install-recommends — без лишних пакетов (Trivy DS-0029),
+# поэтому ca-certificates явно: без них curl не скачает rustup и nodesource.
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+    ca-certificates \
     curl \
     wget \
     file \
@@ -18,9 +22,11 @@ RUN apt-get update && apt-get install -y \
     patchelf \
     && rm -rf /var/lib/apt/lists/*
 
-# Node.js 20
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
+# Node.js 24 LTS (в npm из Node 20 — уязвимые tar, minimatch, glob, cross-spawn).
+# npm — свежий в той же мажорной ветке: встроенный в Node отстаёт (undici, brace-expansion).
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && npm install -g npm@11 \
     && rm -rf /var/lib/apt/lists/*
 
 # Rust (stable)

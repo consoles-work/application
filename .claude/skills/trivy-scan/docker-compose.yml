@@ -1,0 +1,28 @@
+# Trivy для скилла trivy-scan. Запускается из scripts/scan.sh:
+#   SCAN_ROOT=<корень проекта> SCAN_OUT=<каталог JSON> docker compose -f … run --rm -T trivy <команда trivy>
+#
+# Внутри контейнера: проект — /scan (только чтение), результаты — /out,
+# база уязвимостей — volume trivy-cache (общий между прогонами и проектами),
+# docker.sock — для `trivy image` по локальным образам.
+
+name: trivy-scan
+
+services:
+  trivy:
+    # Версия закреплена: смена базы/правил Trivy меняет счётчики, и «было/стало»
+    # между прогонами перестаёт быть сравнимым. Поднимать осознанно (TRIVY_VERSION).
+    image: aquasec/trivy:${TRIVY_VERSION:-0.76.1}
+    volumes:
+      - trivy-cache:/root/.cache
+      - ${SCAN_ROOT:?нужен SCAN_ROOT}:/scan:ro
+      - ${SCAN_OUT:?нужен SCAN_OUT}:/out
+      - ${DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock
+    environment:
+      TRIVY_TIMEOUT: ${TRIVY_TIMEOUT:-15m}
+      TRIVY_QUIET: "true"
+
+# Volume общий для всех проектов со скиллом trivy-scan, поэтому external:
+# compose его не создаёт и не удаляет (`down -v` базу не снесёт). Создаёт scan.sh.
+volumes:
+  trivy-cache:
+    external: true
