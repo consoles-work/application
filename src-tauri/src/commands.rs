@@ -122,6 +122,9 @@ pub struct QuickCommand {
     /// Цвет кнопки (ключ палитры: "red", "green", ...), пусто — обычная
     #[serde(default)]
     pub color: String,
+    /// Группа — бокс на панели под терминалом, пусто — без группы
+    #[serde(default)]
+    pub group: String,
     /// Спрашивать подтверждение перед выполнением
     #[serde(default)]
     pub confirm: bool,

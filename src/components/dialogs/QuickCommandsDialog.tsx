@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { Pencil, Trash2, ArrowUp, ArrowDown, Plus, Play, Ban } from "lucide-react";
@@ -10,11 +10,15 @@ import { formatSavedTime, sumQuickCommandStats, TYPING_CHARS_PER_MINUTE } from "
 import { useTranslation } from "react-i18next";
 import { findConsole } from "../../lib/tree";
 import { useEscape } from "../../hooks/useEscape";
+import { SuggestInput } from "../SuggestInput";
+import { groupQuickCommands, moveWithinGroup, quickCommandGroupSuggestions } from "../../lib/quickCommandGroups";
 
 // ══════════════════════════════════════
 // QuickCommandsDialog — кнопки быстрых команд консоли
 // ══════════════════════════════════════
-// Список кнопок (порядок, правка, удаление) и форма одной команды. Пустой
+// Список кнопок по группам (порядок внутри группы, правка, удаление) и форма
+// одной команды. Группа — комбобокс, как «Хостинг» у консоли: вписать новую
+// или выбрать из уже использованных во всех консолях. Пустой
 // список — сразу форма добавления; можно открыть сразу на правке нужной
 // кнопки (ПКМ по ней под терминалом).
 // Любое изменение сохраняет список целиком; ошибка — тост, форма не
@@ -36,10 +40,11 @@ type Draft = {
   command: string;
   description: string;
   color: QuickCommandColor;
+  group: string;
   confirm: boolean;
 };
 
-const EMPTY_DRAFT: Draft = { id: null, label: "", command: "", description: "", color: "", confirm: false };
+const EMPTY_DRAFT: Draft = { id: null, label: "", command: "", description: "", color: "", group: "", confirm: false };
 
 
 export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props) {
@@ -58,6 +63,8 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
   });
 
   const [saving, setSaving] = useState(false);
+
+  const groupOptions = useMemo(() => quickCommandGroupSuggestions(workspaces), [workspaces]);
 
   useEscape(() => (draft && commands.length > 0 ? setDraft(null) : onClose()));
 
@@ -116,21 +123,20 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
     await persist(commands.filter((c) => c.id !== cmd.id));
   };
 
-  const handleMove = (index: number, delta: -1 | 1) => {
-    const target = index + delta;
+  const handleMove = (cmd: QuickCommand, delta: -1 | 1) => {
+    const next = moveWithinGroup(commands, cmd.id, delta);
 
-    if (target < 0 || target >= commands.length) return;
-
-    const next = [...commands];
-
-    [next[index], next[target]] = [next[target], next[index]];
-
-    persist(next);
+    if (next) persist(next);
   };
 
   if (!console_) return null;
 
   const totals = sumQuickCommandStats(commands);
+
+  const groups = groupQuickCommands(commands);
+
+  // Заголовок «Без группы» нужен, только если рядом есть именованные группы
+  const showGroupHeaders = groups.some((g) => g.name);
 
   const inputCls =
     "w-full px-3 py-2 rounded-lg bg-surface-0 border border-border text-sm text-text-primary outline-none focus:border-accent";
@@ -155,6 +161,19 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
                 placeholder={t("quickCommands.labelPlaceholder")}
                 className={inputCls}
               />
+            </div>
+            <div>
+              <div className="text-2xs text-text-muted mb-1">{t("quickCommands.group")}</div>
+              <SuggestInput
+                value={draft.group}
+                onChange={(group) => setDraft({ ...draft, group })}
+                options={groupOptions}
+                placeholder={t("quickCommands.groupPlaceholder")}
+                className={inputCls}
+              />
+              <div className="text-2xs text-text-muted mt-1">
+                {groupOptions.length > 0 ? t("quickCommands.groupPickHint") : t("quickCommands.groupHint")}
+              </div>
             </div>
             <div>
               <div className="text-2xs text-text-muted mb-1">{t("quickCommands.command")}</div>
@@ -228,55 +247,35 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
           </form>
         ) : (
           <div className="flex flex-col gap-1">
-            {commands.map((cmd, i) => (
-              <div
-                key={cmd.id}
-                className="group flex items-start gap-2 px-2.5 py-2 rounded-lg bg-surface-0 border border-border"
-              >
-                <span
-                  className="mt-1 w-2.5 h-2.5 rounded-full shrink-0 border border-border"
-                  style={{ backgroundColor: quickCommandHex(cmd.color) || "transparent" }}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-text-primary truncate">
-                    {cmd.confirm && (
-                      <span className="text-red-400 mr-1" title={t("quickCommands.confirm")}>⚠</span>
-                    )}
-                    {cmd.label}
+            {groups.map((group) => (
+              <div key={group.name || "-"} className="flex flex-col gap-1">
+                {showGroupHeaders && (
+                  <div className="flex items-center gap-1 mt-2 first:mt-0 px-0.5">
+                    <span className={`text-2xs font-semibold uppercase tracking-wide truncate ${group.name ? "text-text-secondary" : "text-text-muted"}`}>
+                      {group.name || t("quickCommands.noGroup")}
+                    </span>
+                    <span className="text-2xs text-text-muted">{group.commands.length}</span>
+                    <div className="flex-1 border-t border-border ml-1" />
+                    <IconButton
+                      title={t("quickCommands.addToGroup")}
+                      onClick={() => setDraft({ ...EMPTY_DRAFT, group: group.name })}
+                    >
+                      <Plus size={12} />
+                    </IconButton>
                   </div>
-                  <div className="text-2xs text-text-muted font-mono truncate">{cmd.command}</div>
-                  {cmd.description && (
-                    <div className="text-2xs text-text-secondary truncate">{cmd.description}</div>
-                  )}
-                  <div className="text-2xs text-text-muted">
-                    {cmd.runCount
-                      ? t("quickCommands.stats", { runs: cmd.runCount, saved: formatSavedTime(cmd.savedChars ?? 0, t) })
-                      : t("quickCommands.statsNever")}
-                  </div>
-                </div>
-                <div className="flex items-center gap-0.5 shrink-0 text-text-muted">
-                  <IconButton title={t("quickCommands.moveUp")} disabled={i === 0 || saving} onClick={() => handleMove(i, -1)}>
-                    <ArrowUp size={13} />
-                  </IconButton>
-                  <IconButton
-                    title={t("quickCommands.moveDown")}
-                    disabled={i === commands.length - 1 || saving}
-                    onClick={() => handleMove(i, 1)}
-                  >
-                    <ArrowDown size={13} />
-                  </IconButton>
-                  <IconButton
-                    title={t("quickCommands.edit")}
-                    onClick={() =>
-                      setDraft(toDraft(cmd))
-                    }
-                  >
-                    <Pencil size={13} />
-                  </IconButton>
-                  <IconButton title={t("quickCommands.delete")} danger disabled={saving} onClick={() => handleDelete(cmd)}>
-                    <Trash2 size={13} />
-                  </IconButton>
-                </div>
+                )}
+                {group.commands.map((cmd, i) => (
+                  <CommandRow
+                    key={cmd.id}
+                    cmd={cmd}
+                    saving={saving}
+                    isFirst={i === 0}
+                    isLast={i === group.commands.length - 1}
+                    onMove={(delta) => handleMove(cmd, delta)}
+                    onEdit={() => setDraft(toDraft(cmd))}
+                    onDelete={() => handleDelete(cmd)}
+                  />
+                ))}
               </div>
             ))}
             {totals.runs > 0 && (
@@ -314,6 +313,65 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
   );
 }
 
+/** Строка списка: цвет, подпись, команда, описание, статистика и кнопки действий */
+function CommandRow({
+  cmd,
+  saving,
+  isFirst,
+  isLast,
+  onMove,
+  onEdit,
+  onDelete,
+}: {
+  cmd: QuickCommand;
+  saving: boolean;
+  isFirst: boolean;
+  isLast: boolean;
+  onMove: (delta: -1 | 1) => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="group flex items-start gap-2 px-2.5 py-2 rounded-lg bg-surface-0 border border-border">
+      <span
+        className="mt-1 w-2.5 h-2.5 rounded-full shrink-0 border border-border"
+        style={{ backgroundColor: quickCommandHex(cmd.color) || "transparent" }}
+      />
+      <div className="flex-1 min-w-0">
+        <div className="text-xs text-text-primary truncate">
+          {cmd.confirm && (
+            <span className="text-red-400 mr-1" title={t("quickCommands.confirm")}>⚠</span>
+          )}
+          {cmd.label}
+        </div>
+        <div className="text-2xs text-text-muted font-mono truncate">{cmd.command}</div>
+        {cmd.description && <div className="text-2xs text-text-secondary truncate">{cmd.description}</div>}
+        <div className="text-2xs text-text-muted">
+          {cmd.runCount
+            ? t("quickCommands.stats", { runs: cmd.runCount, saved: formatSavedTime(cmd.savedChars ?? 0, t) })
+            : t("quickCommands.statsNever")}
+        </div>
+      </div>
+      <div className="flex items-center gap-0.5 shrink-0 text-text-muted">
+        <IconButton title={t("quickCommands.moveUp")} disabled={isFirst || saving} onClick={() => onMove(-1)}>
+          <ArrowUp size={13} />
+        </IconButton>
+        <IconButton title={t("quickCommands.moveDown")} disabled={isLast || saving} onClick={() => onMove(1)}>
+          <ArrowDown size={13} />
+        </IconButton>
+        <IconButton title={t("quickCommands.edit")} onClick={onEdit}>
+          <Pencil size={13} />
+        </IconButton>
+        <IconButton title={t("quickCommands.delete")} danger disabled={saving} onClick={onDelete}>
+          <Trash2 size={13} />
+        </IconButton>
+      </div>
+    </div>
+  );
+}
+
 function IconButton({
   title,
   onClick,
@@ -347,10 +405,10 @@ function QuickCommandButtonPreview({ label, color }: { label: string; color: Qui
   const hex = quickCommandHex(color);
   return (
     <span
-      className="inline-flex items-center gap-1 max-w-[200px] px-2 py-0.5 rounded-md text-2xs text-text-primary bg-surface-3 border border-border"
+      className="inline-flex items-center gap-1.5 max-w-[240px] px-2.5 py-1 rounded-md text-xs text-text-primary bg-surface-3 border border-border"
       style={hex ? { backgroundColor: `${hex}26`, borderColor: `${hex}99` } : undefined}
     >
-      <Play size={10} className="shrink-0 fill-current" style={hex ? { color: hex } : undefined} />
+      <Play size={11} className="shrink-0 fill-current" style={hex ? { color: hex } : undefined} />
       <span className="truncate">{label}</span>
     </span>
   );
@@ -363,6 +421,7 @@ function toDraft(c: QuickCommand): Draft {
     command: c.command,
     description: c.description ?? "",
     color: c.color ?? "",
+    group: c.group ?? "",
     confirm: c.confirm ?? false,
   };
 }
@@ -379,6 +438,7 @@ function draftFields(draft: Draft): Omit<QuickCommand, "id" | "runCount" | "save
     command,
     description: draft.description.trim() || undefined,
     color: draft.color || undefined,
+    group: draft.group.trim() || undefined,
     confirm: draft.confirm,
   };
 }

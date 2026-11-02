@@ -204,9 +204,12 @@ export function WikiPanel() {
   });
 
   // Сменилась страница — её текст в редактор (если там уже он — не трогаем).
-  // emitUpdate: false — загрузка страницы не правка (в TipTap 3 по умолчанию true)
+  // emitUpdate: false — загрузка страницы не правка (в TipTap 3 по умолчанию true).
+  // Уничтоженный редактор пропускаем: в StrictMode useEditor пересоздаёт его, а
+  // эффект успевает вызваться со старым — у того commandManager уже null, и
+  // editor.commands роняет весь интерфейс. С новым редактором эффект повторится.
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || editor.isDestroyed) return;
 
     if (!activePage) {
       editor.commands.clearContent(false);

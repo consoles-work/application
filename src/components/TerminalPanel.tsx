@@ -14,6 +14,7 @@ import { ConsoleIcon } from "../lib/consoleIcons";
 import { useAppStore } from "../stores/appStore";
 import { spawnPty, writeToPty, resizePty, killPty, recordQuickCommandRun } from "../lib/tauriCommands";
 import { formatSavedTime } from "../lib/quickCommandStats";
+import { groupQuickCommands } from "../lib/quickCommandGroups";
 import { trackUsage, trackTerminalInput, METRICS } from "../lib/usageStats";
 import { getThemeById, resolveThemeId, type AppTheme } from "../lib/themes";
 import { findConsole } from "../lib/tree";
@@ -582,8 +583,17 @@ function TerminalView({
 // ══════════════════════════════════════
 // Панель быстрых команд под терминалом
 // ══════════════════════════════════════
+// Кнопки без группы идут первыми, затем каждая группа — бокс с названием на
+// рамке. Не влезают в строку — переносятся, дальше прокрутка.
+// Высота: по умолчанию по содержимому (не выше 40% терминала); верхнюю
+// границу можно тянуть — высота общая для всех консолей и переживает
+// перезапуск (ui.quickBarHeight), двойной клик по границе — снова по содержимому.
 // Клик — выполнить, ПКМ — редактировать кнопку. Подсказка своя, с задержкой:
 // нативные tooltip в WebKit у Tauri показываются ненадёжно.
+
+/** Пределы высоты панели быстрых команд: минимум — px, максимум — доля высоты терминала */
+const QUICK_BAR_MIN_HEIGHT = 36;
+const QUICK_BAR_MAX_SHARE = 0.7;
 
 function QuickCommandsBar({
   commands,
@@ -599,6 +609,8 @@ function QuickCommandsBar({
   const { t } = useTranslation();
   const [hover, setHover] = useState<{ cmd: QuickCommand; rect: DOMRect } | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const barRef = useRef<HTMLDivElement>(null);
+  const resize = useBarResize(barRef);
 
   useEffect(() => () => clearTimeout(hoverTimer.current), []);
 
@@ -614,44 +626,63 @@ function QuickCommandsBar({
     setHover(null);
   };
 
+  const button = (cmd: QuickCommand) => (
+    <QuickCommandButton
+      key={cmd.id}
+      cmd={cmd}
+      onMouseEnter={(el) => showHint(cmd, el)}
+      onMouseLeave={hideHint}
+      onClick={() => {
+        hideHint();
+        onRun(cmd);
+      }}
+      onContextMenu={() => {
+        hideHint();
+        onEdit(cmd);
+      }}
+    />
+  );
+
   return (
     <div
-      className="shrink-0 flex items-center gap-1 px-2 py-1 bg-surface-1 border-t border-border overflow-x-auto"
-      onScroll={hideHint}
+      ref={barRef}
+      className={`relative shrink-0 flex items-start gap-1.5 px-2 py-1.5 bg-surface-1 border-t border-border ${
+        resize.height ? "" : "max-h-[40%]"
+      }`}
+      style={resize.height ? { height: resize.height, maxHeight: `${QUICK_BAR_MAX_SHARE * 100}%` } : undefined}
       // Своё ПКМ-поведение (редактирование кнопки) вместо меню терминала
       onContextMenu={(e) => {
         e.preventDefault();
         e.stopPropagation();
       }}
     >
-      <Zap size={12} className="text-text-muted shrink-0 mr-0.5" />
-      {commands.map((cmd) => {
-        const hex = quickCommandHex(cmd.color);
-
-        return (
-          <button
-            key={cmd.id}
-            className={`shrink-0 max-w-[200px] flex items-center gap-1 px-2 py-0.5 rounded-md text-2xs text-text-primary border ${
-              hex ? "hover:brightness-125" : "bg-surface-2 border-border hover:border-accent/60 hover:bg-surface-3"
-            }`}
-            // Цветная кнопка: полупрозрачный фон (~15%) и рамка (~60%) цвета палитры
-            style={hex ? { backgroundColor: `${hex}26`, borderColor: `${hex}99` } : undefined}
-            onMouseEnter={(e) => showHint(cmd, e.currentTarget)}
-            onMouseLeave={hideHint}
-            onClick={() => {
-              hideHint();
-              onRun(cmd);
-            }}
-            onContextMenu={() => {
-              hideHint();
-              onEdit(cmd);
-            }}
-          >
-            <Play size={10} className={`shrink-0 fill-current ${hex ? "" : "text-accent"}`} style={hex ? { color: hex } : undefined} />
-            <span className="truncate">{cmd.label}</span>
-          </button>
-        );
-      })}
+      {/* Верхняя граница — тянуть, чтобы поменять высоту; двойной клик — по содержимому */}
+      <div
+        className={`absolute -top-[3px] left-0 right-0 h-[5px] z-10 cursor-row-resize transition-colors ${
+          resize.dragging ? "bg-accent" : "hover:bg-accent/70"
+        }`}
+        title={t("quickCommands.resizeHint")}
+        onMouseDown={resize.start}
+        onDoubleClick={resize.reset}
+      />
+      <Zap size={14} className="text-text-muted shrink-0 mt-2" />
+      <div className="flex-1 min-w-0 self-stretch overflow-y-auto flex flex-wrap items-center gap-1.5" onScroll={hideHint}>
+        {groupQuickCommands(commands).map((group) =>
+          group.name ? (
+            <fieldset
+              key={group.name}
+              className="min-w-0 flex flex-wrap items-center gap-1.5 px-2.5 pt-1 pb-2.5 rounded-lg border border-border bg-surface-0/40"
+            >
+              <legend className="px-1.5 max-w-[200px] truncate text-2xs font-semibold uppercase tracking-wide text-text-secondary">
+                {group.name}
+              </legend>
+              {group.commands.map(button)}
+            </fieldset>
+          ) : (
+            group.commands.map(button)
+          )
+        )}
+      </div>
       {hover && (
         <QuickCommandHint
           // Берём актуальную версию команды: счётчик мог обновиться, пока подсказка открыта
@@ -660,13 +691,102 @@ function QuickCommandsBar({
         />
       )}
       <button
-        className="ml-auto shrink-0 p-1 rounded text-text-muted hover:text-text-primary hover:bg-surface-3"
+        className="shrink-0 p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-surface-3"
         title={t("quickCommands.manage")}
         onClick={onManage}
       >
-        <Settings2 size={13} />
+        <Settings2 size={15} />
       </button>
     </div>
+  );
+}
+
+/**
+ * Высота панели быстрых команд перетаскиванием верхней границы.
+ * Пока тянут — локальное состояние, отпустили — в настройку ui.quickBarHeight.
+ * height 0 — по содержимому.
+ */
+function useBarResize(barRef: React.RefObject<HTMLDivElement | null>) {
+  const saved = parseInt(useAppStore((s) => s.settings["ui.quickBarHeight"] ?? "")) || 0;
+  const saveSetting = useAppStore((s) => s.saveSetting);
+  const [dragHeight, setDragHeight] = useState<number | null>(null);
+
+  const start = (e: React.MouseEvent) => {
+    const bar = barRef.current;
+    const parent = bar?.parentElement;
+
+    if (!bar || !parent) return;
+
+    e.preventDefault();
+
+    const bottom = bar.getBoundingClientRect().bottom;
+    const max = parent.getBoundingClientRect().height * QUICK_BAR_MAX_SHARE;
+
+    let height = bar.getBoundingClientRect().height;
+
+    setDragHeight(height);
+
+    document.body.style.cursor = "row-resize";
+
+    const onMove = (ev: MouseEvent) => {
+      height = Math.round(Math.min(max, Math.max(QUICK_BAR_MIN_HEIGHT, bottom - ev.clientY)));
+
+      setDragHeight(height);
+    };
+
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+
+      document.body.style.cursor = "";
+
+      saveSetting("ui.quickBarHeight", String(height));
+
+      setDragHeight(null);
+    };
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
+
+  return {
+    height: dragHeight ?? saved,
+    dragging: dragHeight !== null,
+    start,
+    reset: () => saveSetting("ui.quickBarHeight", ""),
+  };
+}
+
+/** Кнопка быстрой команды; цветная — полупрозрачный фон (~15%) и рамка (~60%) цвета палитры */
+function QuickCommandButton({
+  cmd,
+  onClick,
+  onContextMenu,
+  onMouseEnter,
+  onMouseLeave,
+}: {
+  cmd: QuickCommand;
+  onClick: () => void;
+  onContextMenu: () => void;
+  onMouseEnter: (el: HTMLElement) => void;
+  onMouseLeave: () => void;
+}) {
+  const hex = quickCommandHex(cmd.color);
+
+  return (
+    <button
+      className={`shrink-0 max-w-[240px] flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs text-text-primary border ${
+        hex ? "hover:brightness-125" : "bg-surface-2 border-border hover:border-accent/60 hover:bg-surface-3"
+      }`}
+      style={hex ? { backgroundColor: `${hex}26`, borderColor: `${hex}99` } : undefined}
+      onMouseEnter={(e) => onMouseEnter(e.currentTarget)}
+      onMouseLeave={onMouseLeave}
+      onClick={onClick}
+      onContextMenu={onContextMenu}
+    >
+      <Play size={11} className={`shrink-0 fill-current ${hex ? "" : "text-accent"}`} style={hex ? { color: hex } : undefined} />
+      <span className="truncate">{cmd.label}</span>
+    </button>
   );
 }
 

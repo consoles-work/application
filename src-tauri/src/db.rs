@@ -13,7 +13,8 @@
 //     рядом с суффиксом .plaintext_backup и создаём новую, пустую.
 //  3. WAL и внешние ключи (без них не работает каскадное удаление).
 //  4. Таблицы, затем миграции: к старым БД добавляются новые колонки консоли
-//     («колонка уже есть» — не ошибка).
+//     («колонка уже есть» — не ошибка); затем разовые правки данных — каждая
+//     применяется один раз, номер последней хранится в `PRAGMA user_version`.
 //  5. Статистика старше окна хранения удаляется.
 //
 // Общие правила:
@@ -190,6 +191,15 @@ const MIGRATIONS: &[&str] = &[
     "ALTER TABLE consoles ADD COLUMN color TEXT NOT NULL DEFAULT ''",
 ];
 
+/// Шаг 4 init: разовые правки данных, по порядку. Номер последней применённой — `PRAGMA user_version`;
+/// новые — только в конец списка.
+const DATA_MIGRATIONS: &[&str] = &[
+    // 1. До этапа 34 фронт не видел флаг раскрытия (`is_expanded` вместо `isExpanded`), дерево всегда
+    //    показывалось свёрнутым, а каждое раскрытие писало 1 — в старых БД раскрыто почти всё.
+    //    Один раз сворачиваем, дальше состояние запоминается как есть.
+    "UPDATE workspaces SET is_expanded = 0; UPDATE projects SET is_expanded = 0;",
+];
+
 static DB: OnceLock<Mutex<Connection>> = OnceLock::new();
 
 // ══════════════════════════════════════════════
@@ -225,12 +235,25 @@ pub fn init() -> Result<(), Box<dyn std::error::Error>> {
         conn.execute(migration, []).ok();
     }
 
+    apply_data_migrations(&conn)?;
+
     // 5. Старая статистика.
     prune_usage_stats(&conn);
 
     DB.set(Mutex::new(conn)).map_err(|_| "Database already initialized")?;
 
     println!("✅ Database initialized (encrypted)");
+
+    Ok(())
+}
+
+/// Шаг 4 init: ещё не применённые правки данных — каждая в своей транзакции вместе с номером версии
+fn apply_data_migrations(conn: &Connection) -> rusqlite::Result<()> {
+    let done: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
+
+    for (version, sql) in (1..).zip(DATA_MIGRATIONS).skip(done.max(0) as usize) {
+        conn.execute_batch(&format!("BEGIN; {sql} PRAGMA user_version = {version}; COMMIT;"))?;
+    }
 
     Ok(())
 }
@@ -920,4 +943,37 @@ fn db_path() -> PathBuf {
     std::fs::create_dir_all(&dir).ok();
 
     dir.join("data.db")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn expanded(conn: &Connection) -> i64 {
+        conn.query_row("SELECT is_expanded FROM workspaces WHERE id = 'w'", [], |row| row.get(0)).unwrap()
+    }
+
+    #[test]
+    fn data_migrations_collapse_tree_once() {
+        let conn = Connection::open_in_memory().unwrap();
+
+        conn.execute_batch(SCHEMA).unwrap();
+
+        conn.execute("INSERT INTO workspaces (id, name) VALUES ('w', 'w')", []).unwrap();
+
+        apply_data_migrations(&conn).unwrap();
+
+        assert_eq!(expanded(&conn), 0);
+
+        // Пользователь раскрыл — повторный запуск не сворачивает снова
+        conn.execute("UPDATE workspaces SET is_expanded = 1", []).unwrap();
+
+        apply_data_migrations(&conn).unwrap();
+
+        assert_eq!(expanded(&conn), 1);
+
+        let version: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0)).unwrap();
+
+        assert_eq!(version, DATA_MIGRATIONS.len() as i64);
+    }
 }
