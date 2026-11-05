@@ -12,7 +12,7 @@ import { launchRequest, startupLines } from "../lib/connectionString";
 import { quickCommandHex } from "../lib/quickCommandColors";
 import { ConsoleIcon } from "../lib/consoleIcons";
 import { useAppStore } from "../stores/appStore";
-import { spawnPty, writeToPty, resizePty, killPty, recordQuickCommandRun } from "../lib/tauriCommands";
+import { spawnPty, writeToPty, writeBinaryToPty, resizePty, killPty, recordQuickCommandRun } from "../lib/tauriCommands";
 import { formatSavedTime } from "../lib/quickCommandStats";
 import { groupQuickCommands } from "../lib/quickCommandGroups";
 import { trackUsage, trackTerminalInput, METRICS } from "../lib/usageStats";
@@ -352,6 +352,10 @@ function TerminalView({
 
         trackTerminalInput(session.console_id, data);
       });
+
+      // Мышь в X10-кодировке (`ESC[M` + 3 байта) xterm шлёт не в onData, а сюда —
+      // так её включает ncurses на серверах со старым terminfo (htop: клики, колёсико)
+      term.onBinary((data) => writeBinaryToPty(ptyId, data).catch(ignoreClosedSession));
 
       trackUsage(METRICS.sessions, 1, session.console_id);
 

@@ -454,7 +454,14 @@ pub fn spawn_pty(request: crate::pty_manager::SpawnRequest) -> Result<u32, Strin
 /// Ввод пользователя
 #[tauri::command]
 pub fn write_to_pty(pty_id: u32, data: String) -> Result<(), String> {
-    crate::pty_manager::write(pty_id, data)
+    crate::pty_manager::write(pty_id, data.as_bytes())
+}
+
+/// Сырые байты без перекодирования в UTF-8: отчёты мыши в X10-кодировке
+/// (htop, mc без SGR-режима) — координата > 95 даёт байт ≥ 128
+#[tauri::command]
+pub fn write_binary_to_pty(pty_id: u32, data: Vec<u8>) -> Result<(), String> {
+    crate::pty_manager::write(pty_id, &data)
 }
 
 #[tauri::command]

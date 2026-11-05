@@ -149,14 +149,14 @@ pub fn spawn(req: SpawnRequest) -> Result<u32, String> {
 }
 
 /// Ввод пользователя → PTY
-pub fn write(pty_id: u32, data: String) -> Result<(), String> {
+pub fn write(pty_id: u32, data: &[u8]) -> Result<(), String> {
     let mut map = sessions().lock().map_err(|e| e.to_string())?;
 
     let Some(session) = map.get_mut(&pty_id) else {
         return Err(not_found(pty_id));
     };
 
-    session.writer.write_all(data.as_bytes()).map_err(|e| e.to_string())
+    session.writer.write_all(data).map_err(|e| e.to_string())
 }
 
 pub fn resize(pty_id: u32, cols: u16, rows: u16) -> Result<(), String> {

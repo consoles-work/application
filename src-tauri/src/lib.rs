@@ -89,6 +89,7 @@ pub fn run() {
             // PTY (терминал)
             spawn_pty,
             write_to_pty,
+            write_binary_to_pty,
             resize_pty,
             kill_pty,
 

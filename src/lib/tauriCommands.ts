@@ -93,6 +93,11 @@ export async function writeToPty(
   return invoke("write_to_pty", { ptyId, data });
 }
 
+/** Двоичный ввод xterm (`onBinary`): каждый символ строки — один байт 0–255 */
+export async function writeBinaryToPty(ptyId: number, data: string): Promise<void> {
+  return invoke("write_binary_to_pty", { ptyId, data: Array.from(data, (c) => c.charCodeAt(0) & 0xff) });
+}
+
 export async function resizePty(
   ptyId: number,
   cols: number,
