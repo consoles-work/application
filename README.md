@@ -2,6 +2,8 @@
 
 Мультипроектный терминал-менеджер с интегрированной базой знаний.
 
+🌐 Сайт: **[consoles.work](https://consoles.work/)** · исходники: [github.com/consoles-work/application](https://github.com/consoles-work/application)
+
 **Четыре панели — одно приложение:**
 - 🌳 **Дерево проектов** (слева) — иерархия Workspace → Project → Console
 - 💻 **Терминал** (центр) — вкладки с полноценными PTY-сессиями
