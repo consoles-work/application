@@ -102,6 +102,19 @@ if [ "$ROUND" -eq 1 ]; then
   CLEANUP_ROUNDED=1
 fi
 
+# ── RGBA: Tauri (generate_context!) принимает только PNG с альфа-каналом ─────
+# Исходник без альфы (RGB) даёт «icon ... is not RGBA» при компиляции.
+
+if command -v magick &>/dev/null; then
+  RGBA="/tmp/gen-icons-rgba-$$.png"
+  magick "$SOURCE" -alpha set PNG32:"$RGBA"
+  SOURCE="$RGBA"
+  echo "  ✓ приведено к RGBA"
+  CLEANUP_RGBA=1
+else
+  echo "  ⚠ ImageMagick не найден — если исходник без альфы, Tauri не соберётся (not RGBA)"
+fi
+
 echo ""
 
 # ── Вспомогательная функция ───────────────────────────────────────────────────
@@ -229,3 +242,5 @@ echo "✅ Готово! Все иконки сгенерированы в src-ta
 
 [ -n "$CLEANUP_PREPARED" ] && rm -f "$PREPARED"
 [ -n "$CLEANUP_ROUNDED" ] && rm -f "$ROUNDED"
+[ -n "$CLEANUP_RGBA" ] && rm -f "$RGBA"
+exit 0
