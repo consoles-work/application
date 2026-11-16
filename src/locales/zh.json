@@ -196,6 +196,8 @@
     "closeBehavior": "关闭窗口时",
     "closeToTray": "最小化到托盘",
     "closeAndQuit": "退出程序",
+    "confirmQuit": "退出前询问确认",
+    "confirmQuitNote": "关闭后，应用将直接退出，不显示对话框",
     "autostart": "登录时启动",
     "autostartNote": "登录 macOS 时将自动启动应用",
     "autostartError": "自动启动错误: {{error}}",

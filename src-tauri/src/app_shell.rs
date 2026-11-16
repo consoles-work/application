@@ -18,7 +18,8 @@
 // На macOS запуск из Dock/«Программ» приходит не вторым процессом, а событием
 // Reopen — окно, спрятанное в трей, показываем и там.
 // confirm_quit — единая точка для всех путей выхода; второй диалог поверх
-// первого не открывается.
+// первого не открывается. Подтверждение выключено в настройках
+// (`ui.confirmQuit`, по умолчанию включено) — выход сразу, без диалога.
 // set_language — надписи трея и меню при смене языка.
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -107,6 +108,13 @@ pub fn show_main_window(app: &AppHandle) {
 /// Спросить подтверждение и завершить приложение при согласии
 pub fn confirm_quit(app: &AppHandle) {
     use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+
+    // Подтверждение выключено в настройках — выход сразу.
+    if !crate::db::get_setting_bool("ui.confirmQuit", true) {
+        app.exit(0);
+
+        return;
+    }
 
     if QUIT_DIALOG_ACTIVE.swap(true, Ordering::SeqCst) {
         return;

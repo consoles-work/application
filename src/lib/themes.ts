@@ -309,7 +309,24 @@ export function getThemeById(id: string): AppTheme {
   return THEMES.find((t) => t.id === id) ?? THEMES[0];
 }
 
-/** CSS-переменные темы висят на [data-theme] в globals.css */
+/**
+ * Тема, которую сейчас видно: примеряемая в настройках (предпросмотр при
+ * наведении, `previewTheme` в сторе), иначе выбранная в `ui.theme`.
+ */
+export function visibleThemeId(settingValue: string, previewTheme: string | null): string {
+  return previewTheme ?? resolveThemeId(settingValue);
+}
+
+/**
+ * Только показать тему по id: CSS-переменные висят на [data-theme] в globals.css.
+ * Ничего не сохраняет и не трогает запомненную «случайную» — поэтому годится
+ * для предпросмотра.
+ */
+export function showTheme(id: string) {
+  document.documentElement.setAttribute("data-theme", id);
+}
+
+/** Применить сохранённую настройку ui.theme («random» разрешается здесь) */
 export function applyTheme(settingValue: string) {
-  document.documentElement.setAttribute("data-theme", resolveThemeId(settingValue));
+  showTheme(resolveThemeId(settingValue));
 }

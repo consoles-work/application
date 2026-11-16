@@ -152,6 +152,9 @@ interface AppState {
   setSetting: (key: string, value: string) => void;
   // В стор сразу, в БД — «по возможности» (см. правила в шапке)
   saveSetting: (key: string, value: string) => void;
+  /** Тема, примеряемая наведением в настройках (не сохраняется); null — показана выбранная */
+  previewTheme: string | null;
+  setPreviewTheme: (id: string | null) => void;
 
   // ── Helpers ──
   /** Видимые узлы дерева по порядку: содержимое свёрнутых узлов не попадает */
@@ -189,6 +192,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   aiIsStreaming: false,
   toasts: [],
   settings: {},
+  previewTheme: null,
 
   // ── Дерево ──
   setWorkspaces: (workspaces) => set({ workspaces }),
@@ -506,6 +510,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSettings: (settings) => set({ settings }),
 
   setSetting: (key, value) => set((state) => ({ settings: { ...state.settings, [key]: value } })),
+
+  setPreviewTheme: (id) => set({ previewTheme: id }),
 
   saveSetting: (key, value) => {
     get().setSetting(key, value);

@@ -12,7 +12,7 @@ import { listen } from "@tauri-apps/api/event";
 import { startUsageTracking, setUsageEnabled, setUsagePaused } from "./lib/usageStats";
 import { useAppStore } from "./stores/appStore";
 import { loadAllWorkspaces, getSettings, loadAiSessions, createAiSession, isPasswordSet } from "./lib/tauriCommands";
-import { applyTheme } from "./lib/themes";
+import { applyTheme, showTheme, visibleThemeId } from "./lib/themes";
 import { findConsole } from "./lib/tree";
 import { useTranslation } from "react-i18next";
 import i18n from "./lib/i18n";
@@ -147,10 +147,12 @@ function MainApp() {
       .catch((e) => console.warn("settings", e));
   }, [setWorkspaces, setSettings, showToast]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Тема — при каждой смене настройки (и после загрузки)
+  // Тема — при каждой смене настройки (и после загрузки) и при предпросмотре в настройках
+  const previewTheme = useAppStore((s) => s.previewTheme);
+
   useEffect(() => {
-    applyTheme(settings["ui.theme"] ?? "dark");
-  }, [settings["ui.theme"]]); // eslint-disable-line react-hooks/exhaustive-deps
+    showTheme(visibleThemeId(settings["ui.theme"] ?? "dark", previewTheme));
+  }, [settings["ui.theme"], previewTheme]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Статистика использования (stats.enabled, по умолчанию включена)
   useEffect(() => startUsageTracking(), []);

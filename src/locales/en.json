@@ -196,6 +196,8 @@
     "closeBehavior": "On window close",
     "closeToTray": "Minimize to tray",
     "closeAndQuit": "Quit application",
+    "confirmQuit": "Ask for confirmation before quitting",
+    "confirmQuitNote": "When off, the app quits immediately without a dialog",
     "autostart": "Launch at login",
     "autostartNote": "The app will start automatically when you log into macOS",
     "autostartError": "Autostart error: {{error}}",

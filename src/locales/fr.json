@@ -196,6 +196,8 @@
     "closeBehavior": "À la fermeture de la fenêtre",
     "closeToTray": "Réduire dans la barre système",
     "closeAndQuit": "Quitter l'application",
+    "confirmQuit": "Demander une confirmation avant de quitter",
+    "confirmQuitNote": "Désactivé : l'application se ferme immédiatement, sans boîte de dialogue",
     "autostart": "Lancer à la connexion",
     "autostartNote": "L'application démarrera automatiquement lors de la connexion à macOS",
     "autostartError": "Erreur de démarrage automatique: {{error}}",

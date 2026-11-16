@@ -16,7 +16,7 @@ import { spawnPty, writeToPty, writeBinaryToPty, resizePty, killPty, recordQuick
 import { formatSavedTime } from "../lib/quickCommandStats";
 import { groupQuickCommands } from "../lib/quickCommandGroups";
 import { trackUsage, trackTerminalInput, METRICS } from "../lib/usageStats";
-import { getThemeById, resolveThemeId, type AppTheme } from "../lib/themes";
+import { getThemeById, visibleThemeId, type AppTheme } from "../lib/themes";
 import { findConsole } from "../lib/tree";
 import { isOpenLinkClick, openLink, OPEN_LINK_KEY } from "../lib/links";
 import { useEscape } from "../hooks/useEscape";
@@ -264,12 +264,12 @@ function TerminalView({
   const fitAddonRef = useRef<FitAddon | null>(null);
   const ptyIdRef = useRef<number | null>(null);
 
-  const { settings, workspaces, updateConsole } = useAppStore();
+  const { settings, previewTheme, workspaces, updateConsole } = useAppStore();
   const { t } = useTranslation();
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [noteExpanded, setNoteExpanded] = useState(false);
 
-  const theme = getThemeById(resolveThemeId(settings["ui.theme"] ?? "dark"));
+  const theme = getThemeById(visibleThemeId(settings["ui.theme"] ?? "dark", previewTheme));
   const mark = watermark(theme, isDanger, dangerLabel, consoleName);
 
   // ── Смена настроек и темы — к живому терминалу ──
@@ -282,7 +282,7 @@ function TerminalView({
     applyAppearance(term, container);
 
     fitAddonRef.current?.fit();
-  }, [settings]);
+  }, [settings, previewTheme]);
 
   // ── Жизнь терминала: от открытия вкладки до закрытия ──
   useEffect(() => {
@@ -1111,8 +1111,11 @@ function terminalSettings() {
   };
 }
 
+/** Видимая тема: примеряемая в настройках или выбранная */
 function currentTheme(): AppTheme {
-  return getThemeById(resolveThemeId(useAppStore.getState().settings["ui.theme"] ?? "dark"));
+  const { settings, previewTheme } = useAppStore.getState();
+
+  return getThemeById(visibleThemeId(settings["ui.theme"] ?? "dark", previewTheme));
 }
 
 /**

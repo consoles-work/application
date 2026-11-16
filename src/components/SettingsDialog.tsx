@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import i18n from "../lib/i18n";
 import { AI_PROVIDERS, getProvider, streamCompletion } from "../lib/aiProviders";
 import { APP_NAME, APP_VERSION } from "../lib/appInfo";
+import { useThemePreview } from "../hooks/useThemePreview";
 
 // ══════════════════════════════════════
 // SettingsDialog — настройки приложения (Cmd+,)
@@ -598,13 +599,16 @@ function InterfaceTab({
   onOpenAbout,
 }: {
   settings: Record<string, string>;
-  onChange: (key: string, value: string) => void;
+  onChange: (key: string, value: string) => Promise<void>;
   onOpenAbout: () => void;
 }) {
   const { t } = useTranslation();
   const { showToast } = useAppStore();
   const currentTheme = settings["ui.theme"] ?? "dark";
+  // Один на обе группы тем — переход из тёмных в светлые не сбрасывает примерку
+  const themePreview = useThemePreview((id) => onChange("ui.theme", id));
   const closeToTray = (settings["ui.closeToTray"] ?? "true") === "true";
+  const confirmQuit = (settings["ui.confirmQuit"] ?? "true") === "true";
   const [autostartEnabled, setAutostartEnabled] = useState(false);
   const statsEnabled = settings["stats.enabled"] !== "false";
 
@@ -650,13 +654,13 @@ function InterfaceTab({
             label={t("settings.themesDark")}
             themes={THEMES.filter((th) => th.dark)}
             current={currentTheme}
-            onPick={(id) => onChange("ui.theme", id)}
+            preview={themePreview}
           />
           <ThemeGroup
             label={t("settings.themesLight")}
             themes={THEMES.filter((th) => !th.dark)}
             current={currentTheme}
-            onPick={(id) => onChange("ui.theme", id)}
+            preview={themePreview}
           />
         </div>
         <button
@@ -697,6 +701,15 @@ function InterfaceTab({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Подтверждение выхода — Rust читает настройку в момент выхода (app_shell.rs) */}
+      <div>
+        <label className="flex items-center justify-between cursor-pointer">
+          <span className="text-xs font-medium text-text-secondary">{t("settings.confirmQuit")}</span>
+          <Toggle on={confirmQuit} onClick={() => onChange("ui.confirmQuit", String(!confirmQuit))} />
+        </label>
+        <p className="text-2xs text-text-muted mt-1">{t("settings.confirmQuitNote")}</p>
       </div>
 
       {/* Автозапуск */}
@@ -974,12 +987,13 @@ function ThemeGroup({
   label,
   themes,
   current,
-  onPick,
+  preview,
 }: {
   label: string;
   themes: AppTheme[];
   current: string;
-  onPick: (id: string) => void;
+  /** Наведение примеряет тему, нажатие — выбирает (useThemePreview) */
+  preview: ReturnType<typeof useThemePreview>;
 }) {
   return (
     <div className="rounded-lg border border-border bg-surface-1 p-2 self-start">
@@ -993,7 +1007,9 @@ function ThemeGroup({
                 ? CHOICE_ON
                 : CHOICE_OFF
             }`}
-            onClick={() => onPick(theme.id)}
+            onClick={() => preview.pick(theme.id)}
+            onMouseEnter={() => preview.hover(theme.id)}
+            onMouseLeave={preview.leave}
           >
             <span
               className="w-3 h-3 rounded-full shrink-0 border border-white/20"
