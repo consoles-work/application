@@ -36,9 +36,12 @@ export function groupQuickCommands(commands: QuickCommand[]): QuickCommandGroup[
 
 /** Уже использованные группы во всех консолях: без дублей по регистру, по алфавиту, со счётчиком команд */
 export function quickCommandGroupSuggestions(workspaces: Workspace[]): SuggestOption[] {
-  const byKey = new Map<string, SuggestOption>();
+  return groupSuggestions(allConsoles(workspaces).flatMap(({ console: con }) => con.quickCommands ?? []));
+}
 
-  const commands = allConsoles(workspaces).flatMap(({ console: con }) => con.quickCommands ?? []);
+/** Группы, уже использованные в этих командах: без дублей по регистру, по алфавиту, со счётчиком команд */
+export function groupSuggestions(commands: QuickCommand[]): SuggestOption[] {
+  const byKey = new Map<string, SuggestOption>();
 
   for (const cmd of commands) {
     const key = groupKey(cmd);

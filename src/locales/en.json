@@ -209,7 +209,8 @@
     "agentsClaudeCliNote": "Local engine: the claude binary runs as a subprocess on your own subscription. No API key needed. Tools and external MCP servers are disabled.",
     "tabSecurity": "Security",
     "statsEnabled": "Usage statistics",
-    "statsNote": "Working time, terminal input, quick commands — stored locally for 30 days. 📊 button in the title bar."
+    "statsNote": "Working time, terminal input, quick commands — stored locally for 30 days. 📊 button in the title bar.",
+    "tabQuick": "Quick commands"
   },
   "dialogs": {
     "newWorkspace": "New Workspace",
@@ -735,6 +736,140 @@
         "title": "{{path}}: permissions {{mode}}",
         "why": "The key folder is accessible to other users, and ssh may refuse to read a config with such permissions.",
         "fix": "Permissions 700 — “Fix permissions” button or chmod 700 ~/.ssh."
+      }
+    }
+  },
+  "globalQuick": {
+    "title": "Global quick commands",
+    "toggle": "Global quick commands — panel under the terminal",
+    "manage": "Manage global commands",
+    "hint": "Shared by all consoles: their buttons sit on a separate panel under any terminal, next to the console's own commands. Show or hide the panel with the ⚡ button in the window title bar.",
+    "showPanel": "Show the panel under the terminal",
+    "restore": "Restore defaults",
+    "restoreHint": "Add default commands missing from the list. Your commands stay as they are",
+    "restored": "Default commands added: {{count}}",
+    "nothingToRestore": "All default commands are already in the list",
+    "empty": "No commands — add your own or restore the defaults",
+    "count": "Commands: {{count}}",
+    "colLabel": "Name",
+    "colCommand": "Command",
+    "colRuns": "Runs",
+    "groups": {
+      "ssh": "SSH",
+      "system": "System",
+      "disk": "Disk",
+      "network": "Network",
+      "services": "Services & logs",
+      "docker": "Docker"
+    },
+    "defaults": {
+      "sshAuthKeys": {
+        "label": "authorized_keys",
+        "description": "Edit the list of keys allowed to log in to this server"
+      },
+      "sshPerms": {
+        "label": "Fix ~/.ssh permissions",
+        "description": "ssh ignores keys when permissions are too open"
+      },
+      "sshdTest": {
+        "label": "Check sshd_config",
+        "description": "Validate the SSH server config before restarting it"
+      },
+      "sshLastLogins": {
+        "label": "Last logins",
+        "description": "Who logged in to the server and from where"
+      },
+      "sysInfo": {
+        "label": "OS and kernel",
+        "description": "System and kernel version"
+      },
+      "sysUptime": {
+        "label": "Uptime and load",
+        "description": "How long the server has been up and its load average"
+      },
+      "sysMemory": {
+        "label": "Memory",
+        "description": "Used and free RAM and swap"
+      },
+      "sysTop": {
+        "label": "Processes (htop)",
+        "description": "htop if installed, otherwise top. Quit with q"
+      },
+      "sysTopMem": {
+        "label": "Top by memory",
+        "description": "15 processes using the most memory"
+      },
+      "sysCron": {
+        "label": "Cron jobs",
+        "description": "Scheduled jobs of the current user"
+      },
+      "sysUpdate": {
+        "label": "Update packages",
+        "description": "apt update + upgrade (Debian/Ubuntu)"
+      },
+      "sysReboot": {
+        "label": "Reboot server",
+        "description": "The server reboots and the SSH session drops"
+      },
+      "diskFree": {
+        "label": "Disk space",
+        "description": "Used and free space per filesystem"
+      },
+      "diskHere": {
+        "label": "Folder sizes here",
+        "description": "Sizes of subfolders of the current folder, largest last"
+      },
+      "diskJournal": {
+        "label": "Clean up journals",
+        "description": "Delete systemd journal entries older than 7 days"
+      },
+      "netPorts": {
+        "label": "Open ports",
+        "description": "Which processes listen on TCP/UDP ports"
+      },
+      "netIp": {
+        "label": "Public IP",
+        "description": "The address the server uses to reach the internet"
+      },
+      "netIfaces": {
+        "label": "Network interfaces",
+        "description": "Interfaces and their addresses, brief"
+      },
+      "netFirewall": {
+        "label": "Firewall (ufw)",
+        "description": "Whether ufw is on and which rules apply"
+      },
+      "svcFailed": {
+        "label": "Failed services",
+        "description": "systemd units in the failed state"
+      },
+      "svcRunning": {
+        "label": "Running services",
+        "description": "All running systemd services"
+      },
+      "logFollow": {
+        "label": "Live system log",
+        "description": "Follow the system journal. Stop with Ctrl+C"
+      },
+      "logKernel": {
+        "label": "Kernel messages",
+        "description": "Last 30 kernel messages (dmesg)"
+      },
+      "dockerPs": {
+        "label": "Containers",
+        "description": "All containers, including stopped ones"
+      },
+      "dockerStats": {
+        "label": "Container usage",
+        "description": "CPU, memory and network per container — snapshot"
+      },
+      "dockerLogs": {
+        "label": "Compose logs",
+        "description": "Logs of docker compose services in this folder. Stop with Ctrl+C"
+      },
+      "dockerDf": {
+        "label": "Docker disk usage",
+        "description": "Space used by images, containers and volumes"
       }
     }
   }

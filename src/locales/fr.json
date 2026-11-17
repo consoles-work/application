@@ -209,7 +209,8 @@
     "agentsClaudeCliNote": "Moteur local : le binaire claude s'exécute en sous-processus avec votre propre abonnement. Aucune clé API requise. Les outils et les serveurs MCP externes sont désactivés.",
     "tabSecurity": "Sécurité",
     "statsEnabled": "Statistiques d’utilisation",
-    "statsNote": "Temps de travail, saisie dans le terminal, commandes rapides — stockés localement 30 jours. Bouton 📊 dans la barre de titre."
+    "statsNote": "Temps de travail, saisie dans le terminal, commandes rapides — stockés localement 30 jours. Bouton 📊 dans la barre de titre.",
+    "tabQuick": "Commandes rapides"
   },
   "dialogs": {
     "newWorkspace": "Nouvel espace de travail",
@@ -735,6 +736,140 @@
         "title": "{{path}} : droits {{mode}}",
         "why": "Le dossier des clés est accessible aux autres utilisateurs, et ssh peut refuser de lire un config avec de tels droits.",
         "fix": "Droits 700 — bouton « Corriger les droits » ou chmod 700 ~/.ssh."
+      }
+    }
+  },
+  "globalQuick": {
+    "title": "Commandes rapides globales",
+    "toggle": "Commandes rapides globales — panneau sous le terminal",
+    "manage": "Gérer les commandes globales",
+    "hint": "Communes à toutes les consoles : leurs boutons sont sur un panneau séparé sous n'importe quel terminal, à côté des commandes de la console. Afficher ou masquer le panneau : bouton ⚡ dans la barre de titre.",
+    "showPanel": "Afficher le panneau sous le terminal",
+    "restore": "Restaurer les commandes par défaut",
+    "restoreHint": "Ajouter les commandes par défaut absentes de la liste. Vos commandes ne changent pas",
+    "restored": "Commandes par défaut ajoutées : {{count}}",
+    "nothingToRestore": "Toutes les commandes par défaut sont déjà dans la liste",
+    "empty": "Aucune commande — ajoutez la vôtre ou restaurez celles par défaut",
+    "count": "Commandes : {{count}}",
+    "colLabel": "Nom",
+    "colCommand": "Commande",
+    "colRuns": "Lancements",
+    "groups": {
+      "ssh": "SSH",
+      "system": "Système",
+      "disk": "Disque",
+      "network": "Réseau",
+      "services": "Services et logs",
+      "docker": "Docker"
+    },
+    "defaults": {
+      "sshAuthKeys": {
+        "label": "authorized_keys",
+        "description": "Modifier la liste des clés autorisées à se connecter au serveur"
+      },
+      "sshPerms": {
+        "label": "Droits de ~/.ssh",
+        "description": "ssh ignore les clés si les droits sont trop ouverts"
+      },
+      "sshdTest": {
+        "label": "Vérifier sshd_config",
+        "description": "Valider la configuration du serveur SSH avant redémarrage"
+      },
+      "sshLastLogins": {
+        "label": "Dernières connexions",
+        "description": "Qui s'est connecté au serveur et d'où"
+      },
+      "sysInfo": {
+        "label": "OS et noyau",
+        "description": "Version du système et du noyau"
+      },
+      "sysUptime": {
+        "label": "Uptime et charge",
+        "description": "Depuis quand le serveur tourne et sa charge moyenne"
+      },
+      "sysMemory": {
+        "label": "Mémoire",
+        "description": "RAM et swap utilisées et libres"
+      },
+      "sysTop": {
+        "label": "Processus (htop)",
+        "description": "htop s'il est installé, sinon top. Quitter avec q"
+      },
+      "sysTopMem": {
+        "label": "Top mémoire",
+        "description": "Les 15 processus qui consomment le plus de mémoire"
+      },
+      "sysCron": {
+        "label": "Tâches cron",
+        "description": "Tâches planifiées de l'utilisateur courant"
+      },
+      "sysUpdate": {
+        "label": "Mettre à jour les paquets",
+        "description": "apt update + upgrade (Debian/Ubuntu)"
+      },
+      "sysReboot": {
+        "label": "Redémarrer le serveur",
+        "description": "Le serveur redémarre, la session SSH est coupée"
+      },
+      "diskFree": {
+        "label": "Espace disque",
+        "description": "Espace utilisé et libre par partition"
+      },
+      "diskHere": {
+        "label": "Taille des dossiers ici",
+        "description": "Taille des sous-dossiers du dossier courant, les plus gros en bas"
+      },
+      "diskJournal": {
+        "label": "Nettoyer les journaux",
+        "description": "Supprimer les entrées du journal systemd de plus de 7 jours"
+      },
+      "netPorts": {
+        "label": "Ports ouverts",
+        "description": "Quels processus écoutent sur les ports TCP/UDP"
+      },
+      "netIp": {
+        "label": "IP publique",
+        "description": "L'adresse avec laquelle le serveur sort sur Internet"
+      },
+      "netIfaces": {
+        "label": "Interfaces réseau",
+        "description": "Interfaces et leurs adresses, en bref"
+      },
+      "netFirewall": {
+        "label": "Pare-feu (ufw)",
+        "description": "ufw est-il actif et quelles règles s'appliquent"
+      },
+      "svcFailed": {
+        "label": "Services en échec",
+        "description": "Unités systemd à l'état failed"
+      },
+      "svcRunning": {
+        "label": "Services actifs",
+        "description": "Tous les services systemd en cours d'exécution"
+      },
+      "logFollow": {
+        "label": "Journal en direct",
+        "description": "Suivre le journal système. Arrêter avec Ctrl+C"
+      },
+      "logKernel": {
+        "label": "Messages du noyau",
+        "description": "Les 30 derniers messages du noyau (dmesg)"
+      },
+      "dockerPs": {
+        "label": "Conteneurs",
+        "description": "Tous les conteneurs, y compris arrêtés"
+      },
+      "dockerStats": {
+        "label": "Charge des conteneurs",
+        "description": "CPU, mémoire et réseau par conteneur — instantané"
+      },
+      "dockerLogs": {
+        "label": "Logs compose",
+        "description": "Logs des services docker compose de ce dossier. Arrêter avec Ctrl+C"
+      },
+      "dockerDf": {
+        "label": "Espace Docker",
+        "description": "Espace occupé par les images, conteneurs et volumes"
       }
     }
   }

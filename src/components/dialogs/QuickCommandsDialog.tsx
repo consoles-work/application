@@ -1,28 +1,26 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { ask } from "@tauri-apps/plugin-dialog";
-import { Pencil, Trash2, ArrowUp, ArrowDown, Plus, Play, Ban } from "lucide-react";
+import { Pencil, Trash2, ArrowUp, ArrowDown, Plus } from "lucide-react";
 import { useAppStore } from "../../stores/appStore";
 import { setConsoleQuickCommands } from "../../lib/tauriCommands";
-import type { QuickCommand, QuickCommandColor } from "../../types";
-import { QUICK_COMMAND_COLORS, quickCommandHex } from "../../lib/quickCommandColors";
+import type { QuickCommand } from "../../types";
+import { quickCommandHex } from "../../lib/quickCommandColors";
 import { formatSavedTime, sumQuickCommandStats, TYPING_CHARS_PER_MINUTE } from "../../lib/quickCommandStats";
 import { useTranslation } from "react-i18next";
 import { findConsole } from "../../lib/tree";
 import { useEscape } from "../../hooks/useEscape";
-import { SuggestInput } from "../SuggestInput";
-import { groupQuickCommands, moveWithinGroup, quickCommandGroupSuggestions } from "../../lib/quickCommandGroups";
+import { groupQuickCommands, quickCommandGroupSuggestions } from "../../lib/quickCommandGroups";
+import { EMPTY_DRAFT, toDraft } from "../../lib/quickCommandDraft";
+import { IconButton, QuickCommandForm, useQuickCommandEditor } from "./QuickCommandEditor";
 
 // ══════════════════════════════════════
 // QuickCommandsDialog — кнопки быстрых команд консоли
 // ══════════════════════════════════════
 // Список кнопок по группам (порядок внутри группы, правка, удаление) и форма
-// одной команды. Группа — комбобокс, как «Хостинг» у консоли: вписать новую
-// или выбрать из уже использованных во всех консолях. Пустой
-// список — сразу форма добавления; можно открыть сразу на правке нужной
-// кнопки (ПКМ по ней под терминалом).
-// Любое изменение сохраняет список целиком; ошибка — тост, форма не
-// закрывается. Без подписи кнопка показывает первую строку команды.
+// одной команды (общая с глобальными командами — QuickCommandEditor). Группа —
+// комбобокс, как «Хостинг» у консоли: вписать новую или выбрать из уже
+// использованных во всех консолях. Пустой список — сразу форма добавления;
+// можно открыть сразу на правке нужной кнопки (ПКМ по ней под терминалом).
 // Escape из формы — к списку, из списка — закрыть. Консоль удалили, пока
 // диалог открыт, — он закрывается.
 
@@ -33,36 +31,21 @@ interface Props {
   onClose: () => void;
 }
 
-// Черновик формы: id === null — новая команда
-type Draft = {
-  id: string | null;
-  label: string;
-  command: string;
-  description: string;
-  color: QuickCommandColor;
-  group: string;
-  confirm: boolean;
-};
-
-const EMPTY_DRAFT: Draft = { id: null, label: "", command: "", description: "", color: "", group: "", confirm: false };
-
-
 export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props) {
-  const { workspaces, updateConsole: storeUpdateConsole, showToast } = useAppStore();
+  const { workspaces, updateConsole: storeUpdateConsole } = useAppStore();
   const { t } = useTranslation();
 
   const console_ = findConsole(workspaces, consoleId)?.console;
   const commands = console_?.quickCommands ?? [];
 
-  const [draft, setDraft] = useState<Draft | null>(() => {
-    const target = commands.find((c) => c.id === initialEditId);
+  // Список целиком — в БД, затем в стор
+  const save = async (next: QuickCommand[]) => {
+    await setConsoleQuickCommands(consoleId, next);
 
-    if (target) return toDraft(target);
+    storeUpdateConsole(consoleId, { quickCommands: next });
+  };
 
-    return commands.length === 0 ? EMPTY_DRAFT : null;
-  });
-
-  const [saving, setSaving] = useState(false);
+  const { draft, setDraft, saving, submit, remove, move } = useQuickCommandEditor(commands, save, initialEditId);
 
   const groupOptions = useMemo(() => quickCommandGroupSuggestions(workspaces), [workspaces]);
 
@@ -72,63 +55,6 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
     if (!console_) onClose();
   }, [console_, onClose]);
 
-  // Список целиком — в БД, затем в стор; false — не сохранилось
-  const persist = async (next: QuickCommand[]) => {
-    setSaving(true);
-
-    try {
-      await setConsoleQuickCommands(consoleId, next);
-
-      storeUpdateConsole(consoleId, { quickCommands: next });
-
-      return true;
-    } catch (e) {
-      showToast("error", t("dialogs.toastError", { error: e }));
-
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!draft) return;
-
-    const fields = draftFields(draft);
-
-    if (!fields) {
-      showToast("error", t("quickCommands.toastCommandRequired"));
-
-      return;
-    }
-
-    // Правка сохраняет счётчики запусков, новая команда — с нуля
-    const next = draft.id
-      ? commands.map((c) => (c.id === draft.id ? { ...c, ...fields } : c))
-      : [...commands, { id: crypto.randomUUID(), ...fields }];
-
-    if (await persist(next)) setDraft(null);
-  };
-
-  const handleDelete = async (cmd: QuickCommand) => {
-    const confirmed = await ask(t("quickCommands.deleteConfirm", { label: cmd.label }), {
-      title: t("quickCommands.deleteTitle"),
-      kind: "warning",
-    });
-
-    if (!confirmed) return;
-
-    await persist(commands.filter((c) => c.id !== cmd.id));
-  };
-
-  const handleMove = (cmd: QuickCommand, delta: -1 | 1) => {
-    const next = moveWithinGroup(commands, cmd.id, delta);
-
-    if (next) persist(next);
-  };
-
   if (!console_) return null;
 
   const totals = sumQuickCommandStats(commands);
@@ -137,9 +63,6 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
 
   // Заголовок «Без группы» нужен, только если рядом есть именованные группы
   const showGroupHeaders = groups.some((g) => g.name);
-
-  const inputCls =
-    "w-full px-3 py-2 rounded-lg bg-surface-0 border border-border text-sm text-text-primary outline-none focus:border-accent";
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onMouseDown={onClose}>
@@ -151,100 +74,14 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
         <div className="text-2xs text-text-muted mb-4 truncate">{console_.name}</div>
 
         {draft ? (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            <div>
-              <div className="text-2xs text-text-muted mb-1">{t("quickCommands.label")}</div>
-              <input
-                autoFocus
-                value={draft.label}
-                onChange={(e) => setDraft({ ...draft, label: e.target.value })}
-                placeholder={t("quickCommands.labelPlaceholder")}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <div className="text-2xs text-text-muted mb-1">{t("quickCommands.group")}</div>
-              <SuggestInput
-                value={draft.group}
-                onChange={(group) => setDraft({ ...draft, group })}
-                options={groupOptions}
-                placeholder={t("quickCommands.groupPlaceholder")}
-                className={inputCls}
-              />
-              <div className="text-2xs text-text-muted mt-1">
-                {groupOptions.length > 0 ? t("quickCommands.groupPickHint") : t("quickCommands.groupHint")}
-              </div>
-            </div>
-            <div>
-              <div className="text-2xs text-text-muted mb-1">{t("quickCommands.command")}</div>
-              <textarea
-                value={draft.command}
-                onChange={(e) => setDraft({ ...draft, command: e.target.value })}
-                placeholder="docker compose ps"
-                rows={3}
-                className={`${inputCls} font-mono text-xs resize-y`}
-              />
-              <div className="text-2xs text-text-muted mt-1">{t("quickCommands.commandHint")}</div>
-            </div>
-            <div>
-              <div className="text-2xs text-text-muted mb-1">{t("quickCommands.description")}</div>
-              <input
-                value={draft.description}
-                onChange={(e) => setDraft({ ...draft, description: e.target.value })}
-                placeholder={t("quickCommands.descriptionPlaceholder")}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <div className="text-2xs text-text-muted mb-1.5">{t("quickCommands.color")}</div>
-              <div className="flex items-center gap-1.5">
-                {QUICK_COMMAND_COLORS.map(({ id, hex }) => (
-                  <button
-                    key={id || "none"}
-                    type="button"
-                    title={t(`quickCommands.colors.${id || "none"}`)}
-                    onClick={() => setDraft({ ...draft, color: id })}
-                    className={`w-6 h-6 rounded-full flex items-center justify-center border ${
-                      draft.color === id ? "ring-2 ring-accent ring-offset-1 ring-offset-surface-2" : ""
-                    } ${hex ? "border-transparent" : "border-border bg-surface-0 text-text-muted"}`}
-                    style={hex ? { backgroundColor: hex } : undefined}
-                  >
-                    {!hex && <Ban size={12} />}
-                  </button>
-                ))}
-              </div>
-              <div className="text-2xs text-text-muted mt-1">{t("quickCommands.colorHint")}</div>
-            </div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={draft.confirm}
-                onChange={(e) => setDraft({ ...draft, confirm: e.target.checked })}
-                className="accent-red-400"
-              />
-              <span className="text-xs text-text-primary">{t("quickCommands.confirm")}</span>
-            </label>
-            <div className="mt-1">
-              <div className="text-2xs text-text-muted mb-1">{t("quickCommands.preview")}</div>
-              <QuickCommandButtonPreview label={draft.label.trim() || draft.command.trim().split("\n")[0] || "…"} color={draft.color} />
-            </div>
-            <div className="flex justify-end gap-2 mt-1">
-              <button
-                type="button"
-                onClick={() => (commands.length > 0 ? setDraft(null) : onClose())}
-                className="px-3 py-1.5 text-xs rounded-lg text-text-secondary hover:bg-surface-3"
-              >
-                {t("common.cancel")}
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-3 py-1.5 text-xs rounded-lg bg-accent text-white hover:opacity-90 disabled:opacity-50"
-              >
-                {draft.id ? t("common.save") : t("quickCommands.add")}
-              </button>
-            </div>
-          </form>
+          <QuickCommandForm
+            draft={draft}
+            onChange={setDraft}
+            groupOptions={groupOptions}
+            saving={saving}
+            onSubmit={submit}
+            onCancel={() => (commands.length > 0 ? setDraft(null) : onClose())}
+          />
         ) : (
           <div className="flex flex-col gap-1">
             {groups.map((group) => (
@@ -271,9 +108,9 @@ export function QuickCommandsDialog({ consoleId, initialEditId, onClose }: Props
                     saving={saving}
                     isFirst={i === 0}
                     isLast={i === group.commands.length - 1}
-                    onMove={(delta) => handleMove(cmd, delta)}
+                    onMove={(delta) => move(cmd, delta)}
                     onEdit={() => setDraft(toDraft(cmd))}
-                    onDelete={() => handleDelete(cmd)}
+                    onDelete={() => remove(cmd)}
                   />
                 ))}
               </div>
@@ -370,75 +207,4 @@ function CommandRow({
       </div>
     </div>
   );
-}
-
-function IconButton({
-  title,
-  onClick,
-  disabled,
-  danger,
-  children,
-}: {
-  title: string;
-  onClick: () => void;
-  disabled?: boolean;
-  danger?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      title={title}
-      disabled={disabled}
-      onClick={onClick}
-      className={`p-1 rounded hover:bg-surface-3 disabled:opacity-30 disabled:hover:bg-transparent ${
-        danger ? "hover:text-danger" : "hover:text-text-primary"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-// Как кнопка будет выглядеть в панели под терминалом
-function QuickCommandButtonPreview({ label, color }: { label: string; color: QuickCommandColor }) {
-  const hex = quickCommandHex(color);
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 max-w-[240px] px-2.5 py-1 rounded-md text-xs text-text-primary bg-surface-3 border border-border"
-      style={hex ? { backgroundColor: `${hex}26`, borderColor: `${hex}99` } : undefined}
-    >
-      <Play size={11} className="shrink-0 fill-current" style={hex ? { color: hex } : undefined} />
-      <span className="truncate">{label}</span>
-    </span>
-  );
-}
-
-function toDraft(c: QuickCommand): Draft {
-  return {
-    id: c.id,
-    label: c.label,
-    command: c.command,
-    description: c.description ?? "",
-    color: c.color ?? "",
-    group: c.group ?? "",
-    confirm: c.confirm ?? false,
-  };
-}
-
-/** Черновик → поля команды; null — команда пустая. Хвостовые пробелы и переводы строк срезаются. */
-function draftFields(draft: Draft): Omit<QuickCommand, "id" | "runCount" | "savedChars"> | null {
-  const command = draft.command.replace(/\s+$/, "");
-
-  if (!command.trim()) return null;
-
-  return {
-    // Без подписи на кнопке показываем саму команду (первую строку)
-    label: draft.label.trim() || command.trim().split("\n")[0],
-    command,
-    description: draft.description.trim() || undefined,
-    color: draft.color || undefined,
-    group: draft.group.trim() || undefined,
-    confirm: draft.confirm,
-  };
 }

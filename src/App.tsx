@@ -105,10 +105,9 @@ function App() {
 // без автокоррекции в полях ввода.
 
 function MainApp() {
-  const { settings, setWorkspaces, setSettings, showToast } = useAppStore();
+  const { settings, setWorkspaces, setSettings, showToast, settingsDialog, openSettings, closeSettings } = useAppStore();
   const { t } = useTranslation();
   const [showPalette, setShowPalette] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showSshKeys, setShowSshKeys] = useState(false);
@@ -187,7 +186,7 @@ function MainApp() {
   useEffect(() => {
     const dialogs: Dialogs = {
       openPalette: () => setShowPalette(true),
-      openSettings: () => setShowSettings(true),
+      openSettings: () => useAppStore.getState().openSettings(),
       openSearch: () => setShowGlobalSearch(true),
     };
 
@@ -207,7 +206,7 @@ function MainApp() {
   return (
     <>
       <Layout
-        onOpenSettings={() => setShowSettings(true)}
+        onOpenSettings={() => openSettings()}
         onOpenStats={statsEnabled ? () => setShowStats(true) : undefined}
         onOpenSshKeys={() => setShowSshKeys(true)}
         sshKeysAlert={sshCritical}
@@ -215,11 +214,13 @@ function MainApp() {
       <ToastContainer />
       {showPalette && <CommandPalette onClose={() => setShowPalette(false)} />}
       {showGlobalSearch && <GlobalSearch onClose={() => setShowGlobalSearch(false)} />}
-      {showSettings && (
+      {settingsDialog && (
         <SettingsDialog
-          onClose={() => setShowSettings(false)}
+          initialTab={settingsDialog.tab}
+          initialEditId={settingsDialog.editId}
+          onClose={closeSettings}
           onOpenAbout={() => {
-            setShowSettings(false);
+            closeSettings();
             setShowAbout(true);
           }}
         />

@@ -93,6 +93,9 @@ export interface QuickCommand {
 
 export type QuickCommandColor = "" | "green" | "blue" | "cyan" | "yellow" | "orange" | "red" | "pink" | "purple";
 
+/** Вкладка окна настроек; "quick" — глобальные быстрые команды */
+export type SettingsTab = "data" | "terminal" | "interface" | "agents" | "security" | "quick";
+
 // ── Wiki ──
 
 export interface WikiPage {

@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { listen } from "@tauri-apps/api/event";
-import { StickyNote, ChevronDown, ChevronRight, Zap, Settings2, Play } from "lucide-react";
+import { StickyNote, ChevronDown, ChevronRight, Zap, Globe, Settings2, Play } from "lucide-react";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
 import { launchRequest, startupLines } from "../lib/connectionString";
@@ -15,6 +15,7 @@ import { useAppStore } from "../stores/appStore";
 import { spawnPty, writeToPty, writeBinaryToPty, resizePty, killPty, recordQuickCommandRun } from "../lib/tauriCommands";
 import { formatSavedTime } from "../lib/quickCommandStats";
 import { groupQuickCommands } from "../lib/quickCommandGroups";
+import { GLOBAL_QUICK_KEY, GLOBAL_QUICK_VISIBLE_KEY, countRun, globalQuickCommands } from "../lib/globalQuickCommands";
 import { trackUsage, trackTerminalInput, METRICS } from "../lib/usageStats";
 import { getThemeById, visibleThemeId, type AppTheme } from "../lib/themes";
 import { findConsole } from "../lib/tree";
@@ -32,6 +33,9 @@ import { LinkifiedText } from "./LinkifiedText";
 // активной консоли. Вкладки переставляются перетаскиванием; перетащенная
 // становится активной. Крестик на вкладке консоли закрывает все её экземпляры,
 // на подвкладке — один; оба — после подтверждения.
+//
+// Под терминалом — до двух панелей быстрых команд: команды консоли и, если
+// включены кнопкой в заголовке окна, глобальные (общие для всех консолей).
 //
 // Терминалы всех вкладок живут одновременно, виден только активный: при
 // переключении вкладки сессия не перезапускается. Порядок их DOM-узлов — по
@@ -73,9 +77,20 @@ export function TerminalPanel() {
     moveSessionTab,
     terminalSelection,
     showAiPanel,
+    settings,
+    openSettings,
   } = useAppStore();
   const { t } = useTranslation();
   const [quickDialog, setQuickDialog] = useState<{ consoleId: string; editId?: string } | null>(null);
+
+  // Глобальные команды: панель скрыта — null
+  const showGlobalQuick = settings[GLOBAL_QUICK_VISIBLE_KEY] === "true";
+  const globalRaw = settings[GLOBAL_QUICK_KEY];
+
+  const globalCommands = useMemo(
+    () => (showGlobalQuick ? globalQuickCommands(globalRaw, t) : null),
+    [showGlobalQuick, globalRaw, t]
+  );
 
   const groups = groupSessions(sessions);
   const activeSession = sessions.find((s) => s.id === activeSessionId);
@@ -205,6 +220,8 @@ export function TerminalPanel() {
                 note={con?.note?.trim() ?? ""}
                 quickCommands={con?.quickCommands ?? []}
                 onManageQuickCommands={(editId) => setQuickDialog({ consoleId: session.console_id, editId })}
+                globalCommands={globalCommands}
+                onManageGlobal={(editId) => openSettings("quick", editId)}
               />
             );
           })}
@@ -247,6 +264,9 @@ interface TerminalViewProps {
   note: string;
   quickCommands: QuickCommand[];
   onManageQuickCommands: (editId?: string) => void;
+  /** Глобальные быстрые команды; null — их панель скрыта */
+  globalCommands: QuickCommand[] | null;
+  onManageGlobal: (editId?: string) => void;
 }
 
 function TerminalView({
@@ -258,6 +278,8 @@ function TerminalView({
   note,
   quickCommands,
   onManageQuickCommands,
+  globalCommands,
+  onManageGlobal,
 }: TerminalViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -448,8 +470,9 @@ function TerminalView({
 
   // ── Быстрая команда ──
   // Строки уходят в сессию как набранные с Enter. Подтверждение — только если у
-  // команды включено «Показывать предупреждение». Счётчик запусков считает бэкенд.
-  const runQuickCommand = async (cmd: QuickCommand) => {
+  // команды включено «Показывать предупреждение». Счётчик запусков команды
+  // консоли считает бэкенд, глобальной — пишется в её настройку.
+  const runQuickCommand = async (cmd: QuickCommand, scope: "local" | "global") => {
     // 1. Сессии нет — запускать некуда.
     const ptyId = ptyIdRef.current;
 
@@ -475,6 +498,17 @@ function TerminalView({
     // 4. Статистика. Символы — та же формула, что в record_quick_command_run: команда + Enter.
     trackUsage(METRICS.qcRuns, 1, session.console_id);
     trackUsage(METRICS.qcChars, [...cmd.command].length + 1, session.console_id);
+
+    // Глобальная: список целиком в настройку, «по возможности» — как любая настройка из стора
+    if (scope === "global") {
+      const { settings: current, saveSetting } = useAppStore.getState();
+
+      const next = countRun(globalQuickCommands(current[GLOBAL_QUICK_KEY], i18n.t), cmd.id);
+
+      saveSetting(GLOBAL_QUICK_KEY, JSON.stringify(next));
+
+      return;
+    }
 
     try {
       const updated = await recordQuickCommandRun(session.console_id, cmd.id);
@@ -574,10 +608,20 @@ function TerminalView({
       </div>
       {quickCommands.length > 0 && (
         <QuickCommandsBar
+          kind="local"
           commands={quickCommands}
-          onRun={runQuickCommand}
+          onRun={(cmd) => runQuickCommand(cmd, "local")}
           onEdit={(cmd) => onManageQuickCommands(cmd.id)}
           onManage={() => onManageQuickCommands()}
+        />
+      )}
+      {globalCommands && (
+        <QuickCommandsBar
+          kind="global"
+          commands={globalCommands}
+          onRun={(cmd) => runQuickCommand(cmd, "global")}
+          onEdit={(cmd) => onManageGlobal(cmd.id)}
+          onManage={() => onManageGlobal()}
         />
       )}
     </div>
@@ -587,11 +631,14 @@ function TerminalView({
 // ══════════════════════════════════════
 // Панель быстрых команд под терминалом
 // ══════════════════════════════════════
+// Одна и та же панель для команд консоли и для глобальных; отличаются значком
+// слева, ключом высоты и тем, что открывают шестерёнка и ПКМ (окно команд
+// консоли / настройки → «Быстрые команды»).
 // Кнопки без группы идут первыми, затем каждая группа — бокс с названием на
 // рамке. Не влезают в строку — переносятся, дальше прокрутка.
 // Высота: по умолчанию по содержимому (не выше 40% терминала); верхнюю
-// границу можно тянуть — высота общая для всех консолей и переживает
-// перезапуск (ui.quickBarHeight), двойной клик по границе — снова по содержимому.
+// границу можно тянуть — высота общая для всех консолей (у глобальной панели
+// своя) и переживает перезапуск, двойной клик по границе — снова по содержимому.
 // Клик — выполнить, ПКМ — редактировать кнопку. Подсказка своя, с задержкой:
 // нативные tooltip в WebKit у Tauri показываются ненадёжно.
 
@@ -599,12 +646,20 @@ function TerminalView({
 const QUICK_BAR_MIN_HEIGHT = 36;
 const QUICK_BAR_MAX_SHARE = 0.7;
 
+/** Чем панель команд консоли отличается от панели глобальных */
+const QUICK_BAR_KINDS = {
+  local: { Icon: Zap, heightKey: "ui.quickBarHeight", title: "quickCommands.title", manage: "quickCommands.manage" },
+  global: { Icon: Globe, heightKey: "ui.globalQuickBarHeight", title: "globalQuick.title", manage: "globalQuick.manage" },
+} as const;
+
 function QuickCommandsBar({
+  kind,
   commands,
   onRun,
   onEdit,
   onManage,
 }: {
+  kind: keyof typeof QUICK_BAR_KINDS;
   commands: QuickCommand[];
   onRun: (cmd: QuickCommand) => void;
   onEdit: (cmd: QuickCommand) => void;
@@ -614,7 +669,8 @@ function QuickCommandsBar({
   const [hover, setHover] = useState<{ cmd: QuickCommand; rect: DOMRect } | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const barRef = useRef<HTMLDivElement>(null);
-  const resize = useBarResize(barRef);
+  const { Icon, heightKey, title, manage } = QUICK_BAR_KINDS[kind];
+  const resize = useBarResize(barRef, heightKey);
 
   useEffect(() => () => clearTimeout(hoverTimer.current), []);
 
@@ -669,7 +725,9 @@ function QuickCommandsBar({
         onMouseDown={resize.start}
         onDoubleClick={resize.reset}
       />
-      <Zap size={14} className="text-text-muted shrink-0 mt-2" />
+      <span className="shrink-0 mt-2 text-text-muted" title={t(title)}>
+        <Icon size={14} />
+      </span>
       <div className="flex-1 min-w-0 self-stretch overflow-y-auto flex flex-wrap items-center gap-1.5" onScroll={hideHint}>
         {groupQuickCommands(commands).map((group) =>
           group.name ? (
@@ -696,7 +754,7 @@ function QuickCommandsBar({
       )}
       <button
         className="shrink-0 p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-surface-3"
-        title={t("quickCommands.manage")}
+        title={t(manage)}
         onClick={onManage}
       >
         <Settings2 size={15} />
@@ -707,11 +765,11 @@ function QuickCommandsBar({
 
 /**
  * Высота панели быстрых команд перетаскиванием верхней границы.
- * Пока тянут — локальное состояние, отпустили — в настройку ui.quickBarHeight.
+ * Пока тянут — локальное состояние, отпустили — в настройку heightKey.
  * height 0 — по содержимому.
  */
-function useBarResize(barRef: React.RefObject<HTMLDivElement | null>) {
-  const saved = parseInt(useAppStore((s) => s.settings["ui.quickBarHeight"] ?? "")) || 0;
+function useBarResize(barRef: React.RefObject<HTMLDivElement | null>, heightKey: string) {
+  const saved = parseInt(useAppStore((s) => s.settings[heightKey] ?? "")) || 0;
   const saveSetting = useAppStore((s) => s.saveSetting);
   const [dragHeight, setDragHeight] = useState<number | null>(null);
 
@@ -744,7 +802,7 @@ function useBarResize(barRef: React.RefObject<HTMLDivElement | null>) {
 
       document.body.style.cursor = "";
 
-      saveSetting("ui.quickBarHeight", String(height));
+      saveSetting(heightKey, String(height));
 
       setDragHeight(null);
     };
@@ -757,7 +815,7 @@ function useBarResize(barRef: React.RefObject<HTMLDivElement | null>) {
     height: dragHeight ?? saved,
     dragging: dragHeight !== null,
     start,
-    reset: () => saveSetting("ui.quickBarHeight", ""),
+    reset: () => saveSetting(heightKey, ""),
   };
 }
 

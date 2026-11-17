@@ -5,6 +5,7 @@ import type {
   ConsoleConfig,
   Project,
   SelectedNode,
+  SettingsTab,
   TerminalSession,
   TreeNode,
   WikiPage,
@@ -141,6 +142,12 @@ interface AppState {
   setTreePanelWidth: (width: number) => void;
   setWikiPanelWidth: (width: number) => void;
 
+  // ── Окно настроек ──
+  /** Открытое окно настроек: вкладка и глобальная команда, которую сразу править; null — закрыто */
+  settingsDialog: { tab: SettingsTab; editId?: string } | null;
+  openSettings: (tab?: SettingsTab, editId?: string) => void;
+  closeSettings: () => void;
+
   // ── Toast ──
   toasts: Toast[];
   showToast: (type: Toast["type"], message: string) => void;
@@ -191,6 +198,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   aiInput: "",
   aiIsStreaming: false,
   toasts: [],
+  settingsDialog: null,
   settings: {},
   previewTheme: null,
 
@@ -499,6 +507,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   setAiStreamingMsgId: (id) => set({ aiStreamingMsgId: id }),
   setAiInput: (input) => set({ aiInput: input }),
   setAiIsStreaming: (v) => set({ aiIsStreaming: v }),
+
+  // ── Окно настроек ──
+  openSettings: (tab = "data", editId) => set({ settingsDialog: { tab, editId } }),
+  closeSettings: () => set({ settingsDialog: null }),
 
   // ── Toast ──
   showToast: (type, message) =>

@@ -209,7 +209,8 @@
     "agentsClaudeCliNote": "本地引擎：claude 以子进程运行，使用你自己的订阅，无需 API 密钥。工具和外部 MCP 服务器均已禁用。",
     "tabSecurity": "安全",
     "statsEnabled": "使用统计",
-    "statsNote": "工作时间、终端输入、快捷命令——仅本地保存 30 天。标题栏中的 📊 按钮。"
+    "statsNote": "工作时间、终端输入、快捷命令——仅本地保存 30 天。标题栏中的 📊 按钮。",
+    "tabQuick": "快捷命令"
   },
   "dialogs": {
     "newWorkspace": "新建工作区",
@@ -735,6 +736,140 @@
         "title": "{{path}}：权限 {{mode}}",
         "why": "密钥目录对其他用户可访问，ssh 也可能拒绝读取权限不正确的 config。",
         "fix": "权限 700 — 点击“修复权限”或执行 chmod 700 ~/.ssh。"
+      }
+    }
+  },
+  "globalQuick": {
+    "title": "全局快捷命令",
+    "toggle": "全局快捷命令 — 终端下方的面板",
+    "manage": "管理全局命令",
+    "hint": "所有控制台共用：这些命令的按钮显示在任意终端下方的独立面板中，位于控制台自身命令旁边。用窗口标题栏中的 ⚡ 按钮显示或隐藏面板。",
+    "showPanel": "在终端下方显示面板",
+    "restore": "恢复默认命令",
+    "restoreHint": "添加列表中缺少的默认命令。您的命令保持不变",
+    "restored": "已添加默认命令：{{count}}",
+    "nothingToRestore": "所有默认命令都已在列表中",
+    "empty": "没有命令 — 添加自己的或恢复默认命令",
+    "count": "命令：{{count}}",
+    "colLabel": "名称",
+    "colCommand": "命令",
+    "colRuns": "运行次数",
+    "groups": {
+      "ssh": "SSH",
+      "system": "系统",
+      "disk": "磁盘",
+      "network": "网络",
+      "services": "服务与日志",
+      "docker": "Docker"
+    },
+    "defaults": {
+      "sshAuthKeys": {
+        "label": "authorized_keys",
+        "description": "编辑允许登录此服务器的公钥列表"
+      },
+      "sshPerms": {
+        "label": "修复 ~/.ssh 权限",
+        "description": "权限过宽时 ssh 会忽略密钥"
+      },
+      "sshdTest": {
+        "label": "检查 sshd_config",
+        "description": "重启前验证 SSH 服务器配置"
+      },
+      "sshLastLogins": {
+        "label": "最近登录",
+        "description": "谁从哪里登录了服务器"
+      },
+      "sysInfo": {
+        "label": "系统与内核",
+        "description": "系统和内核版本"
+      },
+      "sysUptime": {
+        "label": "运行时间与负载",
+        "description": "服务器运行时长和平均负载"
+      },
+      "sysMemory": {
+        "label": "内存",
+        "description": "内存和交换分区使用情况"
+      },
+      "sysTop": {
+        "label": "进程 (htop)",
+        "description": "已安装则用 htop，否则 top。按 q 退出"
+      },
+      "sysTopMem": {
+        "label": "内存占用排行",
+        "description": "占用内存最多的 15 个进程"
+      },
+      "sysCron": {
+        "label": "Cron 任务",
+        "description": "当前用户的定时任务"
+      },
+      "sysUpdate": {
+        "label": "更新软件包",
+        "description": "apt update + upgrade（Debian/Ubuntu）"
+      },
+      "sysReboot": {
+        "label": "重启服务器",
+        "description": "服务器将重启，SSH 会话会断开"
+      },
+      "diskFree": {
+        "label": "磁盘空间",
+        "description": "各分区已用和可用空间"
+      },
+      "diskHere": {
+        "label": "当前目录大小",
+        "description": "当前目录下各子目录大小，大的在最后"
+      },
+      "diskJournal": {
+        "label": "清理日志",
+        "description": "删除 7 天前的 systemd 日志"
+      },
+      "netPorts": {
+        "label": "开放端口",
+        "description": "哪些进程在监听 TCP/UDP 端口"
+      },
+      "netIp": {
+        "label": "公网 IP",
+        "description": "服务器访问互联网所用的地址"
+      },
+      "netIfaces": {
+        "label": "网络接口",
+        "description": "网络接口及其地址（简要）"
+      },
+      "netFirewall": {
+        "label": "防火墙 (ufw)",
+        "description": "ufw 是否启用以及生效的规则"
+      },
+      "svcFailed": {
+        "label": "失败的服务",
+        "description": "处于 failed 状态的 systemd 服务"
+      },
+      "svcRunning": {
+        "label": "运行中的服务",
+        "description": "所有正在运行的 systemd 服务"
+      },
+      "logFollow": {
+        "label": "实时系统日志",
+        "description": "实时跟踪系统日志。按 Ctrl+C 停止"
+      },
+      "logKernel": {
+        "label": "内核消息",
+        "description": "最近 30 条内核消息（dmesg）"
+      },
+      "dockerPs": {
+        "label": "容器",
+        "description": "所有容器，包括已停止的"
+      },
+      "dockerStats": {
+        "label": "容器资源占用",
+        "description": "各容器的 CPU、内存和网络快照"
+      },
+      "dockerLogs": {
+        "label": "Compose 日志",
+        "description": "当前目录 docker compose 服务的日志。按 Ctrl+C 停止"
+      },
+      "dockerDf": {
+        "label": "Docker 磁盘占用",
+        "description": "镜像、容器和卷占用的空间"
       }
     }
   }

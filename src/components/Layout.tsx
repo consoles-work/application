@@ -5,14 +5,16 @@ import { TerminalPanel } from "./TerminalPanel";
 import { WikiPanel } from "./WikiPanel";
 import { AiPanel } from "./AiPanel";
 import { useTranslation } from "react-i18next";
-import { Bot, BarChart3, KeyRound } from "lucide-react";
+import { Bot, BarChart3, KeyRound, Zap } from "lucide-react";
 import { APP_NAME, SITE_URL, displayUrl, openExternal } from "../lib/appInfo";
+import { GLOBAL_QUICK_VISIBLE_KEY } from "../lib/globalQuickCommands";
 
 // ══════════════════════════════════════
 // Layout — заголовок окна и четыре панели
 // ══════════════════════════════════════
 // Дерево | терминал (+ AI снизу) | AI справа | wiki. Панели скрываются кнопками
-// в заголовке и горячими клавишами; границы между ними тянутся мышью в
+// в заголовке и горячими клавишами; там же — панель глобальных быстрых команд
+// под терминалом (видимость переживает перезапуск); границы между ними тянутся мышью в
 // пределах MIN–MAX. Ширина дерева запоминается между запусками, остальные
 // размеры — только до перезапуска.
 // Терминал всегда в одном и том же месте дерева React: иначе смена позиции
@@ -56,6 +58,7 @@ export function Layout({ onOpenSettings, onOpenStats, onOpenSshKeys, sshKeysAler
     toggleTreePanel,
     toggleWikiPanel,
     saveSetting,
+    settings,
   } = useAppStore();
   const { t } = useTranslation();
 
@@ -99,6 +102,8 @@ export function Layout({ onOpenSettings, onOpenStats, onOpenSshKeys, sshKeysAler
     document.addEventListener("mouseup", onUp);
   };
 
+  const showGlobalQuick = settings[GLOBAL_QUICK_VISIBLE_KEY] === "true";
+
   const cursor = dragging && (dragging === "ai" && aiPanelPosition === "bottom" ? "row-resize" : "col-resize");
 
   return (
@@ -137,6 +142,13 @@ export function Layout({ onOpenSettings, onOpenStats, onOpenSshKeys, sshKeysAler
             title="Toggle Wiki (Ctrl+\)"
           >
             Wiki
+          </button>
+          <button
+            onClick={() => saveSetting(GLOBAL_QUICK_VISIBLE_KEY, String(!showGlobalQuick))}
+            className={`px-2 py-1 rounded text-2xs flex items-center ${panelToggleCls(showGlobalQuick)}`}
+            title={t("globalQuick.toggle")}
+          >
+            <Zap className="w-3 h-3" />
           </button>
           {onOpenSshKeys && (
             <button

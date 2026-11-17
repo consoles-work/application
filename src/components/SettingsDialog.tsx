@@ -11,23 +11,28 @@ import i18n from "../lib/i18n";
 import { AI_PROVIDERS, getProvider, streamCompletion } from "../lib/aiProviders";
 import { APP_NAME, APP_VERSION } from "../lib/appInfo";
 import { useThemePreview } from "../hooks/useThemePreview";
+import type { SettingsTab } from "../types";
+import { GlobalQuickCommandsTab } from "./GlobalQuickCommandsTab";
+import { Toggle } from "./Toggle";
 
 // ══════════════════════════════════════
 // SettingsDialog — настройки приложения (Cmd+,)
 // ══════════════════════════════════════
-// Вкладки: данные (файл БД), терминал, интерфейс, агенты (AI), безопасность.
+// Вкладки: данные (файл БД), терминал, интерфейс, агенты (AI), безопасность,
+// глобальные быстрые команды (её таблице окно даёт больше ширины). Окно можно
+// открыть сразу на нужной вкладке — например, ПКМ по глобальной кнопке под
+// терминалом открывает быстрые команды на правке этой кнопки.
 // Любая настройка сохраняется сразу при изменении: сначала в БД, затем в стор
 // (компоненты подхватывают её без перезапуска). Не сохранилась — тост, в
 // интерфейсе остаётся прежнее значение. Смена языка переводит и меню трея.
 
-type Tab = "data" | "terminal" | "interface" | "agents" | "security";
+const TABS: SettingsTab[] = ["data", "terminal", "interface", "quick", "agents", "security"];
 
-const TABS: Tab[] = ["data", "terminal", "interface", "agents", "security"];
-
-const TAB_LABEL: Record<Tab, string> = {
+const TAB_LABEL: Record<SettingsTab, string> = {
   data: "settings.tabData",
   terminal: "settings.tabTerminal",
   interface: "settings.tabInterface",
+  quick: "settings.tabQuick",
   agents: "settings.tabAgents",
   security: "settings.tabSecurity",
 };
@@ -47,12 +52,15 @@ const CHOICE_OFF = "bg-surface-0 border-border text-text-primary hover:bg-surfac
 type ShowToast = (type: "success" | "error" | "info", msg: string) => void;
 
 interface SettingsDialogProps {
+  initialTab?: SettingsTab;
+  /** Глобальная быстрая команда, которую сразу открыть на правке */
+  initialEditId?: string;
   onClose: () => void;
   onOpenAbout: () => void;
 }
 
-export function SettingsDialog({ onClose, onOpenAbout }: SettingsDialogProps) {
-  const [tab, setTab] = useState<Tab>("data");
+export function SettingsDialog({ initialTab = "data", initialEditId, onClose, onOpenAbout }: SettingsDialogProps) {
+  const [tab, setTab] = useState<SettingsTab>(initialTab);
   const { settings, setSetting: storeSetting, showToast } = useAppStore();
   const [dbInfo, setDbInfo] = useState<DbInfo | null>(null);
   const { t } = useTranslation();
@@ -88,7 +96,11 @@ export function SettingsDialog({ onClose, onOpenAbout }: SettingsDialogProps) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-surface-1 border border-border rounded-xl shadow-2xl w-[560px] max-h-[80vh] flex flex-col">
+      <div
+        className={`bg-surface-1 border border-border rounded-xl shadow-2xl max-h-[80vh] flex flex-col ${
+          tab === "quick" ? "w-[780px] max-w-[95vw]" : "w-[640px] max-w-[95vw]"
+        }`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
           <h2 className="text-sm font-semibold text-text-primary">{t("settings.title")}</h2>
@@ -101,11 +113,11 @@ export function SettingsDialog({ onClose, onOpenAbout }: SettingsDialogProps) {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-border px-5 shrink-0">
+        <div className="flex border-b border-border px-5 shrink-0 overflow-x-auto">
           {TABS.map((tabKey) => (
             <button
               key={tabKey}
-              className={`py-2.5 px-3 text-xs border-b-2 transition-colors ${
+              className={`py-2.5 px-3 text-xs whitespace-nowrap border-b-2 transition-colors ${
                 tab === tabKey
                   ? "border-accent text-accent"
                   : "border-transparent text-text-secondary hover:text-text-primary"
@@ -132,6 +144,7 @@ export function SettingsDialog({ onClose, onOpenAbout }: SettingsDialogProps) {
             <AgentsTab settings={settings} onChange={handleSetSetting} showToast={showToast} />
           )}
           {tab === "security" && <SecurityTab settings={settings} onChange={handleSetSetting} showToast={showToast} />}
+          {tab === "quick" && <GlobalQuickCommandsTab initialEditId={initialEditId} onChange={handleSetSetting} />}
         </div>
       </div>
     </div>
@@ -1020,18 +1033,6 @@ function ThemeGroup({
         ))}
       </div>
     </div>
-  );
-}
-
-function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className={`relative w-10 h-5 rounded-full transition-colors ${on ? "bg-accent" : "bg-surface-3"}`}>
-      <span
-        className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-          on ? "translate-x-5" : "translate-x-0"
-        }`}
-      />
-    </button>
   );
 }
 

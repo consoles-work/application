@@ -75,7 +75,7 @@ SSH passphrase автоподставляется через `ssh-add` с `SSH_A
   - `TreePanel.tsx`, `TerminalPanel.tsx`, `WikiPanel.tsx`, `AiPanel.tsx` — независимые панели
   - `WikiToolbar.tsx` — тулбар TipTap
   - `CommandPalette.tsx` — поиск по дереву (Cmd+P)
-  - `SettingsDialog.tsx` — 4 вкладки: Данные / Терминал / Интерфейс / Агенты
+  - `SettingsDialog.tsx` — вкладки: Данные / Терминал / Интерфейс / Быстрые команды / Агенты / Безопасность; открывается через стор `openSettings(tab, editId)`
   - `ExportDialog.tsx`, `ImportDialog.tsx` — экспорт/импорт `.dchub`
   - `ContextMenu.tsx`, `Toast.tsx`, диалоги создания/редактирования
 - **Wiki-редактор**: TipTap (ProseMirror). Контент хранится как TipTap JSON. Привязка к выбранному узлу или "global". Автосохранение debounce 1000ms.
@@ -107,7 +107,7 @@ HTML5 DnD API **не работает в Tauri WebKit** — использует
 
 ### Текущее состояние
 
-MVP завершён полностью. Все панели рабочие. PTY, SSH (key + passphrase + password), wiki, AI-чат (OpenAI + Anthropic + Ollama, история в SQLite), экспорт/импорт (.dchub, AES-256-GCM, выборочный по воркспейсам, wiki с корректной перепривязкой ID, AI-чаты, настройки приложения), публичный экспорт списка серверов в .md (без секретов, поле «Хостинг» `consoles.hosting`), быстрые команды консоли (кнопки под терминалом, JSON-колонка `consoles.quick_commands`, едут в шифрованном экспорте вместе с деревом; счётчики `runCount`/`savedChars` увеличивает команда `record_quick_command_run`, оценка сэкономленного времени — `src/lib/quickCommandStats.ts`; группы — поле `group`, боксы под терминалом, `src/lib/quickCommandGroups.ts`), drag-and-drop консолей между проектами, системный трей, один экземпляр приложения (`tauri-plugin-single-instance`), автозапуск, 18 тем, 5 языков локализации, шифрование БД (SQLCipher) — всё реализовано.
+MVP завершён полностью. Все панели рабочие. PTY, SSH (key + passphrase + password), wiki, AI-чат (OpenAI + Anthropic + Ollama, история в SQLite), экспорт/импорт (.dchub, AES-256-GCM, выборочный по воркспейсам, wiki с корректной перепривязкой ID, AI-чаты, настройки приложения), публичный экспорт списка серверов в .md (без секретов, поле «Хостинг» `consoles.hosting`), быстрые команды консоли (кнопки под терминалом, JSON-колонка `consoles.quick_commands`, едут в шифрованном экспорте вместе с деревом; счётчики `runCount`/`savedChars` увеличивает команда `record_quick_command_run`, оценка сэкономленного времени — `src/lib/quickCommandStats.ts`; группы — поле `group`, боксы под терминалом, `src/lib/quickCommandGroups.ts`), глобальные быстрые команды для всех консолей (настройка `quickCommands.global`, стандартный набор и счётчики — `src/lib/globalQuickCommands.ts`; панель под терминалом по кнопке ⚡ в заголовке, `ui.showGlobalQuick`; таблица по группам — «Настройки → Быстрые команды», `GlobalQuickCommandsTab.tsx`; форма общая с командами консоли — `dialogs/QuickCommandEditor.tsx`), drag-and-drop консолей между проектами, системный трей, один экземпляр приложения (`tauri-plugin-single-instance`), автозапуск, 18 тем, 5 языков локализации, шифрование БД (SQLCipher) — всё реализовано.
 
 ### Чеклист добавления новой Tauri-команды
 
