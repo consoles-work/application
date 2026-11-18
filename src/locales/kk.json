@@ -305,7 +305,8 @@
     "exportButton": "Экспорттау",
     "toastSuccess": "Экспорт сәтті сақталды",
     "toastError": "Экспорт қатесі: {{error}}",
-    "includeSettings": "Қолданба параметрлері"
+    "includeSettings": "Қолданба параметрлері",
+    "includeGlobalQuick": "Жаһандық жылдам командалар"
   },
   "import": {
     "title": "Деректерді импорттау",
@@ -334,7 +335,12 @@
     "importButton": "Импорттау",
     "importing": "Импорттауда...",
     "statsSettings": "Параметрлер",
-    "includeSettings": "Файлдан параметрлерді қолдану"
+    "includeSettings": "Файлдан параметрлерді қолдану",
+    "statsGlobalQuick": "Жаһандық жылдам командалар",
+    "includeGlobalQuick": "Жаһандық жылдам командалар",
+    "globalQuickMergeHint": "Тек жаңалары қосылады: бар командалар өткізіліп жіберіледі",
+    "globalQuickReplaceHint": "Ағымдағы жаһандық командалар тізімі файлдағы тізіммен ауыстырылады",
+    "toastSuccessQuick": "Импорт аяқталды. Жаһандық командалар қосылды: {{added}}, қайталанғандар өткізілді: {{skipped}}"
   },
   "globalSearch": {
     "placeholder": "Wiki іздеу...",

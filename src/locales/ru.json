@@ -305,7 +305,8 @@
     "exportButton": "Экспортировать",
     "toastSuccess": "Экспорт успешно сохранён",
     "toastError": "Ошибка экспорта: {{error}}",
-    "includeSettings": "Настройки приложения"
+    "includeSettings": "Настройки приложения",
+    "includeGlobalQuick": "Глобальные быстрые команды"
   },
   "import": {
     "title": "Импорт данных",
@@ -334,7 +335,12 @@
     "importButton": "Импортировать",
     "importing": "Импорт...",
     "statsSettings": "Настроек",
-    "includeSettings": "Применить настройки из файла"
+    "includeSettings": "Применить настройки из файла",
+    "statsGlobalQuick": "Глобальных быстрых команд",
+    "includeGlobalQuick": "Глобальные быстрые команды",
+    "globalQuickMergeHint": "Добавятся только новые: команды, которые уже есть, пропускаются",
+    "globalQuickReplaceHint": "Текущий список глобальных команд заменится списком из файла",
+    "toastSuccessQuick": "Импорт завершён. Глобальных команд добавлено: {{added}}, дублей пропущено: {{skipped}}"
   },
   "globalSearch": {
     "placeholder": "Поиск по wiki...",

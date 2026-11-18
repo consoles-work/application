@@ -64,7 +64,7 @@ SSH passphrase автоподставляется через `ssh-add` с `SSH_A
 
 ### Экспорт/импорт
 
-`src-tauri/src/export.rs` — бинарный формат `.dchub`: magic `DCHUB1` + flags + salt(32) + nonce(12) + len(4) + AES-256-GCM ciphertext. Шифрование через compile-time app-секрет + опциональный пользовательский пароль (PBKDF2-HMAC-SHA256, 100k итераций). Три Tauri-команды: `export_data`, `preview_import`, `apply_import`. Payload содержит: дерево (workspace/project/console), wiki-страницы (все типы, при импорте перепривязываются через `old_id → new_id` маппинг), AI-сессии с сообщениями, настройки (опционально). `#[serde(default)]` на поле `settings` обеспечивает обратную совместимость со старыми файлами.
+`src-tauri/src/export.rs` — бинарный формат `.dchub`: magic `DCHUB1` + flags + salt(32) + nonce(12) + len(4) + AES-256-GCM ciphertext. Шифрование через compile-time app-секрет + опциональный пользовательский пароль (PBKDF2-HMAC-SHA256, 100k итераций). Три Tauri-команды: `export_data`, `preview_import`, `apply_import`. Payload содержит: дерево (workspace/project/console), wiki-страницы (все типы, при импорте перепривязываются через `old_id → new_id` маппинг), AI-сессии с сообщениями, настройки (опционально), глобальные быстрые команды (`global_quick_commands`, при импорте «Добавить» — без дублей по тексту команды; ключ `quickCommands.global` в разделе настроек не едет). `#[serde(default)]` на поле `settings` обеспечивает обратную совместимость со старыми файлами.
 
 ### Frontend
 

@@ -247,7 +247,14 @@ export interface ImportPreview {
   aiSessionCount: number;
   aiMessageCount: number;
   settingsCount: number;
+  globalQuickCount: number;
   hasPassword: boolean;
+}
+
+/** Итог импорта — зеркало `ImportResult` в export.rs */
+export interface ImportResult {
+  globalQuickAdded: number;
+  globalQuickSkipped: number;
 }
 
 export async function saveTextFile(filePath: string, content: string): Promise<void> {
@@ -260,6 +267,7 @@ export interface ExportSections {
   wiki: boolean;
   ai: boolean;
   settings: boolean;
+  globalQuick: boolean;
 }
 
 /** `workspaceIds` не задан — все воркспейсы */
@@ -292,8 +300,8 @@ export async function applyImport(
   userPassword: string | undefined,
   sections: ExportSections,
   mode: "merge" | "replace"
-): Promise<void> {
-  return invoke("apply_import", {
+): Promise<ImportResult> {
+  return invoke<ImportResult>("apply_import", {
     filePath,
     userPassword: userPassword || null,
     sections,

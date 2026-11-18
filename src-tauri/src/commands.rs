@@ -652,7 +652,7 @@ pub fn apply_import(
     user_password: Option<String>,
     sections: crate::export::Sections,
     mode: crate::export::ImportMode,
-) -> Result<(), String> {
+) -> Result<crate::export::ImportResult, String> {
     crate::export::import_file(&file_path, user_password.as_deref(), sections, mode)
 }
 

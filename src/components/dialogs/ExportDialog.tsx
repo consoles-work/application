@@ -9,6 +9,8 @@ import { useTranslation } from "react-i18next";
 // ExportDialog — экспорт в зашифрованный файл .dchub
 // ══════════════════════════════════════
 // Дерево выбранных воркспейсов (по умолчанию — всех) и отмеченные разделы.
+// Глобальные быстрые команды: если список ни разу не сохранялся, сначала
+// сохраняем стандартный набор, который видит пользователь, — бэкенд о нём не знает.
 // Пароль необязателен: без него файл открывает любая копия приложения.
 // Ни одного воркспейса не выбрано — экспортировать нечего. Отменили выбор
 // файла — ничего. Ошибка — тост, диалог остаётся открытым.
@@ -18,11 +20,12 @@ interface Props {
 }
 
 export function ExportDialog({ onClose }: Props) {
-  const { showToast, workspaces } = useAppStore();
+  const { showToast, workspaces, saveGlobalQuickIfUnsaved } = useAppStore();
   const { t } = useTranslation();
   const [includeWiki, setIncludeWiki] = useState(true);
   const [includeAi, setIncludeAi] = useState(true);
   const [includeSettings, setIncludeSettings] = useState(false);
+  const [includeGlobalQuick, setIncludeGlobalQuick] = useState(true);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -53,10 +56,12 @@ export function ExportDialog({ onClose }: Props) {
 
       if (!filePath) return;
 
+      if (includeGlobalQuick) await saveGlobalQuickIfUnsaved(t);
+
       // Все выбраны — не перечисляем: новые воркспейсы тоже попадут
       await exportData(
         filePath,
-        { tree: true, wiki: includeWiki, ai: includeAi, settings: includeSettings },
+        { tree: true, wiki: includeWiki, ai: includeAi, settings: includeSettings, globalQuick: includeGlobalQuick },
         password || undefined,
         allSelected ? undefined : Array.from(selectedWsIds)
       );
@@ -131,6 +136,16 @@ export function ExportDialog({ onClose }: Props) {
               className="accent-accent cursor-pointer"
             />
             <span className="text-xs text-text-primary">{t("export.includeAi")}</span>
+          </label>
+
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={includeGlobalQuick}
+              onChange={(e) => setIncludeGlobalQuick(e.target.checked)}
+              className="accent-accent cursor-pointer"
+            />
+            <span className="text-xs text-text-primary">{t("export.includeGlobalQuick")}</span>
           </label>
 
           <label className="flex items-center gap-2 cursor-pointer">

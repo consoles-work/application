@@ -6,7 +6,11 @@
 //
 // export_to_file — сохранить выбранное в файл:
 //  1. Собираем разделы: дерево (все воркспейсы или выбранные), wiki — все
-//     страницы, AI-чаты с сообщениями, настройки приложения.
+//     страницы, AI-чаты с сообщениями, глобальные быстрые команды, настройки
+//     приложения. Глобальные команды — отдельным разделом, не внутри настроек:
+//     при импорте их сливают с текущими, а не перезаписывают. Стандартный
+//     набор существует только на фронте, поэтому несохранённый список фронт
+//     сохраняет до экспорта.
 //  2. Шифруем: ключ из секрета приложения и, если задан, пароля пользователя.
 //     Флаг пароля пишется в заголовок — импорт по нему понимает, что спросить пароль.
 //  3. Пишем файл.
@@ -26,7 +30,14 @@
 //     страница узла, которого нет в файле, пропускается. Дерево не
 //     импортировали — страницы остаются на старых id (работает при импорте в ту же БД).
 //  5. AI-чаты — новыми сессиями.
-//  6. Настройки — поверх текущих, кроме пароля на вход: чужой пароль не подхватываем.
+//  6. Настройки — поверх текущих, кроме пароля на вход (чужой пароль не
+//     подхватываем) и глобальных команд (их раздел — шаг 7).
+//  7. Глобальные быстрые команды. «Добавить» — к текущим только новые: дубль —
+//     та же команда (без учёта пробелов); id, занятый другой командой, —
+//     новый. «Заменить» — список из файла. Несохранённый список фронт
+//     сохраняет до импорта, иначе стандартный набор пропал бы.
+//  Исход: сколько глобальных команд добавлено и сколько пропущено дублями —
+//  фронт пишет это в тост.
 //  Транзакции нет: ошибка на середине оставляет уже записанное.
 //
 // Формат файла (менять только с новой версией MAGIC — старые файлы должны читаться):
@@ -39,7 +50,7 @@
 // Ключ: PBKDF2-HMAC-SHA256(APP_SECRET [+ ':' + user_password], salt, 100000)
 // Payload: JSON с полем "_verify" — отличает верную расшифровку от мусора.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use aes_gcm::{
     aead::{Aead, KeyInit},
@@ -50,7 +61,7 @@ use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 
-use crate::commands::{AiMessage, AiSession, WikiPage, Workspace};
+use crate::commands::{AiMessage, AiSession, QuickCommand, WikiPage, Workspace};
 
 // Внутренний секрет приложения (не секретный от reverse-engineering,
 // но защищает файл от случайного открытия другими программами)
@@ -63,6 +74,9 @@ const FLAG_USER_PASSWORD: u8 = 0x01;
 const SALT_LEN: usize = 32;
 const NONCE_LEN: usize = 12;
 const HEADER_LEN: usize = MAGIC.len() + 1 + SALT_LEN + NONCE_LEN + 4;
+
+/// Глобальные быстрые команды — JSON-список в этой настройке (то же имя — GLOBAL_QUICK_KEY в globalQuickCommands.ts)
+const GLOBAL_QUICK_KEY: &str = "quickCommands.global";
 
 /// Шаг «б» превью: по этому тексту ImportDialog переходит к вводу пароля
 const ERR_PASSWORD_REQUIRED: &str = "Файл защищён паролем";
@@ -77,6 +91,9 @@ pub struct Sections {
     pub wiki: bool,
     pub ai: bool,
     pub settings: bool,
+    /// Глобальные быстрые команды; старый фронт поля не шлёт — раздел выключен
+    #[serde(default)]
+    pub global_quick: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -98,6 +115,9 @@ pub struct ExportPayload {
     pub ai: Vec<AiSessionExport>,
     #[serde(default)]
     pub settings: HashMap<String, String>,
+    /// Файлы до этого раздела его не содержат — пустой список
+    #[serde(default)]
+    pub global_quick_commands: Vec<QuickCommand>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -118,7 +138,16 @@ pub struct ImportPreview {
     pub ai_session_count: usize,
     pub ai_message_count: usize,
     pub settings_count: usize,
+    pub global_quick_count: usize,
     pub has_password: bool,
+}
+
+/// Итог импорта для тоста ImportDialog
+#[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportResult {
+    pub global_quick_added: usize,
+    pub global_quick_skipped: usize,
 }
 
 // ══════════════════════════════════════════════
@@ -159,7 +188,17 @@ pub fn export_to_file(
         Vec::new()
     };
 
-    let settings = if sections.settings { crate::db::get_all_settings()? } else { HashMap::new() };
+    let settings = if sections.settings {
+        let mut all = crate::db::get_all_settings()?;
+
+        all.remove(GLOBAL_QUICK_KEY);
+
+        all
+    } else {
+        HashMap::new()
+    };
+
+    let global_quick_commands = if sections.global_quick { load_global_quick() } else { Vec::new() };
 
     let payload = ExportPayload {
         _verify: VERIFY_VALUE.to_string(),
@@ -168,6 +207,7 @@ pub fn export_to_file(
         wiki,
         ai,
         settings,
+        global_quick_commands,
     };
 
     // 2. Шифрование.
@@ -197,6 +237,7 @@ pub fn preview_file(path: &str, user_password: Option<&str>) -> Result<ImportPre
         ai_session_count: payload.ai.len(),
         ai_message_count: payload.ai.iter().map(|s| s.messages.len()).sum(),
         settings_count: payload.settings.len(),
+        global_quick_count: payload.global_quick_commands.len(),
         has_password: password.is_some(),
     })
 }
@@ -206,7 +247,7 @@ pub fn import_file(
     user_password: Option<&str>,
     sections: Sections,
     mode: ImportMode,
-) -> Result<(), String> {
+) -> Result<ImportResult, String> {
     // 1. Расшифровка.
     let payload = read_payload(path, non_empty(user_password))?;
 
@@ -245,14 +286,24 @@ pub fn import_file(
         }
     }
 
-    // 6. Настройки, кроме пароля на вход.
+    // 6. Настройки, кроме пароля на вход и глобальных команд.
     if sections.settings {
-        for (key, value) in payload.settings.iter().filter(|(key, _)| !key.starts_with(crate::security::PREFIX)) {
+        let applicable = payload
+            .settings
+            .iter()
+            .filter(|(key, _)| !key.starts_with(crate::security::PREFIX) && key.as_str() != GLOBAL_QUICK_KEY);
+
+        for (key, value) in applicable {
             crate::db::set_setting_value(key, value)?;
         }
     }
 
-    Ok(())
+    // 7. Глобальные быстрые команды.
+    if !sections.global_quick {
+        return Ok(ImportResult::default());
+    }
+
+    import_global_quick(payload.global_quick_commands, mode)
 }
 
 // ══════════════════════════════════════════════
@@ -423,6 +474,72 @@ fn assign_new_id(id: &mut String, id_map: &mut HashMap<String, String>) -> Strin
     new_id
 }
 
+/// Шаг 7 импорта: слить (или заменить) и сохранить список
+fn import_global_quick(incoming: Vec<QuickCommand>, mode: ImportMode) -> Result<ImportResult, String> {
+    let current = if mode == ImportMode::Replace { Vec::new() } else { load_global_quick() };
+
+    let merged = merge_global_quick(current, incoming);
+
+    let json = serde_json::to_string(&merged.commands).map_err(|e| e.to_string())?;
+
+    crate::db::set_setting_value(GLOBAL_QUICK_KEY, &json)?;
+
+    Ok(ImportResult { global_quick_added: merged.added, global_quick_skipped: merged.skipped })
+}
+
+/// Шаг 1 экспорта и шаг 7 импорта: список из настройки. Нет или битый — пусто:
+/// несохранённый стандартный набор фронт записывает до вызова, битый на фронте
+/// тоже показывается стандартным набором и тоже перезаписывается.
+fn load_global_quick() -> Vec<QuickCommand> {
+    let raw = crate::db::get_setting_str(GLOBAL_QUICK_KEY, "");
+
+    serde_json::from_str(&raw).unwrap_or_default()
+}
+
+/// Шаг 7 импорта: итог слияния списков
+struct MergedQuick {
+    commands: Vec<QuickCommand>,
+    added: usize,
+    skipped: usize,
+}
+
+/// Шаг 7 импорта: к текущим — команды из файла, которых ещё нет. Дубль — та же
+/// команда без учёта пробелов (в том числе повтор внутри самого файла); id,
+/// уже занятый, заменяется новым. Счётчики запусков едут вместе с командой.
+fn merge_global_quick(current: Vec<QuickCommand>, incoming: Vec<QuickCommand>) -> MergedQuick {
+    let mut seen_commands: HashSet<String> = current.iter().map(|c| command_key(&c.command)).collect();
+    let mut seen_ids: HashSet<String> = current.iter().map(|c| c.id.clone()).collect();
+    let mut commands = current;
+    let mut skipped = 0;
+
+    let before = commands.len();
+
+    for mut cmd in incoming {
+        if !seen_commands.insert(command_key(&cmd.command)) {
+            skipped += 1;
+
+            continue;
+        }
+
+        if !seen_ids.insert(cmd.id.clone()) {
+            cmd.id = uuid::Uuid::new_v4().to_string();
+
+            seen_ids.insert(cmd.id.clone());
+        }
+
+        commands.push(cmd);
+    }
+
+    let added = commands.len() - before;
+
+    MergedQuick { commands, added, skipped }
+}
+
+/// Шаг 7 импорта: команда для сравнения на дубли — пробелы и переводы строк схлопнуты
+fn command_key(command: &str) -> String {
+    command.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
 /// Шаг 4 импорта: к какому узлу привязать страницу; None — узла нет в файле, страница пропускается
 fn wiki_parent(page: &WikiPage, tree_imported: bool, id_map: &HashMap<String, String>) -> Option<String> {
     if page.parent_type == "global" || !tree_imported {
@@ -451,6 +568,40 @@ mod tests {
 
         assert_eq!(decrypt(&file, None).unwrap_err(), ERR_PASSWORD_REQUIRED);
         assert!(decrypt(&file, Some("wrong")).is_err());
+    }
+
+    fn quick(id: &str, command: &str) -> QuickCommand {
+        serde_json::from_value(serde_json::json!({ "id": id, "label": command, "command": command })).unwrap()
+    }
+
+    #[test]
+    fn merge_global_quick_skips_duplicates_and_renames_taken_ids() {
+        let current = vec![quick("std.diskFree", "df -h"), quick("a", "uptime")];
+
+        let incoming = vec![
+            quick("x", "df   -h"),         // та же команда, другие пробелы — дубль
+            quick("a", "free -h"),         // новая команда с занятым id
+            quick("y", "docker ps -a"),    // новая
+            quick("z", "docker ps -a\n"), // повтор внутри файла — дубль
+        ];
+
+        let merged = merge_global_quick(current, incoming);
+
+        let commands: Vec<&str> = merged.commands.iter().map(|c| c.command.as_str()).collect();
+
+        assert_eq!(commands, ["df -h", "uptime", "free -h", "docker ps -a"]);
+        assert_eq!((merged.added, merged.skipped), (2, 2));
+        assert_ne!(merged.commands[2].id, "a");
+        assert_eq!(merged.commands[3].id, "y");
+    }
+
+    #[test]
+    fn old_files_without_global_quick_still_parse() {
+        let json = r#"{"_verify":"dchub-v1-ok","exported_at":"","tree":[],"wiki":[],"ai":[]}"#;
+
+        let payload: ExportPayload = serde_json::from_str(json).unwrap();
+
+        assert!(payload.global_quick_commands.is_empty());
     }
 
     #[test]

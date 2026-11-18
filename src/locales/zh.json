@@ -305,7 +305,8 @@
     "exportButton": "导出",
     "toastSuccess": "导出已成功保存",
     "toastError": "导出错误: {{error}}",
-    "includeSettings": "应用设置"
+    "includeSettings": "应用设置",
+    "includeGlobalQuick": "全局快捷命令"
   },
   "import": {
     "title": "导入数据",
@@ -334,7 +335,12 @@
     "importButton": "导入",
     "importing": "导入中...",
     "statsSettings": "设置",
-    "includeSettings": "应用文件中的设置"
+    "includeSettings": "应用文件中的设置",
+    "statsGlobalQuick": "全局快捷命令",
+    "includeGlobalQuick": "全局快捷命令",
+    "globalQuickMergeHint": "只添加新命令：已有的命令会被跳过",
+    "globalQuickReplaceHint": "当前的全局命令列表将被文件中的列表替换",
+    "toastSuccessQuick": "导入完成。已添加全局命令：{{added}}，跳过重复：{{skipped}}"
   },
   "globalSearch": {
     "placeholder": "搜索 Wiki...",

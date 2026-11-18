@@ -13,6 +13,8 @@ import type {
 } from "../types";
 import type { ChatMessage } from "../lib/aiProviders";
 import { allConsoles, flattenTree } from "../lib/tree";
+import { GLOBAL_QUICK_KEY, globalQuickCommands, isSavedGlobalQuick } from "../lib/globalQuickCommands";
+import type { TFunction } from "i18next";
 
 // ══════════════════════════════════════════════
 // App Store — центральное хранилище состояния интерфейса
@@ -159,6 +161,12 @@ interface AppState {
   setSetting: (key: string, value: string) => void;
   // В стор сразу, в БД — «по возможности» (см. правила в шапке)
   saveSetting: (key: string, value: string) => void;
+  /**
+   * Глобальные быстрые команды ни разу не сохранялись — сохранить то, что видно
+   * (стандартный набор есть только на фронте, а экспорт и импорт читают БД).
+   * В отличие от saveSetting ждёт записи и бросает ошибку.
+   */
+  saveGlobalQuickIfUnsaved: (t: TFunction) => Promise<void>;
   /** Тема, примеряемая наведением в настройках (не сохраняется); null — показана выбранная */
   previewTheme: string | null;
   setPreviewTheme: (id: string | null) => void;
@@ -524,6 +532,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSetting: (key, value) => set((state) => ({ settings: { ...state.settings, [key]: value } })),
 
   setPreviewTheme: (id) => set({ previewTheme: id }),
+
+  saveGlobalQuickIfUnsaved: async (t) => {
+    const raw = get().settings[GLOBAL_QUICK_KEY];
+
+    if (isSavedGlobalQuick(raw)) return;
+
+    const json = JSON.stringify(globalQuickCommands(raw, t));
+
+    await persistSetting(GLOBAL_QUICK_KEY, json);
+
+    get().setSetting(GLOBAL_QUICK_KEY, json);
+  },
 
   saveSetting: (key, value) => {
     get().setSetting(key, value);

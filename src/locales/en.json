@@ -305,7 +305,8 @@
     "exportButton": "Export",
     "toastSuccess": "Export saved successfully",
     "toastError": "Export error: {{error}}",
-    "includeSettings": "App settings"
+    "includeSettings": "App settings",
+    "includeGlobalQuick": "Global quick commands"
   },
   "import": {
     "title": "Import data",
@@ -334,7 +335,12 @@
     "importButton": "Import",
     "importing": "Importing...",
     "statsSettings": "Settings",
-    "includeSettings": "Apply settings from file"
+    "includeSettings": "Apply settings from file",
+    "statsGlobalQuick": "Global quick commands",
+    "includeGlobalQuick": "Global quick commands",
+    "globalQuickMergeHint": "Only new ones are added: commands you already have are skipped",
+    "globalQuickReplaceHint": "Your current global commands will be replaced by the list from the file",
+    "toastSuccessQuick": "Import complete. Global commands added: {{added}}, duplicates skipped: {{skipped}}"
   },
   "globalSearch": {
     "placeholder": "Search wiki...",

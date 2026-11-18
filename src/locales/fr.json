@@ -305,7 +305,8 @@
     "exportButton": "Exporter",
     "toastSuccess": "Export sauvegardé avec succès",
     "toastError": "Erreur d'export: {{error}}",
-    "includeSettings": "Paramètres de l'application"
+    "includeSettings": "Paramètres de l'application",
+    "includeGlobalQuick": "Commandes rapides globales"
   },
   "import": {
     "title": "Importer les données",
@@ -334,7 +335,12 @@
     "importButton": "Importer",
     "importing": "Import...",
     "statsSettings": "Paramètres",
-    "includeSettings": "Appliquer les paramètres du fichier"
+    "includeSettings": "Appliquer les paramètres du fichier",
+    "statsGlobalQuick": "Commandes rapides globales",
+    "includeGlobalQuick": "Commandes rapides globales",
+    "globalQuickMergeHint": "Seules les nouvelles sont ajoutées : les commandes déjà présentes sont ignorées",
+    "globalQuickReplaceHint": "La liste actuelle des commandes globales sera remplacée par celle du fichier",
+    "toastSuccessQuick": "Import terminé. Commandes globales ajoutées : {{added}}, doublons ignorés : {{skipped}}"
   },
   "globalSearch": {
     "placeholder": "Rechercher dans le wiki...",

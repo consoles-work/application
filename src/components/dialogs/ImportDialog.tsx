@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useAppStore } from "../../stores/appStore";
-import { previewImport, applyImport, loadAllWorkspaces, loadAiSessions, type ImportPreview } from "../../lib/tauriCommands";
+import { previewImport, applyImport, loadAllWorkspaces, loadAiSessions, getSettings, type ImportPreview } from "../../lib/tauriCommands";
 import { useTranslation } from "react-i18next";
 
 // ══════════════════════════════════════
@@ -13,8 +13,11 @@ import { useTranslation } from "react-i18next";
 //    б) другая ошибка (не .dchub, повреждён) — текст ошибки в диалоге;
 //    в) превью — что и сколько в файле.
 // 3. Пароль: неверный — сообщение, можно ввести снова.
-// 4. Применение выбранных разделов («добавить» или «заменить»), затем дерево и
-//    AI-чаты перечитываются из БД. Ошибка — текст в диалоге.
+// 4. Применение выбранных разделов («добавить» или «заменить»), затем дерево,
+//    AI-чаты и настройки перечитываются из БД. Ошибка — текст в диалоге.
+//    Глобальные быстрые команды: «добавить» — только новые, дубли пропускаются
+//    (сколько — в тосте); несохранённый стандартный набор сначала сохраняется,
+//    иначе бэкенд не знал бы о нём и он пропал бы. «Заменить» — список из файла.
 
 interface Props {
   onClose: () => void;
@@ -33,11 +36,12 @@ export function ImportDialog({ onClose }: Props) {
   const [includeWiki, setIncludeWiki] = useState(true);
   const [includeAi, setIncludeAi] = useState(true);
   const [includeSettings, setIncludeSettings] = useState(false);
+  const [includeGlobalQuick, setIncludeGlobalQuick] = useState(true);
   const [mode, setMode] = useState<"merge" | "replace">("merge");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const { showToast, setWorkspaces, setAiSessions, setActiveAiSessionId } = useAppStore();
+  const { showToast, setWorkspaces, setAiSessions, setActiveAiSessionId, setSettings, saveGlobalQuickIfUnsaved } = useAppStore();
   const { t } = useTranslation();
 
   // Общее для всех шагов: индикатор, сброс прошлой ошибки; onError — что показать вместо текста ошибки
@@ -91,14 +95,21 @@ export function ImportDialog({ onClose }: Props) {
   // 4. Применение и перечитывание.
   const handleApply = () =>
     run(async () => {
-      await applyImport(
+      // В файле нет глобальных команд — раздел не трогаем и в режиме «заменить»
+      const globalQuick = includeGlobalQuick && (preview?.globalQuickCount ?? 0) > 0;
+
+      if (globalQuick && mode === "merge") await saveGlobalQuickIfUnsaved(t);
+
+      const result = await applyImport(
         filePath,
         needsPassword ? password : undefined,
-        { tree: true, wiki: includeWiki, ai: includeAi, settings: includeSettings },
+        { tree: true, wiki: includeWiki, ai: includeAi, settings: includeSettings, globalQuick },
         mode
       );
 
       setWorkspaces(await loadAllWorkspaces());
+
+      setSettings(await getSettings());
 
       const sessions = await loadAiSessions();
 
@@ -106,7 +117,11 @@ export function ImportDialog({ onClose }: Props) {
 
       if (sessions.length > 0) setActiveAiSessionId(sessions[0].id);
 
-      showToast("success", t("import.toastSuccess"));
+      const message = globalQuick
+        ? t("import.toastSuccessQuick", { added: result.globalQuickAdded, skipped: result.globalQuickSkipped })
+        : t("import.toastSuccess");
+
+      showToast("success", message);
 
       onClose();
     });
@@ -221,6 +236,12 @@ export function ImportDialog({ onClose }: Props) {
                   {preview.aiSessionCount} / {preview.aiMessageCount}
                 </span>
               </div>
+              {preview.globalQuickCount > 0 && (
+                <div className="flex justify-between text-text-secondary">
+                  <span>{t("import.statsGlobalQuick")}</span>
+                  <span className="text-text-primary font-mono">{preview.globalQuickCount}</span>
+                </div>
+              )}
               {preview.settingsCount > 0 && (
                 <div className="flex justify-between text-text-secondary">
                   <span>{t("import.statsSettings")}</span>
@@ -254,6 +275,24 @@ export function ImportDialog({ onClose }: Props) {
                 />
                 <span className="text-xs text-text-primary">{t("export.includeAi")}</span>
               </label>
+              {preview.globalQuickCount > 0 && (
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={includeGlobalQuick}
+                      onChange={(e) => setIncludeGlobalQuick(e.target.checked)}
+                      className="accent-accent cursor-pointer"
+                    />
+                    <span className="text-xs text-text-primary">{t("import.includeGlobalQuick")}</span>
+                  </label>
+                  {includeGlobalQuick && (
+                    <p className="text-2xs text-text-muted ml-5">
+                      {mode === "merge" ? t("import.globalQuickMergeHint") : t("import.globalQuickReplaceHint")}
+                    </p>
+                  )}
+                </div>
+              )}
               {preview.settingsCount > 0 && (
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
