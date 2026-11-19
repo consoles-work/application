@@ -533,7 +533,7 @@ usage_stats (day, hour, console_id, project_id, metric, value — статист
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Принцип работы: IPC-мост TS↔Rust, PTY, SQLite, поток данных |
 | [docs/STATUS.md](docs/STATUS.md) | Статус готовности по компонентам, история изменений, TODO |
 | [docs/PLAN.md](docs/PLAN.md) | Детальный план разработки по этапам |
-| [docs/RULES.md](docs/RULES.md) | Правила работы: план и статус держать актуальными |
+| [docs/RULES.md](docs/RULES.md) | Правила работы: план и статус держать актуальными, версии, пост о новой фиче в Telegram-канал |
 
 ---
 
