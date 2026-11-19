@@ -37,7 +37,10 @@
     "toastConsoleMoved": "控制台 «{{name}}» 已移动到 «{{project}}»",
     "toastMoveError": "移动错误: {{error}}",
     "moveConfirm": "将控制台 «{{name}}» 移动到项目 «{{project}}»？",
-    "moveConfirmTitle": "移动控制台"
+    "moveConfirmTitle": "移动控制台",
+    "projectMoveConfirm": "将项目 «{{name}}» 移动到工作区 «{{workspace}}»？",
+    "projectMoveConfirmTitle": "移动项目",
+    "toastProjectMoved": "项目 «{{name}}» 已移动到 «{{workspace}}»"
   },
   "serversReport": {
     "title": "服务器：{{name}}",

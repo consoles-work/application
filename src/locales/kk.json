@@ -37,7 +37,10 @@
     "toastConsoleMoved": "Консоль «{{name}}» «{{project}}» жобасына жылжытылды",
     "toastMoveError": "Жылжыту қатесі: {{error}}",
     "moveConfirm": "«{{name}}» консолін «{{project}}» жобасына жылжыту керек пе?",
-    "moveConfirmTitle": "Консолді жылжыту"
+    "moveConfirmTitle": "Консолді жылжыту",
+    "projectMoveConfirm": "«{{name}}» жобасын «{{workspace}}» жұмыс кеңістігіне жылжыту керек пе?",
+    "projectMoveConfirmTitle": "Жобаны жылжыту",
+    "toastProjectMoved": "«{{name}}» жобасы «{{workspace}}» кеңістігіне жылжытылды"
   },
   "serversReport": {
     "title": "Серверлер: {{name}}",

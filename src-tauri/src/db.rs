@@ -286,7 +286,7 @@ pub fn load_all_workspaces() -> Result<Vec<Workspace>, String> {
 
     let mut workspaces = query_all(
         &db,
-        "SELECT id, name, icon, color, sort_order, is_expanded FROM workspaces ORDER BY sort_order",
+        "SELECT id, name, icon, color, sort_order, is_expanded FROM workspaces ORDER BY sort_order, rowid",
         [],
         |row| {
             Ok(Workspace {
@@ -304,7 +304,7 @@ pub fn load_all_workspaces() -> Result<Vec<Workspace>, String> {
     for ws in &mut workspaces {
         ws.projects = query_all(
             &db,
-            &format!("SELECT {PROJECT_COLUMNS} FROM projects WHERE workspace_id = ?1 ORDER BY sort_order"),
+            &format!("SELECT {PROJECT_COLUMNS} FROM projects WHERE workspace_id = ?1 ORDER BY sort_order, rowid"),
             params![ws.id],
             project_from_row,
         )?;
@@ -379,7 +379,13 @@ pub fn clone_project_by_id(id: &str) -> Result<Project, String> {
         .map(|con| ConsoleConfig { id: uuid::Uuid::new_v4().to_string(), project_id: new_id.clone(), ..con })
         .collect();
 
-    let copy = Project { id: new_id, name: format!("{} (copy)", original.name), consoles, ..original };
+    let copy = Project {
+        id: new_id,
+        name: format!("{} (copy)", original.name),
+        sort_order: next_sort_order_in(&db, TreeLevel::Project, &original.workspace_id)?,
+        consoles,
+        ..original
+    };
 
     write_project(&db, &copy)?;
 
@@ -410,10 +416,6 @@ pub fn delete_console_by_id(id: &str) -> Result<(), String> {
     execute("DELETE FROM consoles WHERE id = ?1", params![id])
 }
 
-pub fn move_console(id: &str, target_project_id: &str) -> Result<(), String> {
-    execute("UPDATE consoles SET project_id = ?1 WHERE id = ?2", params![target_project_id, id])
-}
-
 /// Копия консоли «<имя> (copy)» в том же проекте
 pub fn clone_console_by_id(id: &str) -> Result<ConsoleConfig, String> {
     let db = conn()?;
@@ -425,6 +427,7 @@ pub fn clone_console_by_id(id: &str) -> Result<ConsoleConfig, String> {
     let copy = ConsoleConfig {
         id: uuid::Uuid::new_v4().to_string(),
         name: format!("{} (copy)", original.name),
+        sort_order: next_sort_order_in(&db, TreeLevel::Console, &original.project_id)?,
         ..original
     };
 
@@ -477,6 +480,96 @@ pub fn set_node_expanded(id: &str, node_type: &str, is_expanded: bool) -> Result
     };
 
     execute(&format!("UPDATE {table} SET is_expanded = ?2 WHERE id = ?1"), params![id, is_expanded as i32])
+}
+
+/// Уровень дерева: своя таблица и колонка родителя (у воркспейса родителя нет)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TreeLevel {
+    Workspace,
+    Project,
+    Console,
+}
+
+impl TreeLevel {
+    fn table(self) -> &'static str {
+        match self {
+            TreeLevel::Workspace => "workspaces",
+            TreeLevel::Project => "projects",
+            TreeLevel::Console => "consoles",
+        }
+    }
+
+    fn parent_column(self) -> Option<&'static str> {
+        match self {
+            TreeLevel::Workspace => None,
+            TreeLevel::Project => Some("workspace_id"),
+            TreeLevel::Console => Some("project_id"),
+        }
+    }
+}
+
+/// Новый порядок узлов одного родителя после перетаскивания: позиция в списке
+/// становится `sort_order`, родитель — `parent_id` (так узел и переезжает
+/// в другой воркспейс/проект). Одной транзакцией — дерево не остаётся
+/// наполовину переставленным.
+pub fn reorder_nodes(level: TreeLevel, parent_id: Option<&str>, ordered_ids: &[String]) -> Result<(), String> {
+    let mut db = conn()?;
+
+    let tx = db.transaction().map_err(|e| e.to_string())?;
+
+    write_order(&tx, level, parent_id, ordered_ids)?;
+
+    tx.commit().map_err(|e| e.to_string())
+}
+
+fn write_order(db: &Connection, level: TreeLevel, parent_id: Option<&str>, ordered_ids: &[String]) -> Result<(), String> {
+    let table = level.table();
+
+    // У воркспейса родителя нет — пишем только порядок
+    let (sql, parent) = match (level.parent_column(), parent_id) {
+        (None, _) => (format!("UPDATE {table} SET sort_order = ?2 WHERE id = ?1"), None),
+        (Some(column), Some(parent)) => (format!("UPDATE {table} SET sort_order = ?2, {column} = ?3 WHERE id = ?1"), Some(parent)),
+        (Some(_), None) => return Err(format!("{level:?}: parent id is required")),
+    };
+
+    let mut stmt = db.prepare(&sql).map_err(|e| e.to_string())?;
+
+    for (position, id) in ordered_ids.iter().enumerate() {
+        let changed = match parent {
+            Some(parent) => stmt.execute(params![id, position as i32, parent]),
+            None => stmt.execute(params![id, position as i32]),
+        }
+        .map_err(|e| e.to_string())?;
+
+        // Узел успели удалить — транзакция откатится, фронт перечитает дерево
+        if changed == 0 {
+            return Err(format!("{level:?} {id} not found"));
+        }
+    }
+
+    Ok(())
+}
+
+/// `sort_order` для узла, который встаёт в конец родителя (создание, копия, импорт).
+/// У воркспейса `parent_id` не используется.
+pub fn next_sort_order(level: TreeLevel, parent_id: &str) -> Result<i32, String> {
+    next_sort_order_in(&*conn()?, level, parent_id)
+}
+
+fn next_sort_order_in(db: &Connection, level: TreeLevel, parent_id: &str) -> Result<i32, String> {
+    let table = level.table();
+
+    let next = match level.parent_column() {
+        Some(column) => db.query_row(
+            &format!("SELECT COALESCE(MAX(sort_order) + 1, 0) FROM {table} WHERE {column} = ?1"),
+            params![parent_id],
+            |row| row.get(0),
+        ),
+        None => db.query_row(&format!("SELECT COALESCE(MAX(sort_order) + 1, 0) FROM {table}"), [], |row| row.get(0)),
+    };
+
+    next.map_err(|e| e.to_string())
 }
 
 /// Пометка «опасно» — есть у проекта и консоли
@@ -783,7 +876,7 @@ fn is_valid_usage(e: &UsageStat) -> bool {
 fn load_consoles(db: &Connection, project_id: &str) -> Result<Vec<ConsoleConfig>, String> {
     query_all(
         db,
-        &format!("SELECT {CONSOLE_COLUMNS} FROM consoles WHERE project_id = ?1 ORDER BY sort_order"),
+        &format!("SELECT {CONSOLE_COLUMNS} FROM consoles WHERE project_id = ?1 ORDER BY sort_order, rowid"),
         params![project_id],
         console_from_row,
     )
@@ -975,5 +1068,44 @@ mod tests {
         let version: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0)).unwrap();
 
         assert_eq!(version, DATA_MIGRATIONS.len() as i64);
+    }
+
+    fn ids(conn: &Connection, sql: &str) -> Vec<String> {
+        query_all(conn, sql, [], |row| row.get(0)).unwrap()
+    }
+
+    #[test]
+    fn reorder_moves_project_to_other_workspace_and_new_nodes_go_last() {
+        let conn = Connection::open_in_memory().unwrap();
+
+        conn.execute_batch(SCHEMA).unwrap();
+
+        conn.execute_batch(
+            "INSERT INTO workspaces (id, name) VALUES ('w1', 'w1'), ('w2', 'w2');
+             INSERT INTO projects (id, workspace_id, name) VALUES ('a', 'w1', 'a'), ('b', 'w1', 'b'), ('c', 'w2', 'c');",
+        )
+        .unwrap();
+
+        let order = |ids: &[&str]| ids.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+
+        // «b» перетащили в w2 перед «c»
+        write_order(&conn, TreeLevel::Project, Some("w2"), &order(&["b", "c"])).unwrap();
+
+        let w2 = "SELECT id FROM projects WHERE workspace_id = 'w2' ORDER BY sort_order, rowid";
+
+        assert_eq!(ids(&conn, w2), ["b", "c"]);
+        assert_eq!(ids(&conn, "SELECT id FROM projects WHERE workspace_id = 'w1'"), ["a"]);
+
+        // Воркспейсы — без родителя
+        write_order(&conn, TreeLevel::Workspace, None, &order(&["w2", "w1"])).unwrap();
+
+        assert_eq!(ids(&conn, "SELECT id FROM workspaces ORDER BY sort_order, rowid"), ["w2", "w1"]);
+
+        assert_eq!(next_sort_order_in(&conn, TreeLevel::Project, "w2").unwrap(), 2);
+        assert_eq!(next_sort_order_in(&conn, TreeLevel::Project, "empty").unwrap(), 0);
+
+        // Удалённый узел и проект без родителя — ошибка
+        assert!(write_order(&conn, TreeLevel::Project, Some("w2"), &order(&["gone"])).is_err());
+        assert!(write_order(&conn, TreeLevel::Console, None, &order(&["x"])).is_err());
     }
 }

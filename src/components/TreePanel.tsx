@@ -4,8 +4,9 @@ import { ChevronRight, ChevronDown, Search, X, Upload, Download, StickyNote, His
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useAppStore, parseRecentConsoles } from "../stores/appStore";
 import type { ConsoleConfig, Project, TreeNode, Workspace } from "../types";
-import { updateWorkspace, updateProject, updateConsole, setNodeDanger, cloneConsole, cloneProject, moveConsole } from "../lib/tauriCommands";
+import { updateWorkspace, updateProject, updateConsole, setNodeDanger, cloneConsole, cloneProject, reorderNodes } from "../lib/tauriCommands";
 import { allConsoles, consoleNode, findConsole, findProject, searchIndex, searchTree, type SearchHit } from "../lib/tree";
+import { dropLine, dropTarget, placement, type DropLine, type DropTarget, type Placement } from "../lib/treeOrder";
 import { ContextMenu, type ContextMenuState } from "./ContextMenu";
 import { CreateWorkspaceDialog } from "./dialogs/CreateWorkspaceDialog";
 import { CreateProjectDialog } from "./dialogs/CreateProjectDialog";
@@ -24,8 +25,11 @@ import { ConsoleIconTile } from "../lib/consoleIcons";
 //
 // Клик: по консоли — переход к её открытому терминалу, а если его нет — новый;
 // по воркспейсу или проекту — свернуть/раскрыть (запоминается между запусками).
-// Перетаскивание консоли на проект — перенос с подтверждением. Мышью, а не
-// HTML5 DnD: тот в Tauri WebKit не работает. Сдвиг меньше порога — это клик.
+// Перетаскивание любого узла: выше/ниже соседа своего уровня, проект — на
+// воркспейс, консоль — на проект (в конец). Переезд в другой воркспейс или
+// проект — с подтверждением; перестановка внутри родителя — без вопросов.
+// У краёв дерева оно само прокручивается. Мышью, а не HTML5 DnD: тот в Tauri
+// WebKit не работает. Сдвиг меньше порога — это клик.
 // Поиск: по имени и несекретным полям (адрес, хостинг, заметка…); совпавшие
 // по имени — первыми, у остальных видна строка, в которой нашлось.
 // Переименование: двойной клик или F2 по выбранному узлу; Enter или уход
@@ -37,6 +41,10 @@ import { ConsoleIconTile } from "../lib/consoleIcons";
 const RECENT_CONSOLES_SHOWN = 5;
 
 const DRAG_THRESHOLD = 6;
+
+/** Автопрокрутка при перетаскивании: зона у края дерева и шаг за кадр, px */
+const AUTOSCROLL_EDGE = 28;
+const AUTOSCROLL_STEP = 8;
 
 const TYPE_BADGE: Record<TreeNode["type"], { label: string; cls: string }> = {
   workspace: { label: "WS", cls: "bg-surface-3 text-text-muted" },
@@ -63,7 +71,7 @@ export function TreePanel() {
     updateConsole: storeUpdateConsole,
     addConsole: storeAddConsole,
     addProject: storeAddProject,
-    moveConsoleToProject,
+    placeTreeNode,
     openConsole,
     activateConsole,
     reconnectSession,
@@ -133,39 +141,52 @@ export function TreePanel() {
     else toggleNodeExpanded(node.type, node.id);
   };
 
-  const handleDropOnProject = async (consoleId: string, consoleName: string, projectNode: TreeNode) => {
-    const target = findProject(workspaces, projectNode.id)?.project;
+  // Переезд в другой воркспейс/проект — только после подтверждения
+  const confirmMove = (dragged: TreeNode, place: Placement) =>
+    dragged.type === "console"
+      ? ask(t("treePanel.moveConfirm", { name: dragged.name, project: place.parentName }), {
+          title: t("treePanel.moveConfirmTitle"),
+          kind: "info",
+        })
+      : ask(t("treePanel.projectMoveConfirm", { name: dragged.name, workspace: place.parentName }), {
+          title: t("treePanel.projectMoveConfirmTitle"),
+          kind: "info",
+        });
 
-    // Уже в этом проекте — переносить некуда
-    if (!target || target.consoles.some((c) => c.id === consoleId)) return;
+  const handleDrop = async (dragged: TreeNode, target: DropTarget) => {
+    const place = placement(workspaces, dragged, target);
 
-    const confirmed = await ask(t("treePanel.moveConfirm", { name: consoleName, project: projectNode.name }), {
-      title: t("treePanel.moveConfirmTitle"),
-      kind: "info",
-    });
+    if (!place) return;
 
-    if (!confirmed) return;
+    if (place.parentChanged && !(await confirmMove(dragged, place))) return;
 
     try {
-      await moveConsole(consoleId, projectNode.id);
+      await reorderNodes(place.type, place.parentId, place.orderedIds);
 
-      moveConsoleToProject(consoleId, projectNode.id);
+      placeTreeNode(place);
 
-      showToast("success", t("treePanel.toastConsoleMoved", { name: consoleName, project: projectNode.name }));
+      if (!place.parentChanged) return;
+
+      showToast(
+        "success",
+        dragged.type === "console"
+          ? t("treePanel.toastConsoleMoved", { name: dragged.name, project: place.parentName })
+          : t("treePanel.toastProjectMoved", { name: dragged.name, workspace: place.parentName })
+      );
     } catch (e) {
       showToast("error", t("treePanel.toastMoveError", { error: e }));
     }
   };
 
-  const drag = useConsoleDrag({
-    disabled: !!renamingId,
-    onClick: handleClick,
-    onDrop: (dragged, projectId) => {
-      const projectNode = nodes.find((n) => n.id === projectId && n.type === "project");
+  const treeRef = useRef<HTMLDivElement>(null);
 
-      if (projectNode) handleDropOnProject(dragged.id, dragged.name, projectNode);
-    },
-  });
+  const drag = useTreeDrag({ disabled: !!renamingId, nodes, containerRef: treeRef, onClick: handleClick, onDrop: handleDrop });
+
+  // Куда встанет узел, если бросить сейчас; null — останется на месте, линию не рисуем.
+  // У призрака — подпись нового родителя, если он меняется.
+  const preview = drag.dragging && drag.target ? placement(workspaces, drag.dragging, drag.target) : null;
+
+  const line = preview && drag.target ? dropLine(drag.target, nodes) : null;
 
   // ── Поиск: действия ──
   useEffect(() => {
@@ -420,14 +441,13 @@ export function TreePanel() {
         )}
 
         {/* Tree */}
-        <div className="flex-1 overflow-y-auto py-1">
+        <div ref={treeRef} className="flex-1 overflow-y-auto py-1">
           {nodes.map((node) => (
             <TreeRow
               key={`${node.type}-${node.id}`}
               node={node}
               selected={isSelected(node)}
-              dropTarget={node.type === "project" && drag.overProjectId === node.id}
-              draggable={node.type === "console" && !drag.dragging}
+              dropLine={line?.rowId === node.id ? line : undefined}
               dragged={drag.dragging?.id === node.id}
               renaming={renamingId === node.id}
               renameInput={
@@ -445,9 +465,8 @@ export function TreePanel() {
                   onClick={(e) => e.stopPropagation()}
                 />
               }
-              // Клик по консоли обрабатывает перетаскивание: короткое нажатие — это клик
-              onClick={node.type !== "console" ? () => handleClick(node) : undefined}
-              onMouseDown={node.type === "console" ? (e) => drag.start(e, node) : undefined}
+              // Клик обрабатывает перетаскивание: короткое нажатие — это клик
+              onMouseDown={(e) => drag.start(e, node)}
               onDoubleClick={() => { if (!drag.dragging) startRename(node); }}
               onToggle={(e) => {
                 e.stopPropagation();
@@ -551,7 +570,7 @@ export function TreePanel() {
       {showExport && <ExportDialog onClose={() => setShowExport(false)} />}
       {showImport && <ImportDialog onClose={() => setShowImport(false)} />}
 
-      {/* Призрак перетаскиваемой консоли — следует за курсором */}
+      {/* Призрак перетаскиваемого узла — следует за курсором */}
       {drag.dragging &&
         createPortal(
           <>
@@ -562,11 +581,13 @@ export function TreePanel() {
               style={{ position: "fixed", left: drag.pos.x + 12, top: drag.pos.y - 10, pointerEvents: "none", zIndex: 9999 }}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-2 border border-accent shadow-xl text-xs text-accent font-medium opacity-95"
             >
-              <span className="text-sm">🔗</span>
+              {drag.dragging.type === "console" ? (
+                <ConsoleIconTile con={drag.dragging.data as ConsoleConfig} />
+              ) : (
+                <span className="text-sm">{drag.dragging.icon}</span>
+              )}
               {drag.dragging.name}
-              <span className={`ml-1 text-2xs ${drag.overProjectId ? "opacity-70" : "opacity-50"}`}>
-                → {drag.overProjectId ? nodes.find((n) => n.id === drag.overProjectId)?.name ?? drag.overProjectId : "?"}
-              </span>
+              {preview?.parentChanged && <span className="ml-1 text-2xs opacity-70">→ {preview.parentName}</span>}
             </div>
           </>,
           document.body
@@ -582,30 +603,27 @@ export function TreePanel() {
 interface TreeRowProps {
   node: TreeNode;
   selected: boolean;
-  /** Сюда сейчас бросят перетаскиваемую консоль */
-  dropTarget: boolean;
-  draggable: boolean;
-  /** Эту консоль сейчас тащат */
+  /** Подсказка, куда встанет перетаскиваемый узел, — у этой строки */
+  dropLine?: DropLine;
+  /** Этот узел сейчас тащат */
   dragged: boolean;
   renaming: boolean;
   renameInput: React.ReactNode;
-  onClick?: () => void;
-  onMouseDown?: (e: React.MouseEvent) => void;
+  onMouseDown: (e: React.MouseEvent) => void;
   onDoubleClick: () => void;
   onToggle: (e: React.MouseEvent) => void;
   onContextMenu: (e: React.MouseEvent) => void;
 }
 
-function TreeRow({ node, selected, dropTarget, draggable, dragged, renaming, renameInput, ...handlers }: TreeRowProps) {
+function TreeRow({ node, selected, dropLine, dragged, renaming, renameInput, ...handlers }: TreeRowProps) {
   const data = node.data as { note?: string; isDanger?: boolean; dangerLabel?: string };
 
   const note = data.note?.trim();
 
   const classes = [
-    "tree-item",
+    "tree-item relative",
     selected && "active",
-    dropTarget && "ring-1 ring-inset ring-accent bg-accent/5",
-    draggable && "cursor-grab",
+    dropLine?.edge === "inside" && "ring-1 ring-inset ring-accent bg-accent/5",
     dragged && "opacity-40",
   ];
 
@@ -616,13 +634,25 @@ function TreeRow({ node, selected, dropTarget, draggable, dragged, renaming, ren
       className={classes.filter(Boolean).join(" ")}
       style={{ paddingLeft: `${12 + node.depth * 16}px` }}
       title={note || undefined}
-      onClick={handlers.onClick}
       onDoubleClick={handlers.onDoubleClick}
       onContextMenu={handlers.onContextMenu}
       onMouseDown={handlers.onMouseDown}
     >
       {/* Свернуть/раскрыть — у консоли пустое место той же ширины */}
-      <span className="indent w-4 flex items-center justify-center text-text-muted cursor-pointer" onClick={handlers.onToggle}>
+      {/* Линия «встанет сюда» — с отступом уровня цели */}
+      {(dropLine?.edge === "top" || dropLine?.edge === "bottom") && (
+        <span
+          className={`absolute right-1 h-0.5 rounded-full bg-accent pointer-events-none ${dropLine.edge === "top" ? "top-0" : "bottom-0"}`}
+          style={{ left: `${8 + dropLine.depth * 16}px` }}
+        />
+      )}
+
+      {/* Нажатие на стрелку — только свернуть/раскрыть, не начало перетаскивания */}
+      <span
+        className="indent w-4 flex items-center justify-center text-text-muted cursor-pointer"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={handlers.onToggle}
+      >
         {node.type !== "console" && (node.isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />)}
       </span>
 
@@ -644,34 +674,34 @@ function TreeRow({ node, selected, dropTarget, draggable, dragged, renaming, ren
 }
 
 // ══════════════════════════════════════
-// Перетаскивание консоли на проект
+// Перетаскивание узла дерева
 // ══════════════════════════════════════
 // HTML5 DnD в Tauri WebKit не работает — слушаем mousemove/mouseup на window.
-// Сдвиг меньше порога — это клик. Проект под курсором ищется по прямоугольникам
-// строк с data-nodetype='project'.
+// Сдвиг меньше порога — это клик. Цель — по строке под курсором (правила —
+// в lib/treeOrder.ts). У верхнего и нижнего края дерева оно прокручивается
+// само каждый кадр, и цель пересчитывается, даже если мышь стоит.
 
-interface DraggedConsole {
-  id: string;
-  name: string;
-}
-
-function useConsoleDrag({
+function useTreeDrag({
   disabled,
+  nodes,
+  containerRef,
   onClick,
   onDrop,
 }: {
   disabled: boolean;
+  nodes: TreeNode[];
+  containerRef: React.RefObject<HTMLDivElement | null>;
   onClick: (node: TreeNode) => void;
-  onDrop: (dragged: DraggedConsole, projectId: string) => void;
+  onDrop: (dragged: TreeNode, target: DropTarget) => void;
 }) {
-  const [dragging, setDragging] = useState<DraggedConsole | null>(null);
-  const [overProjectId, setOverProjectId] = useState<string | null>(null);
+  const [dragging, setDragging] = useState<TreeNode | null>(null);
+  const [target, setTarget] = useState<DropTarget | null>(null);
   const [pos, setPos] = useState({ x: 0, y: 0 });
 
-  // Слушатели на window живут дольше рендера — читают свежие колбэки через ref
-  const handlersRef = useRef({ onClick, onDrop });
+  // Слушатели на window живут дольше рендера — читают свежие данные через ref
+  const latest = useRef({ nodes, onClick, onDrop });
 
-  handlersRef.current = { onClick, onDrop };
+  latest.current = { nodes, onClick, onDrop };
 
   const start = (e: React.MouseEvent, node: TreeNode) => {
     if (e.button !== 0 || disabled) return;
@@ -679,54 +709,103 @@ function useConsoleDrag({
     // Без этого браузер начал бы выделять текст
     e.preventDefault();
 
-    const startX = e.clientX;
-    const startY = e.clientY;
+    const pointer = { x: e.clientX, y: e.clientY };
 
     let started = false;
+    let frame = 0;
 
-    const onMove = (ev: MouseEvent) => {
-      started ||= Math.hypot(ev.clientX - startX, ev.clientY - startY) >= DRAG_THRESHOLD;
+    const findTarget = () => targetUnder(node.type, latest.current.nodes, containerRef.current, pointer);
 
-      if (!started) return;
+    const autoScroll = () => {
+      const el = containerRef.current;
 
-      setDragging({ id: node.id, name: node.name });
-      setPos({ x: ev.clientX, y: ev.clientY });
-      setOverProjectId(projectUnder(ev.clientX, ev.clientY));
+      const step = el ? edgeScrollStep(el.getBoundingClientRect(), pointer.x, pointer.y) : 0;
+
+      if (el && step) {
+        el.scrollTop += step;
+
+        setTarget(findTarget());
+      }
+
+      frame = requestAnimationFrame(autoScroll);
     };
 
-    const onUp = (ev: MouseEvent) => {
+    const onMove = (ev: MouseEvent) => {
+      if (!started && Math.hypot(ev.clientX - pointer.x, ev.clientY - pointer.y) < DRAG_THRESHOLD) return;
+
+      pointer.x = ev.clientX;
+      pointer.y = ev.clientY;
+
+      if (!started) {
+        started = true;
+
+        setDragging(node);
+
+        frame = requestAnimationFrame(autoScroll);
+      }
+
+      setPos({ ...pointer });
+      setTarget(findTarget());
+    };
+
+    const onUp = () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
 
+      cancelAnimationFrame(frame);
+
       if (!started) {
-        handlersRef.current.onClick(node);
+        latest.current.onClick(node);
 
         return;
       }
 
-      const projectId = projectUnder(ev.clientX, ev.clientY);
-
-      if (projectId) handlersRef.current.onDrop({ id: node.id, name: node.name }, projectId);
+      const dropAt = findTarget();
 
       setDragging(null);
-      setOverProjectId(null);
+      setTarget(null);
+
+      if (dropAt) latest.current.onDrop(node, dropAt);
     };
 
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
   };
 
-  return { dragging, overProjectId, pos, start };
+  return { dragging, target, pos, start };
 }
 
-function projectUnder(x: number, y: number): string | null {
-  const rows = Array.from(document.querySelectorAll("[data-nodetype='project']"));
+/** Цель под курсором: строка дерева и в какой её половине курсор */
+function targetUnder(
+  type: TreeNode["type"],
+  nodes: TreeNode[],
+  container: HTMLElement | null,
+  { x, y }: { x: number; y: number }
+): DropTarget | null {
+  const rows = container ? Array.from(container.querySelectorAll<HTMLElement>("[data-nodeid]")) : [];
 
-  const hit = rows.find((el) => {
+  const row = rows.find((el) => {
     const r = el.getBoundingClientRect();
 
     return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
   });
 
-  return hit?.getAttribute("data-nodeid") ?? null;
+  if (!row) return null;
+
+  const index = nodes.findIndex((n) => n.id === row.dataset.nodeid);
+
+  const r = row.getBoundingClientRect();
+
+  return index < 0 ? null : dropTarget(type, nodes, index, y > r.top + r.height / 2);
+}
+
+/** Автопрокрутка: курсор у верхнего края — вверх, у нижнего — вниз, иначе 0 */
+function edgeScrollStep(r: DOMRect, x: number, y: number): number {
+  if (x < r.left || x > r.right) return 0;
+
+  if (y < r.top + AUTOSCROLL_EDGE) return -AUTOSCROLL_STEP;
+
+  if (y > r.bottom - AUTOSCROLL_EDGE) return AUTOSCROLL_STEP;
+
+  return 0;
 }

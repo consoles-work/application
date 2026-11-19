@@ -19,6 +19,8 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::db::TreeLevel;
+
 // ── Типы данных (зеркало TypeScript типов) ──
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -246,7 +248,7 @@ pub fn create_workspace(name: String, icon: String, color: String) -> Result<Wor
         name,
         icon,
         color,
-        sort_order: 0,
+        sort_order: crate::db::next_sort_order(TreeLevel::Workspace, "")?,
         is_expanded: true,
         projects: Vec::new(),
     };
@@ -269,6 +271,8 @@ pub fn delete_workspace(id: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn create_project(workspace_id: String, fields: ProjectFields) -> Result<Project, String> {
+    let sort_order = crate::db::next_sort_order(TreeLevel::Project, &workspace_id)?;
+
     let project = Project {
         id: uuid::Uuid::new_v4().to_string(),
         workspace_id,
@@ -278,7 +282,7 @@ pub fn create_project(workspace_id: String, fields: ProjectFields) -> Result<Pro
         path: fields.path,
         default_shell: fields.default_shell,
         env_vars: HashMap::new(),
-        sort_order: 0,
+        sort_order,
         is_expanded: true,
         is_danger: false,
         danger_label: "PRODUCTION".to_string(),
@@ -309,6 +313,8 @@ pub fn clone_project(id: String) -> Result<Project, String> {
 
 #[tauri::command]
 pub fn create_console(project_id: String, fields: ConsoleFields) -> Result<ConsoleConfig, String> {
+    let sort_order = crate::db::next_sort_order(TreeLevel::Console, &project_id)?;
+
     let console = ConsoleConfig {
         id: uuid::Uuid::new_v4().to_string(),
         project_id,
@@ -317,7 +323,7 @@ pub fn create_console(project_id: String, fields: ConsoleFields) -> Result<Conso
         cwd_override: None,
         startup_cmd: fields.startup_cmd,
         env_vars: None,
-        sort_order: 0,
+        sort_order,
         is_danger: false,
         danger_label: "PRODUCTION".to_string(),
         connection_type: fields.connection_type,
@@ -363,9 +369,11 @@ pub fn clone_console(id: String) -> Result<ConsoleConfig, String> {
     crate::db::clone_console_by_id(&id)
 }
 
+/// Новый порядок узлов одного родителя после перетаскивания в дереве.
+/// Узел из другого воркспейса/проекта в списке — переезжает к `parent_id`.
 #[tauri::command]
-pub fn move_console(id: String, target_project_id: String) -> Result<(), String> {
-    crate::db::move_console(&id, &target_project_id)
+pub fn reorder_nodes(node_type: TreeLevel, parent_id: Option<String>, ordered_ids: Vec<String>) -> Result<(), String> {
+    crate::db::reorder_nodes(node_type, parent_id.as_deref(), &ordered_ids)
 }
 
 /// Заменить список быстрых команд консоли целиком

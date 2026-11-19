@@ -37,7 +37,10 @@
     "toastConsoleMoved": "Консоль «{{name}}» перемещена в «{{project}}»",
     "toastMoveError": "Ошибка перемещения: {{error}}",
     "moveConfirm": "Переместить консоль «{{name}}» в проект «{{project}}»?",
-    "moveConfirmTitle": "Переместить консоль"
+    "moveConfirmTitle": "Переместить консоль",
+    "projectMoveConfirm": "Переместить проект «{{name}}» в воркспейс «{{workspace}}»?",
+    "projectMoveConfirmTitle": "Переместить проект",
+    "toastProjectMoved": "Проект «{{name}}» перемещён в «{{workspace}}»"
   },
   "serversReport": {
     "title": "Серверы: {{name}}",

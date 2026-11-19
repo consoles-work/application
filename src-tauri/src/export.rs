@@ -62,6 +62,7 @@ use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 
 use crate::commands::{AiMessage, AiSession, QuickCommand, WikiPage, Workspace};
+use crate::db::TreeLevel;
 
 // Внутренний секрет приложения (не секретный от reverse-engineering,
 // но защищает файл от случайного открытия другими программами)
@@ -436,6 +437,9 @@ fn import_tree(tree: Vec<Workspace>, mode: ImportMode) -> Result<HashMap<String,
         }
 
         let ws_id = assign_new_id(&mut ws.id, &mut id_map);
+
+        // Импортированные воркспейсы — после уже имеющихся, в порядке файла
+        ws.sort_order = crate::db::next_sort_order(TreeLevel::Workspace, "")?;
 
         crate::db::save_workspace(&ws)?;
 

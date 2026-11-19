@@ -37,7 +37,10 @@
     "toastConsoleMoved": "Console «{{name}}» moved to «{{project}}»",
     "toastMoveError": "Move error: {{error}}",
     "moveConfirm": "Move console «{{name}}» to project «{{project}}»?",
-    "moveConfirmTitle": "Move console"
+    "moveConfirmTitle": "Move console",
+    "projectMoveConfirm": "Move project «{{name}}» to workspace «{{workspace}}»?",
+    "projectMoveConfirmTitle": "Move project",
+    "toastProjectMoved": "Project «{{name}}» moved to «{{workspace}}»"
   },
   "serversReport": {
     "title": "Servers: {{name}}",

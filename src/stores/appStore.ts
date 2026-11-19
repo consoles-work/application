@@ -12,7 +12,8 @@ import type {
   Workspace,
 } from "../types";
 import type { ChatMessage } from "../lib/aiProviders";
-import { allConsoles, flattenTree } from "../lib/tree";
+import { flattenTree } from "../lib/tree";
+import { applyPlacement, type Placement } from "../lib/treeOrder";
 import { GLOBAL_QUICK_KEY, globalQuickCommands, isSavedGlobalQuick } from "../lib/globalQuickCommands";
 import type { TFunction } from "i18next";
 
@@ -108,7 +109,7 @@ interface AppState {
   addConsole: (projectId: string, console_: ConsoleConfig) => void;
   updateConsole: (id: string, updates: Partial<ConsoleConfig>) => void;
   removeConsole: (id: string) => void;
-  moveConsoleToProject: (consoleId: string, targetProjectId: string) => void;
+  placeTreeNode: (placement: Placement) => void;
 
   // ── Actions: терминал ──
   // Перейти к консоли: к последнему открытому экземпляру, а если их нет — открыть.
@@ -284,23 +285,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       workspaces: mapProjects(state.workspaces, (p) => ({ ...p, consoles: p.consoles.filter((c) => c.id !== id) })),
     })),
 
-  // Консоль встаёт в конец списка проекта-получателя
-  moveConsoleToProject: (consoleId, targetProjectId) =>
-    set((state) => {
-      const moved = allConsoles(state.workspaces).find((ref) => ref.console.id === consoleId)?.console;
-
-      if (!moved) return {};
-
-      const relocated = { ...moved, projectId: targetProjectId };
-
-      return {
-        workspaces: mapProjects(state.workspaces, (p) => {
-          const consoles = p.consoles.filter((c) => c.id !== consoleId);
-
-          return { ...p, consoles: p.id === targetProjectId ? [...consoles, relocated] : consoles };
-        }),
-      };
-    }),
+  // Перетаскивание в дереве — узел на новом месте, порядок соседей по нему
+  placeTreeNode: (placement) => set((state) => ({ workspaces: applyPlacement(state.workspaces, placement) })),
 
   // ── Терминал ──
   openConsole: (consoleId, title, newInstance = false) => {

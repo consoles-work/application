@@ -5,7 +5,7 @@
 // Rust принимает их в snake_case (serde).
 
 import { invoke } from "@tauri-apps/api/core";
-import type { Workspace, Project, ConsoleConfig, QuickCommand, WikiPage, AiSession, AiMessage, SshKeyFile, SshKeysReport, SpawnPtyRequest, ProjectFields, ConsoleFields } from "../types";
+import type { Workspace, Project, ConsoleConfig, QuickCommand, WikiPage, AiSession, AiMessage, SshKeyFile, SshKeysReport, SpawnPtyRequest, ProjectFields, ConsoleFields, TreeNodeType } from "../types";
 
 export interface DbInfo {
   path: string;
@@ -309,10 +309,11 @@ export async function applyImport(
   });
 }
 
-// ── Перемещение консоли ──
+// ── Порядок узлов дерева ──
 
-export async function moveConsole(id: string, targetProjectId: string): Promise<void> {
-  return invoke("move_console", { id, targetProjectId });
+/** Дети одного родителя в новом порядке; узел из другого родителя переезжает к `parentId` */
+export async function reorderNodes(nodeType: TreeNodeType, parentId: string | null, orderedIds: string[]): Promise<void> {
+  return invoke("reorder_nodes", { nodeType, parentId, orderedIds });
 }
 
 // ── Автозапуск ──
